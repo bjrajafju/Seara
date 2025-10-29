@@ -25,10 +25,11 @@ class SearaApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'SEARA',
-            themeMode: theme.themeMode,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            home: auth.isLoggedIn ? HomeScreen() : LoginScreen(),
+            //themeMode: theme.themeMode,
+            //theme: AppTheme.lightTheme,
+            //darkTheme: AppTheme.darkTheme,
+            //home: auth.isLoggedIn ? HomeScreen() : LoginScreen(),
+            home: HomeScreen(),
           );
         },
       ),

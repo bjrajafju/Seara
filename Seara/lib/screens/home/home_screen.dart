@@ -10,6 +10,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _token = '';
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -34,18 +35,33 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Home')),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text('Token JWT:', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            SelectableText(_token),
-            SizedBox(height: 30),
-            ElevatedButton(onPressed: _logout, child: Text('Logout')),
-          ],
-        ),
+      appBar: AppBar(title: Text('Seara')),
+      body: Container(
+        color: Color.fromARGB(255, 255, 153, 0),
+        child: Text("Centro da app"),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed, //tem de ser fixed para a cor dar idfk
+        backgroundColor: Color.fromARGB(255, 67, 17, 38), 
+        selectedItemColor: Color.fromARGB(255, 255, 0, 0),
+        unselectedItemColor: Color.fromARGB(222, 149, 211, 247),
+        currentIndex: 0, //pagina atual
+        items: [ //cena com os butoes em baixo
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "home"),
+          BottomNavigationBarItem(icon: Icon(Icons.message), label: "messages"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.thunderstorm),
+            label: "desafios",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: "definições",
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "perfil"),
+        ],
+        onTap: (valor) {
+          print(valor);
+        },
       ),
     );
   }
