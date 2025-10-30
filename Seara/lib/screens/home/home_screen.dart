@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../messages/messages_screen.dart';
+import '../profile/profile_screen.dart';
+import '../settings/settings_screen.dart';
+import '../challenges/challenges_screen.dart';
+import '../feed/feed_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,6 +16,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _token = '';
   int _selectedIndex = 0;
+
+  final List<Widget> _pages = [
+    FeedScreen(),
+    MessagesScreen(),
+    ChallengesScreen(),
+    SettingsScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   void initState() {
@@ -36,31 +49,33 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Seara')),
-      body: Container(
-        color: Color.fromARGB(255, 255, 153, 0),
-        child: Text("Centro da app"),
-      ),
+      body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, //tem de ser fixed para a cor dar idfk
-        backgroundColor: Color.fromARGB(255, 67, 17, 38), 
-        selectedItemColor: Color.fromARGB(255, 255, 0, 0),
-        unselectedItemColor: Color.fromARGB(222, 149, 211, 247),
-        currentIndex: 0, //pagina atual
-        items: [ //cena com os butoes em baixo
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "home"),
-          BottomNavigationBarItem(icon: Icon(Icons.message), label: "messages"),
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color.fromARGB(255, 67, 17, 38),
+        selectedItemColor: const Color.fromARGB(255, 255, 0, 0),
+        unselectedItemColor: const Color.fromARGB(222, 149, 211, 247),
+        currentIndex: _selectedIndex,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.thunderstorm),
-            label: "desafios",
+            icon: Icon(Icons.message),
+            label: "Mensagens",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.flash_on),
+            label: "Desafios",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
-            label: "definições",
+            label: "Definições",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "perfil"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Perfil"),
         ],
-        onTap: (valor) {
-          print(valor);
+        onTap: (int index) {
+          setState(() {
+            _selectedIndex = index;
+          });
         },
       ),
     );

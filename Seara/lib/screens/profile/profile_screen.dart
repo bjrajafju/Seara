@@ -1,3 +1,10 @@
 import 'package:flutter/material.dart';
 
-Center(child: Text("Perfil")),
+class ProfileScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text('Página de Perfil'),
+    );
+  }
+}
