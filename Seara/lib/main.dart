@@ -5,6 +5,8 @@ import 'providers/theme_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/profile/profile_screen.dart';
+import 'screens/settings/settings_screen.dart';
 
 void main() {
   runApp(const SearaApp());
@@ -25,11 +27,20 @@ class SearaApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'SEARA',
-            //themeMode: theme.themeMode,
-            //theme: AppTheme.lightTheme,
-            //darkTheme: AppTheme.darkTheme,
+            themeMode: theme.themeMode,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
             //home: auth.isLoggedIn ? HomeScreen() : LoginScreen(),
             home: HomeScreen(),
+            
+            routes: {
+              //'/': (ctx) => const LoginScreen(), // se necessário
+              '/home': (ctx) => const HomeScreen(),
+              '/profile': (ctx) => const ProfileScreen(),
+              '/settings': (ctx) => const SettingsScreen(),
+              //'/followers': (ctx) => const FollowersScreen(), // cria placeholder se precisares
+              //'/following': (ctx) => const FollowingScreen(),
+            },
           );
         },
       ),
