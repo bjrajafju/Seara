@@ -36,7 +36,7 @@ class SearaApp extends StatelessWidget {
             routes: {
               //'/': (ctx) => const LoginScreen(), // se necessário
               '/home': (ctx) => const HomeScreen(),
-              '/profile': (ctx) => const ProfileScreen(),
+              //'/profile': (ctx) => const ProfileScreen(),
               '/settings': (ctx) => const SettingsScreen(),
               //'/followers': (ctx) => const FollowersScreen(), // cria placeholder se precisares
               //'/following': (ctx) => const FollowingScreen(),
