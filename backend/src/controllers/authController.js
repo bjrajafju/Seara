@@ -1,74 +1,106 @@
 import supabase from "../services/supabase.js";
 
-// Regex de Validação
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Função de Validação
-const isValidPassword = (password) => password && password.length >= 6;
-
 // REGISTAR
 export const register = async (req, res) => {
-  console.log("POST /auth/register - raw body:", req.body);
+    let { email, password } = req.body || {};
+    if (typeof email === "string") email = email.trim().toLowerCase();
 
-  // Normalizar entrada
-  let { email, password } = req.body || {};
-  if (typeof email === 'string') email = email.trim().toLowerCase();
-  console.log("Normalized:", { email, password: password ? '***' : null });
-
-  // Validação
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email e password são obrigatórios." });
-  }
-
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({ error: "Email inválido." });
-  }
-
-  if (!isValidPassword(password)) {
-    return res.status(400).json({ error: "Password deve ter pelo menos 6 caracteres." });
-  }
-
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    console.log("Supabase register result:", { data, error });
-
-    if (error) {
-      // log detalhado para debug
-      console.error("Supabase error code:", error.code, "message:", error.message);
-      return res.status(error.status || 400).json({ error: error.message });
+    if (!email || !password) {
+        return res
+            .status(400)
+            .json({ error: "Email e password são obrigatórios." });
     }
 
-    res.status(201).json({ user: data.user });
-  } catch (err) {
-    console.error("Erro no register:", err);
-    res.status(500).json({ error: "Erro interno no servidor." });
-  }
+    try {
+        // 1. Criar no Supabase Auth
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+        });
+
+        if (error || !data.user) {
+            return res.status(400).json({ error: error?.message });
+        }
+
+        const authUserId = data.user.id; // UUID
+
+        // 2. Criar utilizador na public.users
+        const { data: appUser, error: dbError } = await supabase
+            .from("users")
+            .insert({
+                auth_id: authUserId,
+                email: email,
+                name: email.split("@")[0], // default simples
+            })
+            .select()
+            .single();
+
+        if (dbError) {
+            console.log("DB ERROR:", dbError);
+            return res
+                .status(500)
+                .json({ error: "Erro ao criar utilizador da app" });
+        }
+
+        // 3. Resposta limpa
+        res.status(201).json({
+            user: {
+                id: appUser.id, // BIGINT
+                auth_id: authUserId, // UUID
+                email: appUser.email,
+            },
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    }
 };
 
 // LOGIN
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+    const { email, password } = req.body;
 
-  // Validação
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email e password são obrigatórios." });
-  }
+    if (!email || !password) {
+        return res
+            .status(400)
+            .json({ error: "Email e password são obrigatórios." });
+    }
 
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+        // 1. Login Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
 
-    if (error) return res.status(400).json({ error: error.message });
+        if (error || !data.user) {
+            return res.status(400).json({ error: error?.message });
+        }
 
-    res.json({ user: data.user, session: data.session });
-  } catch (err) {
-    console.error("Erro no login:", err);
-    res.status(500).json({ error: "Erro interno no servidor." });
-  }
+        const authUserId = data.user.id;
+
+        // 2. Buscar utilizador da app
+        const { data: appUser, error: userError } = await supabase
+            .from("users")
+            .select("id")
+            .eq("auth_id", authUserId)
+            .single();
+
+        if (userError || !appUser) {
+            return res
+                .status(404)
+                .json({ error: "Utilizador da app não encontrado" });
+        }
+
+        // 3. Responder com session + app user id
+        res.json({
+            session: data.session,
+            user: {
+                id: appUser.id, // BIGINT (este é o que a app usa)
+            },
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Erro interno no servidor." });
+    }
 };

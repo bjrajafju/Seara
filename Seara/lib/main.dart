@@ -30,13 +30,12 @@ class SearaApp extends StatelessWidget {
             themeMode: theme.themeMode,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            //home: auth.isLoggedIn ? HomeScreen() : LoginScreen(),
-            home: HomeScreen(),
+            home: auth.isLoggedIn ? HomeScreen() : LoginScreen(),
             
             routes: {
               //'/': (ctx) => const LoginScreen(), // se necessário
               '/home': (ctx) => const HomeScreen(),
-              //'/profile': (ctx) => const ProfileScreen(),
+              '/profile': (ctx) => const ProfileScreen(),
               '/settings': (ctx) => const SettingsScreen(),
               //'/followers': (ctx) => const FollowersScreen(), // cria placeholder se precisares
               //'/following': (ctx) => const FollowingScreen(),

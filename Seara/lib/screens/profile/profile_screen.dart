@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:seara/services/profile_service.dart';
 import 'widgets/profile_header.dart';
 import 'widgets/profile_stats.dart';
 import 'widgets/posts_grid.dart';
 import 'widgets/ship_grid.dart';
 import 'widgets/tagged_grid.dart';
 import 'edit_profile_screen.dart';
+import 'package:seara/models/profile_model.dart';
+import 'package:seara/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,10 +26,30 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   late TabController _tabController;
 
+  Profile? profile;
+  bool isLoading = true;
+
+  Future<void> _loadProfile() async {
+    try {
+      final userId = await AuthService.getUserId();
+      if (userId == null) return;
+      final result = await ProfileService.getProfile(userId);
+
+      setState(() {
+        profile = result;
+        isLoading = false;
+      });
+    } catch (e) {
+      // por agora só isto
+      print(e);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(vsync: this, length: postTabs.length);
+    _loadProfile();
   }
 
   @override
@@ -37,6 +60,9 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       appBar: AppBar(title: Text('Profile')),
       body: NestedScrollView(
@@ -54,22 +80,33 @@ class _ProfileScreenState extends State<ProfileScreen>
                         height: 100,
                         decoration: BoxDecoration(shape: BoxShape.circle),
                         child: Image.network(
-                          'https://picsum.photos/seed/481/600',
+                          profile!.avatarUrl,
                           fit: BoxFit.cover,
                         ),
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Daniel"),
+                          Text(profile!.username),
                           Row(
                             children: [
-                              Column(children: [Text("999"), Text("Posts")]),
                               Column(
-                                children: [Text("999"), Text("Following")],
+                                children: [
+                                  Text(profile!.posts.toString()),
+                                  Text("Posts"),
+                                ],
                               ),
                               Column(
-                                children: [Text("999"), Text("Followers")],
+                                children: [
+                                  Text(profile!.following.toString()),
+                                  Text("Following"),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  Text(profile!.followers.toString()),
+                                  Text("Followers"),
+                                ],
                               ),
                             ],
                           ),
@@ -77,7 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ],
                   ),
-                  Text("Bio"),
+                  Text(profile!.bio),
                   Row(
                     children: [
                       TextButton(
@@ -94,7 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // headers dos posts
+            // tabs dos posts
             SliverAppBar(
               pinned: true,
               automaticallyImplyLeading: false,
