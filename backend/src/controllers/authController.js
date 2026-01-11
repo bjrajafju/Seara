@@ -25,16 +25,19 @@ export const register = async (req, res) => {
         const authUserId = data.user.id; // UUID
 
         // 2. Criar utilizador na public.users
+        const baseUsername = email.split("@")[0];
+        const username = await generateUsername(baseUsername);
+
         const { data: appUser, error: dbError } = await supabase
             .from("users")
             .insert({
                 auth_id: authUserId,
                 email: email,
-                name: email.split("@")[0], // default simples
+                name: email.split("@")[0],
+                username: username,
             })
             .select()
             .single();
-
         if (dbError) {
             console.log("DB ERROR:", dbError);
             return res
@@ -96,11 +99,31 @@ export const login = async (req, res) => {
         res.json({
             session: data.session,
             user: {
-                id: appUser.id, // BIGINT (este é o que a app usa)
+                id: appUser.id,
+                username: appUser.username,
             },
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Erro interno no servidor." });
     }
+};
+
+// Função auxiliar para gerar username único
+const generateUsername = async (base) => {
+    let username = base.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    let count = 0;
+
+    while (true) {
+        const { data: existing } = await supabase
+            .from("users")
+            .select("id")
+            .eq("username", count === 0 ? username : `${username}${count}`)
+            .single();
+
+        if (!existing) break;
+        count++;
+    }
+
+    return count === 0 ? username : `${username}${count}`;
 };

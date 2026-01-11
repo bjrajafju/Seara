@@ -87,7 +87,24 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(profile!.username),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                profile!.name.isNotEmpty
+                                    ? profile!.name
+                                    : profile!.username,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '@${profile!.username}',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
                           Row(
                             children: [
                               Column(
@@ -118,7 +135,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                   Row(
                     children: [
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () async {
+                          final updated = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  EditProfileScreen(profile: profile!),
+                            ),
+                          );
+
+                          if (updated == true) {
+                            _loadProfile();
+                          }
+                        },
+
                         child: Text("Editar Perfil"),
                       ),
                       TextButton(
