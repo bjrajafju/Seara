@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:seara/screens/profile/user_list_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'theme/app_theme.dart';
@@ -31,12 +32,13 @@ class SearaApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             home: auth.isLoggedIn ? HomeScreen() : LoginScreen(),
-            
+
             routes: {
-              //'/': (ctx) => const LoginScreen(), // se necessário
+              //'/': (ctx) => const LoginScreen(),
               '/home': (ctx) => const HomeScreen(),
               '/profile': (ctx) => const ProfileScreen(),
               '/settings': (ctx) => const SettingsScreen(),
+              '/list': (ctx) => const UserListScreen(),
               //'/followers': (ctx) => const FollowersScreen(), // cria placeholder se precisares
               //'/following': (ctx) => const FollowingScreen(),
             },

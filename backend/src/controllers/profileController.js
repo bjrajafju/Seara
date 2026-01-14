@@ -78,7 +78,7 @@ export const updateProfile = async (req, res) => {
             .from("users")
             .select("id")
             .eq("username", username)
-            .neq("id", userId) // exclui o próprio utilizador
+            .neq("id", userId)
             .single();
 
         if (existingUser) {
@@ -102,6 +102,50 @@ export const updateProfile = async (req, res) => {
         if (error) throw error;
 
         res.json(data);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+};
+export const followUser = async (req, res) => {
+    try {
+        const { followerId, followingId } = req.body;
+
+        // verificar se já segue
+        const { data: follows, error: checkError } = await supabase
+            .from("followers")
+            .select("id")
+            .eq("follower_id", followerId)
+            .eq("user_id", followingId)
+            .single();
+        if (follows) {
+            return res.status(400);
+        }
+        if (checkError) throw checkError;
+
+        // inserir follow na tabela de followers
+        const { error } = await supabase.from("followers").insert({
+            user_id: followingId,
+            follower_id: followerId,
+        });
+        if (error) throw error;
+        res.status(201);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Lista todos os utilizadores (para dev/testing)
+export const getAllUsers = async (req, res) => {
+    try {
+        const { data: users, error } = await supabase
+            .from("users")
+            .select("id, username, avatar");
+
+        if (error) throw error;
+
+        res.json(users ?? []);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });

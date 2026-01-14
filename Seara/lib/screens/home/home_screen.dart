@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../messages/messages_screen.dart';
 import '../profile/profile_screen.dart';
+import '../profile/user_list_screen.dart';
 import '../settings/settings_screen.dart';
 import '../challenges/challenges_screen.dart';
 import '../feed/feed_screen.dart';
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ChallengesScreen(),
     SettingsScreen(),
     ProfileScreen(),
+    UserListScreen(),
   ];
 
   @override
@@ -71,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
             label: "Definições",
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Perfil"),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Listar"),
         ],
         onTap: (int index) {
           setState(() {

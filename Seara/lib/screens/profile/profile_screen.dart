@@ -5,7 +5,8 @@ import 'package:seara/models/profile_model.dart';
 import 'package:seara/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.userId});
+  final int? userId; // se null, é o meu perfil
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -32,8 +33,14 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadProfile() async {
     try {
-      final userId = await AuthService.getUserId();
-      if (userId == null) return;
+      int? userId = widget.userId;
+      if (userId == null) {
+        userId = await AuthService.getUserId();
+        if (userId == null) return;
+      }
+
+      
+
       final result = await ProfileService.getProfile(userId);
 
       setState(() {
@@ -123,22 +130,27 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildButtonsRow() {
+    final isMyProfile = widget.userId == null;
+
     return Row(
       children: [
-        TextButton(
-          onPressed: () async {
-            final updated = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => EditProfileScreen(profile: profile!),
-              ),
-            );
-
-            if (updated == true) _loadProfile();
-          },
-          child: const Text("Editar Perfil"),
-        ),
+        if (isMyProfile)
+          TextButton(
+            onPressed: () async {
+              final updated = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditProfileScreen(profile: profile!),
+                ),
+              );
+              if (updated == true) _loadProfile();
+            },
+            child: const Text("Editar Perfil"),
+          ),
         TextButton(onPressed: () {}, child: const Text("Partilhar Perfil")),
+        
+        TextButton(onPressed: () {}, child: const Text("Follow")),
+        TextButton(onPressed: () {}, child: const Text("Message")),
       ],
     );
   }
