@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:seara/services/profile_service.dart';
-import 'widgets/profile_header.dart';
-import 'widgets/profile_stats.dart';
-import 'widgets/posts_grid.dart';
-import 'widgets/ship_grid.dart';
-import 'widgets/tagged_grid.dart';
 import 'edit_profile_screen.dart';
 import 'package:seara/models/profile_model.dart';
 import 'package:seara/services/auth_service.dart';
@@ -25,9 +20,15 @@ class _ProfileScreenState extends State<ProfileScreen>
   ];
 
   late TabController _tabController;
-
   Profile? profile;
   bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(vsync: this, length: postTabs.length);
+    _loadProfile();
+  }
 
   Future<void> _loadProfile() async {
     try {
@@ -40,16 +41,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         isLoading = false;
       });
     } catch (e) {
-      // por agora só isto
       print(e);
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(vsync: this, length: postTabs.length);
-    _loadProfile();
   }
 
   @override
@@ -58,110 +51,133 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
+  // ---------- Build Widgets ----------
+
+  Widget _buildAvatarSection() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        // Avatar
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(shape: BoxShape.circle),
+          child: Image.network(profile!.avatarUrl, fit: BoxFit.cover),
+        ),
+
+        // Nome, username e stats
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildNameUsername(),
+            const SizedBox(height: 8),
+            _buildStatsRow(),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNameUsername() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          profile!.name.isNotEmpty ? profile!.name : profile!.username,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        Text(
+          '@${profile!.username}',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsRow() {
+    return Row(
+      children: [
+        _buildStatItem(profile!.posts.toString(), "Posts"),
+        const SizedBox(width: 16),
+        _buildStatItem(profile!.following.toString(), "Following"),
+        const SizedBox(width: 16),
+        _buildStatItem(profile!.followers.toString(), "Followers"),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(String value, String label) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(label),
+      ],
+    );
+  }
+
+  Widget _buildBioSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(profile!.bio),
+    );
+  }
+
+  Widget _buildButtonsRow() {
+    return Row(
+      children: [
+        TextButton(
+          onPressed: () async {
+            final updated = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditProfileScreen(profile: profile!),
+              ),
+            );
+
+            if (updated == true) _loadProfile();
+          },
+          child: const Text("Editar Perfil"),
+        ),
+        TextButton(onPressed: () {}, child: const Text("Partilhar Perfil")),
+      ],
+    );
+  }
+
+  Widget _buildProfileHeader() {
+    return Column(
+      children: [_buildAvatarSection(), _buildBioSection(), _buildButtonsRow()],
+    );
+  }
+
+  Widget _buildPostsGrid() {
+    return GridView.builder(
+      padding: EdgeInsets.zero,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: 60,
+      itemBuilder: (context, index) {
+        return Container(color: Colors.grey);
+      },
+    );
+  }
+
+  // ---------- Build Main ----------
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
     return Scaffold(
-      appBar: AppBar(title: Text('Profile')),
+      appBar: AppBar(title: const Text('Profile')),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
-            // perfil todo
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(shape: BoxShape.circle),
-                        child: Image.network(
-                          profile!.avatarUrl,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                profile!.name.isNotEmpty
-                                    ? profile!.name
-                                    : profile!.username,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '@${profile!.username}',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Column(
-                                children: [
-                                  Text(profile!.posts.toString()),
-                                  Text("Posts"),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Text(profile!.following.toString()),
-                                  Text("Following"),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Text(profile!.followers.toString()),
-                                  Text("Followers"),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Text(profile!.bio),
-                  Row(
-                    children: [
-                      TextButton(
-                        onPressed: () async {
-                          final updated = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  EditProfileScreen(profile: profile!),
-                            ),
-                          );
-
-                          if (updated == true) {
-                            _loadProfile();
-                          }
-                        },
-
-                        child: Text("Editar Perfil"),
-                      ),
-                      TextButton(
-                        onPressed: () {},
-                        child: Text("Partilhar Perfil"),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // tabs dos posts
+            SliverToBoxAdapter(child: _buildProfileHeader()),
             SliverAppBar(
               pinned: true,
               automaticallyImplyLeading: false,
@@ -170,28 +186,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           ];
         },
-
-        // posts
         body: TabBarView(
           controller: _tabController,
-          children: [_postsGrid(), _postsGrid(), _postsGrid()],
+          children: [_buildPostsGrid(), _buildPostsGrid(), _buildPostsGrid()],
         ),
       ),
     );
   }
-}
-
-Widget _postsGrid() {
-  return GridView.builder(
-    padding: EdgeInsets.zero,
-    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 3,
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-    ),
-    itemCount: 60,
-    itemBuilder: (context, index) {
-      return Container(color: Colors.grey);
-    },
-  );
 }
