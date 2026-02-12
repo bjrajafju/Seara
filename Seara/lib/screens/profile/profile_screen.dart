@@ -24,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Profile? profile;
   bool isLoading = true;
   bool isFollowing = false;
+  bool _isProcessingFollow = false;
 
   @override
   void initState() {
@@ -63,19 +64,65 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _follow() async {
-    int? myId = await AuthService.getUserId();
-    if (myId == null) return;
+    if (_isProcessingFollow) return; // evita spam click
 
-    int? userId = widget.userId;
-    if (userId == null) return;
+    final myId = await AuthService.getUserId();
+    final userId = widget.userId;
 
-    await ProfileService.follow(
-      followerId: myId,
-      followingId: userId,
-      isFollowing: isFollowing,
-    );
+    if (myId == null || userId == null) return;
 
-    _loadProfile();
+    setState(() {
+      _isProcessingFollow = true;
+    });
+
+    final previousState = isFollowing;
+    final previousFollowers = profile!.followers;
+
+    // Optimistic UI update
+    setState(() {
+      isFollowing = !isFollowing;
+
+      profile = Profile(
+        id: profile!.id,
+        username: profile!.username,
+        name: profile!.name,
+        bio: profile!.bio,
+        avatarUrl: profile!.avatarUrl,
+        posts: profile!.posts,
+        followers: isFollowing ? previousFollowers + 1 : previousFollowers - 1,
+        following: profile!.following,
+      );
+    });
+
+    try {
+      await ProfileService.follow(
+        followerId: myId,
+        followingId: userId,
+        isFollowing: previousState,
+      );
+    } catch (e) {
+      // rollback se falhar
+      setState(() {
+        isFollowing = previousState;
+
+        profile = Profile(
+          id: profile!.id,
+          username: profile!.username,
+          name: profile!.name,
+          bio: profile!.bio,
+          avatarUrl: profile!.avatarUrl,
+          posts: profile!.posts,
+          followers: previousFollowers,
+          following: profile!.following,
+        );
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingFollow = false;
+        });
+      }
+    }
   }
 
   @override
@@ -177,8 +224,14 @@ class _ProfileScreenState extends State<ProfileScreen>
 
         if (!isMyProfile)
           TextButton(
-            onPressed: _follow,
-            child: isFollowing ? const Text("Unfollow") : const Text("Follow"),
+            onPressed: _isProcessingFollow ? null : _follow,
+            child: _isProcessingFollow
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(isFollowing ? "Unfollow" : "Follow"),
           ),
         if (!isMyProfile)
           TextButton(onPressed: () {}, child: const Text("Message")),

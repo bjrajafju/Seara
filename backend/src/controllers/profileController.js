@@ -1,70 +1,33 @@
 import supabase from "../services/supabase.js";
 
-// Vai buscar utilizador
-const getUserById = async (userId) => {
-    const { data: user, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
-    if (error || !user) throw new Error("Utilizador não encontrado");
-    return user;
-};
-
-// Contagem de posts
-const getPostsCount = async (userId) => {
-    const { count } = await supabase
-        .from("posts")
-        .select("*", { count: "exact" })
-        .eq("user_id", userId);
-    return count || 0;
-};
-
-// Contagem de seguidores
-const getFollowersCount = async (userId) => {
-    const { count } = await supabase
-        .from("followers")
-        .select("*", { count: "exact" })
-        .eq("user_id", userId);
-    return count || 0;
-};
-
-// Contagem de following
-const getFollowingCount = async (userId) => {
-    const { count } = await supabase
-        .from("followers")
-        .select("*", { count: "exact" })
-        .eq("follower_id", userId);
-    return count || 0;
-};
-
 // Controller principal
 export const getProfile = async (req, res) => {
     try {
         const userId = req.params.userId;
 
-        const user = await getUserById(userId);
-        const [postsCount, followersCount, followingCount] = await Promise.all([
-            getPostsCount(userId),
-            getFollowersCount(userId),
-            getFollowingCount(userId),
-        ]);
+        const { data, error } = await supabase
+            .from("profiles_view")
+            .select("*")
+            .eq("id", userId)
+            .single();
 
-        const profile = {
-            id: user.id,
-            username: user.username,
-            name: user.name,
-            bio: user.bio,
-            avatar_url: user.avatar,
-            posts_count: postsCount,
-            followers_count: followersCount,
-            following_count: followingCount,
-        };
+        if (error || !data) {
+            return res.status(404).json({ error: "Utilizador não encontrado" });
+        }
 
-        res.json(profile);
+        return res.json({
+            id: data.id,
+            username: data.username,
+            name: data.name,
+            bio: data.bio,
+            avatar_url: data.avatar,
+            posts_count: data.posts_count,
+            followers_count: data.followers_count,
+            following_count: data.following_count,
+        });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: err.message });
     }
 };
 
@@ -108,17 +71,31 @@ export const updateProfile = async (req, res) => {
     }
 };
 export const isFollowing = async (req, res) => {
-    const { followerId, followingId } = req.body;
+    try {
+        const { followerId, followingId } = req.body;
 
-    // verificar se já segue
-    const { data: follows, error: checkError } = await supabase
-        .from("followers")
-        .select("id")
-        .eq("follower_id", followerId)
-        .eq("user_id", followingId)
-        .single();
-    return res.json({ isFollowing: follows ? true : false });
+        if (!followerId || !followingId) {
+            return res
+                .status(400)
+                .json({ error: "Missing followerId or followingId" });
+        }
+
+        const { data, error } = await supabase
+            .from("followers")
+            .select("id")
+            .eq("follower_id", followerId)
+            .eq("user_id", followingId)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        return res.json({ isFollowing: !!data });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: err.message });
+    }
 };
+
 export const followUser = async (req, res) => {
     try {
         const { followerId, followingId } = req.body;
@@ -162,7 +139,7 @@ export const unfollowUser = async (req, res) => {
             .eq("follower_id", followerId)
             .eq("user_id", followingId);
         if (error) throw error;
-        res.sendStatus(201);
+        return res.sendStatus(200);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });

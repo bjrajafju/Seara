@@ -77,27 +77,17 @@ class ProfileService {
     required int followingId,
     required bool isFollowing,
   }) async {
-    if (isFollowing) {
-      final url = Uri.parse('$baseUrl/profile/unfollow');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'followerId': followerId,
-          'followingId': followingId,
-        }),
-      );
-    } else {
-      final url = Uri.parse('$baseUrl/profile/follow');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'followerId': followerId,
-          'followingId': followingId,
-        }),
-      );
+    final endpoint = isFollowing ? 'unfollow' : 'follow';
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/profile/$endpoint'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'followerId': followerId, 'followingId': followingId}),
+    );
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      final data = jsonDecode(response.body);
+      throw Exception(data['error'] ?? 'Erro ao seguir utilizador');
     }
-    //agora vamos pro controller, depois acabamos daqui pra baixo, é preciso uma verificação de erro no if e no else
   }
-} //ta na hora de testar a ver se funciona, acho que é so ligar ao profile screen agora.
+}
