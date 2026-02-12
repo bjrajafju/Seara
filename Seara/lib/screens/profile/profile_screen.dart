@@ -23,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   late TabController _tabController;
   Profile? profile;
   bool isLoading = true;
+  bool isFollowing = false;
 
   @override
   void initState() {
@@ -33,23 +34,48 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadProfile() async {
     try {
+      bool isFollowingAsync;
       int? userId = widget.userId;
       if (userId == null) {
         userId = await AuthService.getUserId();
         if (userId == null) return;
+        isFollowingAsync = true;
+      } else {
+        int? myId = await AuthService.getUserId();
+        if (myId == null) return;
+        isFollowingAsync = await ProfileService.isFollowing(
+          followerId: myId,
+          followingId: userId,
+        );
       }
-
-      
 
       final result = await ProfileService.getProfile(userId);
 
       setState(() {
         profile = result;
         isLoading = false;
+        isFollowing = isFollowingAsync;
       });
+      print("acabou");
     } catch (e) {
       print(e);
     }
+  }
+
+  Future<void> _follow() async {
+    int? myId = await AuthService.getUserId();
+    if (myId == null) return;
+
+    int? userId = widget.userId;
+    if (userId == null) return;
+
+    await ProfileService.follow(
+      followerId: myId,
+      followingId: userId,
+      isFollowing: isFollowing,
+    );
+
+    _loadProfile();
   }
 
   @override
@@ -148,9 +174,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: const Text("Editar Perfil"),
           ),
         TextButton(onPressed: () {}, child: const Text("Partilhar Perfil")),
-        
-        TextButton(onPressed: () {}, child: const Text("Follow")),
-        TextButton(onPressed: () {}, child: const Text("Message")),
+
+        if (!isMyProfile)
+          TextButton(
+            onPressed: _follow,
+            child: isFollowing ? const Text("Unfollow") : const Text("Follow"),
+          ),
+        if (!isMyProfile)
+          TextButton(onPressed: () {}, child: const Text("Message")),
       ],
     );
   }

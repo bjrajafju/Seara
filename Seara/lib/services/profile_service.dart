@@ -60,40 +60,44 @@ class ProfileService {
     required int followerId,
     required int followingId,
   }) async {
-    final url = Uri.parse(
-      '$baseUrl/profile/{followerId: $followerId, followingId: $followingId}',
-    );
-    final response = await http.get(url);
-
-    if (response.statusCode == 400) {
-      return true; // already following
-    } else if (response.statusCode == 201) {
-      return false; // followed
-    } else {
-      final data = jsonDecode(response.body);
-      throw Exception(data['error'] ?? 'Erro ao seguir perfil');
-    }
-  }
-
-  // achei que podia meter a verificação e o insert numa função mas tive de separar em duas
-  static Future<bool> follow({
-    required int followerId,
-    required int followingId,
-  }) async {
-    final url = Uri.parse('$baseUrl/profile/follow');
+    final url = Uri.parse('$baseUrl/profile/isFollowing');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'followerId': followerId, 'followingId': followingId}),
     );
 
-    if (response.statusCode == 400) {
-      return true; // already following
-    } else if (response.statusCode == 201) {
-      return false; // followed
-    } else {
-      final data = jsonDecode(response.body);
-      throw Exception(data['error'] ?? 'Erro ao seguir perfil');
-    }
+    final isFollowing = jsonDecode(response.body);
+
+    return isFollowing['isFollowing'];
   }
-}
+
+  static Future<void> follow({
+    required int followerId,
+    required int followingId,
+    required bool isFollowing,
+  }) async {
+    if (isFollowing) {
+      final url = Uri.parse('$baseUrl/profile/unfollow');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'followerId': followerId,
+          'followingId': followingId,
+        }),
+      );
+    } else {
+      final url = Uri.parse('$baseUrl/profile/follow');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'followerId': followerId,
+          'followingId': followingId,
+        }),
+      );
+    }
+    //agora vamos pro controller, depois acabamos daqui pra baixo, é preciso uma verificação de erro no if e no else
+  }
+} //ta na hora de testar a ver se funciona, acho que é so ligar ao profile screen agora.

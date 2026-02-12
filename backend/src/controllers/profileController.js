@@ -107,29 +107,62 @@ export const updateProfile = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+export const isFollowing = async (req, res) => {
+    const { followerId, followingId } = req.body;
+
+    // verificar se já segue
+    const { data: follows, error: checkError } = await supabase
+        .from("followers")
+        .select("id")
+        .eq("follower_id", followerId)
+        .eq("user_id", followingId)
+        .single();
+    return res.json({ isFollowing: follows ? true : false });
+};
 export const followUser = async (req, res) => {
     try {
         const { followerId, followingId } = req.body;
 
-        // verificar se já segue
-        const { data: follows, error: checkError } = await supabase
-            .from("followers")
-            .select("id")
-            .eq("follower_id", followerId)
-            .eq("user_id", followingId)
-            .single();
-        if (follows) {
-            return res.status(400);
+        if (!followerId || !followingId) {
+            return res
+                .status(400)
+                .json({ error: "Missing followerId or followingId" });
         }
-        if (checkError) throw checkError;
 
-        // inserir follow na tabela de followers
-        const { error } = await supabase.from("followers").insert({
-            user_id: followingId,
-            follower_id: followerId,
-        });
+        const { data, error } = await supabase
+            .from("followers")
+            .insert({
+                user_id: followingId,
+                follower_id: followerId,
+            })
+            .select();
+
+        if (error) {
+            if (error.code === "23505") {
+                return res.status(409).json({ error: "Already following" });
+            }
+            throw error;
+        }
+
+        return res.status(201).json(data);
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: err.message });
+    }
+};
+
+export const unfollowUser = async (req, res) => {
+    try {
+        const { followerId, followingId } = req.body;
+
+        // remover follow da tabela de followers
+        const { error } = await supabase
+            .from("followers")
+            .delete()
+            .eq("follower_id", followerId)
+            .eq("user_id", followingId);
         if (error) throw error;
-        res.status(201);
+        res.sendStatus(201);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
