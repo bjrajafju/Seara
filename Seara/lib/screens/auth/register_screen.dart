@@ -29,7 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (error == null) {
-      // ✅ sucesso
+      // sucesso
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Conta criada com sucesso! Verifique o seu email.'),
@@ -42,7 +42,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(builder: (_) => LoginScreen()),
       );
     } else {
-      // ⚠️ erro
+      // erro
       setState(() => _message = error);
     }
   }

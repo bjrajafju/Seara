@@ -8,6 +8,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/messages/messages_screen.dart';
 
 void main() {
   runApp(const SearaApp());
@@ -39,6 +40,7 @@ class SearaApp extends StatelessWidget {
               '/profile': (ctx) => const ProfileScreen(),
               '/settings': (ctx) => const SettingsScreen(),
               '/list': (ctx) => const UserListScreen(),
+              '/messages': (ctx) => const MessagesScreen(),
               //'/followers': (ctx) => const FollowersScreen(), // cria placeholder se precisares
               //'/following': (ctx) => const FollowingScreen(),
             },
