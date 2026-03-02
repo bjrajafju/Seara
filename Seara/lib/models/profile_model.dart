@@ -21,13 +21,13 @@ class Profile {
 
   factory Profile.fromJson(Map<String, dynamic> json) {
     return Profile(
-      id: json['id'],
-      username: json['username'],
-      name: json['name'],
-      bio: json['bio'] ?? '',
-      avatarUrl:
-          json['avatar_url'] ??
-          'https://ui-avatars.com/api/?name=${json['username'] ?? 'User'}',
+      id: json['id'] as int,
+      username: (json['username'] ?? '') as String,
+      name: (json['name'] ?? '') as String,
+      bio: (json['bio'] ?? '') as String,
+      avatarUrl: (json['avatar_url'] ?? '').toString().isNotEmpty
+          ? json['avatar_url']
+          : 'https://ui-avatars.com/api/?name=${json['username'] ?? 'User'}',
       posts: json['posts_count'] ?? 0,
       followers: json['followers_count'] ?? 0,
       following: json['following_count'] ?? 0,

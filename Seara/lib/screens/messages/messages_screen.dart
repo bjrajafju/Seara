@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:seara/models/conversation_model.dart';
 import 'package:seara/providers/theme_provider.dart';
+import 'package:seara/screens/messages/conversation_screen.dart';
+import 'package:seara/screens/messages/new_conversation_screen.dart';
+import 'package:seara/services/auth_service.dart';
+import 'package:seara/services/messages_service.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -11,6 +16,36 @@ class MessagesScreen extends StatefulWidget {
 
 class _MessagesScreenState extends State<MessagesScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final MessagesService _messagesService = MessagesService();
+
+  List<Conversation> _conversations = [];
+  bool _isLoading = true;
+  int? _myId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+  }
+
+  Future<void> _loadConversations() async {
+    try {
+      int? myId = await AuthService.getUserId();
+      if (myId == null) return;
+      final data = await _messagesService.fetchConversations(myId);
+
+      setState(() {
+        _conversations = data;
+        _isLoading = false;
+        _myId = myId;
+      });
+    } catch (e) {
+      print(e);
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   // SEARCH BAR
   Widget _buildSearchBar(ThemeData theme) {
@@ -65,19 +100,40 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   // MESSAGE ITEM
-  Widget _buildMessageItem(ThemeData theme) {
+  Widget _buildMessageItem(ThemeData theme, Conversation conversation) {
+    final lastMessage = conversation.messages.isNotEmpty
+        ? conversation.messages.first
+        : null;
+
+    final otherUser = conversation.participants
+        .where((u) => u.id != _myId)
+        .toList();
+
+    final displayName = conversation.isGroup
+        ? conversation.name ?? "Grupo"
+        : (otherUser.isNotEmpty ? otherUser.first.username : "User");
+
+    final displayAvatar = otherUser.isNotEmpty
+        ? otherUser.first.avatarUrl
+        : "https://ui-avatars.com/api/?name=User";
+
     return InkWell(
-      onTap: () {},
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ConversationScreen(conversation: conversation),
+          ),
+        );
+      },
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         child: Row(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 28,
-              backgroundImage: NetworkImage(
-                'https://images.unsplash.com/photo-1633332755192-727a05c4013d',
-              ),
+              backgroundImage: NetworkImage(displayAvatar),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -85,14 +141,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "User/Group Name",
+                    displayName,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Texto da última mensagem enviada aqui...",
+                    lastMessage?.body ?? "Sem mensagens",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -103,30 +159,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "12/07/2026",
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withAlpha(150),
-                  ),
+            if (lastMessage != null)
+              Text(
+                lastMessage.createdAt.toLocal().toString().split(" ")[0],
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withAlpha(150),
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: theme.colorScheme.surface,
-                  ),
-                  child: Icon(
-                    Icons.keyboard_arrow_right_rounded,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant.withAlpha(150),
-                  ),
-                ),
-              ],
-            ),
+              ),
           ],
         ),
       ),
@@ -135,13 +174,22 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   // LIST OF MESSAGES
   Widget _buildMessagesList(ThemeData theme) {
+    if (_isLoading) {
+      return const Expanded(child: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_conversations.isEmpty) {
+      return const Expanded(child: Center(child: Text("Sem conversas ainda.")));
+    }
+
     return Expanded(
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemCount: 12,
+        itemCount: _conversations.length,
         separatorBuilder: (_, __) =>
             Divider(height: 1, thickness: 0.5, color: theme.dividerColor),
-        itemBuilder: (_, index) => _buildMessageItem(theme),
+        itemBuilder: (_, index) =>
+            _buildMessageItem(theme, _conversations[index]),
       ),
     );
   }
@@ -150,7 +198,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
   Widget _buildNewMessageButton(ThemeData theme) {
     return FloatingActionButton(
       onPressed: () {
-        print('FloatingActionButton pressed ...');
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => NewConversationScreen()),
+        );
       },
       backgroundColor: theme.colorScheme.primary,
       elevation: 8,

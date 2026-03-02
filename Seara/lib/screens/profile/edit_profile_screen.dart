@@ -5,9 +5,8 @@ import 'package:seara/services/profile_service.dart';
 import 'package:seara/services/auth_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  final Profile profile;
-
   const EditProfileScreen({super.key, required this.profile});
+  final Profile profile;
 
   @override
   _EditProfileScreenState createState() => _EditProfileScreenState();
