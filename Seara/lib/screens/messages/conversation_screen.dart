@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:seara/models/conversation_model.dart';
+import 'package:seara/models/message_model.dart';
+import 'package:seara/providers/messages_provider.dart';
+import 'package:seara/services/auth_service.dart';
 
 class ConversationScreen extends StatefulWidget {
   const ConversationScreen({super.key, required this.conversation});
@@ -13,12 +18,121 @@ class ConversationScreen extends StatefulWidget {
 class _ConversationScreenState extends State<ConversationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
+
+  int? _myId;
+  late MessagesProvider _messagesProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _messagesProvider = context.read<MessagesProvider>();
+    _init();
+  }
+
+  Future<void> _init() async {
+    _myId = await AuthService.getUserId();
+
+    if (!mounted) return;
+
+    final provider = context.read<MessagesProvider>();
+    await provider.loadMessages(widget.conversation.id);
+
+    _scrollToBottom();
+  }
 
   @override
   void dispose() {
     _messageController.dispose();
     _focusNode.dispose();
+    _scrollController.dispose();
+    _messagesProvider.clear();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _myId == null) return;
+
+    _messageController.clear();
+
+    final success = await context.read<MessagesProvider>().sendMessage(
+      conversationId: widget.conversation.id,
+      userId: _myId!,
+      body: text,
+    );
+
+    if (success) {
+      _scrollToBottom();
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? file = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (file == null || _myId == null) return;
+    if (!mounted) return;
+
+    try {
+      final bytes = await file.readAsBytes();
+      final fileName = file.name.isNotEmpty ? file.name : 'image.jpg';
+
+      final success = await _messagesProvider.sendImageMessage(
+        conversationId: widget.conversation.id,
+        userId: _myId!,
+        fileBytes: bytes,
+        fileName: fileName,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        _scrollToBottom();
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Erro ao enviar imagem.")));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Erro ao ler imagem.")));
+    }
+  }
+
+  String _getDisplayName() {
+    if (widget.conversation.isGroup) {
+      return widget.conversation.name ?? "Grupo";
+    }
+    final other = widget.conversation.participants
+        .where((u) => u.id != _myId)
+        .toList();
+    return other.isNotEmpty ? other.first.username : "Utilizador";
+  }
+
+  String _getDisplayAvatar() {
+    final other = widget.conversation.participants
+        .where((u) => u.id != _myId)
+        .toList();
+    if (other.isNotEmpty) return other.first.avatarUrl;
+    return "https://ui-avatars.com/api/?name=User";
   }
 
   @override
@@ -37,7 +151,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // APP BAR
   PreferredSizeWidget _buildAppBar(ThemeData theme) {
     return AppBar(
       backgroundColor: theme.colorScheme.primary,
@@ -51,19 +164,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
             color: theme.colorScheme.onPrimary,
             onPressed: () => Navigator.pop(context),
           ),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(40),
-            child: Image.network(
-              'https://images.unsplash.com/photo-1633332755192-727a05c4013d',
-              width: 50,
-              height: 50,
-              fit: BoxFit.cover,
-            ),
+          CircleAvatar(
+            radius: 24,
+            backgroundImage: NetworkImage(_getDisplayAvatar()),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'User/Group Name',
+              _getDisplayName(),
               style: theme.textTheme.titleMedium?.copyWith(
                 color: theme.colorScheme.onPrimary,
                 fontWeight: FontWeight.w600,
@@ -80,19 +188,56 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // MESSAGES LIST
   Widget _buildMessagesList(ThemeData theme) {
     return Expanded(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
-        reverse: true,
-        children: [_buildOtherMessage(theme), _buildMyMessage(theme)],
+      child: Consumer<MessagesProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (provider.error != null) {
+            return Center(
+              child: Text(
+                "Erro ao carregar mensagens.",
+                style: theme.textTheme.bodyMedium,
+              ),
+            );
+          }
+
+          if (provider.messages.isEmpty) {
+            return Center(
+              child: Text(
+                "Sem mensagens ainda. Diz ola!",
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withAlpha(150),
+                ),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
+            itemCount: provider.messages.length,
+            itemBuilder: (context, index) {
+              final message = provider.messages[index];
+              final isMe = message.userId == _myId;
+              return isMe
+                  ? _buildMyMessage(theme, message)
+                  : _buildOtherMessage(theme, message);
+            },
+          );
+        },
       ),
     );
   }
 
-  // OTHER MESSAGE
-  Widget _buildOtherMessage(ThemeData theme) {
+  Widget _buildOtherMessage(ThemeData theme, Message message) {
+    final avatarUrl =
+        message.senderAvatar ??
+        "https://ui-avatars.com/api/?name=${message.senderUsername ?? 'U'}";
+
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 1),
@@ -100,20 +245,29 @@ class _ConversationScreenState extends State<ConversationScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Image.network(
-              'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
-              width: 40,
-              height: 40,
-              fit: BoxFit.cover,
-            ),
-          ),
+          CircleAvatar(radius: 20, backgroundImage: NetworkImage(avatarUrl)),
           const SizedBox(width: 8),
           Expanded(
-            child: SelectableText(
-              'Texto da mensagem de outra pessoa sem imagem',
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (message.body.isNotEmpty)
+                  SelectableText(
+                    message.body,
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+                  ),
+                if (message.attachment != null) ...[
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      message.attachment!,
+                      width: 240,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -121,8 +275,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // MY MESSAGE
-  Widget _buildMyMessage(ThemeData theme) {
+  Widget _buildMyMessage(ThemeData theme, Message message) {
+    final avatarUrl =
+        message.senderAvatar ??
+        "https://ui-avatars.com/api/?name=${message.senderUsername ?? 'Me'}";
+
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 1),
@@ -135,38 +292,32 @@ class _ConversationScreenState extends State<ConversationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                SelectableText(
-                  'Texto da minha mensagem com imagem',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    'https://picsum.photos/300/200',
-                    width: 300,
-                    fit: BoxFit.cover,
+                if (message.body.isNotEmpty)
+                  SelectableText(
+                    message.body,
+                    style: theme.textTheme.bodyMedium,
                   ),
-                ),
+                if (message.attachment != null) ...[
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      message.attachment!,
+                      width: 240,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Image.network(
-              'https://images.unsplash.com/photo-1633332755192-727a05c4013d',
-              width: 40,
-              height: 40,
-              fit: BoxFit.cover,
-            ),
-          ),
+          CircleAvatar(radius: 20, backgroundImage: NetworkImage(avatarUrl)),
         ],
       ),
     );
   }
 
-  // INPUT AREA
   Widget _buildInputArea(ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
@@ -188,14 +339,24 @@ class _ConversationScreenState extends State<ConversationScreen> {
               IconButton(
                 icon: const Icon(Icons.add_rounded),
                 color: theme.colorScheme.onSurface,
-                onPressed: () {},
+                onPressed: _pickImage,
               ),
               Expanded(child: _buildMessageField(theme)),
               const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.send_rounded),
-                color: theme.colorScheme.primary,
-                onPressed: _sendMessage,
+              Consumer<MessagesProvider>(
+                builder: (context, provider, _) {
+                  return IconButton(
+                    icon: provider.isSending
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send_rounded),
+                    color: theme.colorScheme.primary,
+                    onPressed: provider.isSending ? null : _sendMessage,
+                  );
+                },
               ),
             ],
           ),
@@ -204,7 +365,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // MESSAGE FIELD
   Widget _buildMessageField(ThemeData theme) {
     return TextFormField(
       controller: _messageController,
@@ -226,13 +386,5 @@ class _ConversationScreenState extends State<ConversationScreen> {
       inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\t'))],
       onFieldSubmitted: (_) => _sendMessage(),
     );
-  }
-
-  // SEND
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
-
-    debugPrint('Mensagem enviada: ${_messageController.text}');
-    _messageController.clear();
   }
 }

@@ -57,7 +57,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         isLoading = false;
         isFollowing = isFollowingAsync;
       });
-      print("acabou");
     } catch (e) {
       print(e);
     }

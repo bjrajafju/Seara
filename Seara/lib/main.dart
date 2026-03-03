@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/profile/user_list_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
@@ -23,6 +24,7 @@ class SearaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => MessagesProvider()),
       ],
       child: Consumer2<AuthProvider, ThemeProvider>(
         builder: (context, auth, theme, _) {

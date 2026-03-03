@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/conversation_model.dart';
+import '../models/message_model.dart';
 
 class MessagesService {
   static const String baseUrl = "http://localhost:3000";
@@ -39,6 +40,43 @@ class MessagesService {
       return Conversation.fromJson(data);
     } else {
       throw Exception("Erro ao criar conversa");
+    }
+  }
+
+  Future<List<Message>> fetchMessages(int conversationId) async {
+    final response = await http.get(
+      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages"),
+      headers: {"Content-Type": "application/json"},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => Message.fromJson(json)).toList();
+    } else {
+      throw Exception("Erro ao carregar mensagens");
+    }
+  }
+
+  Future<Message> sendMessage({
+    required int conversationId,
+    required int userId,
+    required String body,
+    String? attachment,
+  }) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "userId": userId,
+        "body": body,
+        "attachment": attachment,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      return Message.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception("Erro ao enviar mensagem");
     }
   }
 }

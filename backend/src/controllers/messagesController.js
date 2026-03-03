@@ -229,3 +229,115 @@ export const createConversation = async (req, res) => {
         res.status(500).json({ error: "Erro ao criar conversa." });
     }
 };
+
+export const getMessages = async (req, res) => {
+    const { conversationId } = req.params;
+
+    if (!conversationId) {
+        return res
+            .status(400)
+            .json({ error: "Conversation ID e obrigatorio." });
+    }
+
+    try {
+        const { data: messages, error } = await supabase
+            .from("messages")
+            .select(
+                `
+                id,
+                conversation_id,
+                user_id,
+                body,
+                attachment,
+                created_at,
+                updated_at,
+                users (
+                    id,
+                    username,
+                    avatar
+                )
+            `,
+            )
+            .eq("conversation_id", conversationId)
+            .order("created_at", { ascending: true });
+
+        if (error) throw error;
+
+        const formatted = messages.map((msg) => ({
+            id: msg.id,
+            conversation_id: msg.conversation_id,
+            user_id: msg.user_id,
+            body: msg.body,
+            attachment: msg.attachment,
+            created_at: msg.created_at,
+            updated_at: msg.updated_at,
+            sender_username: msg.users?.username ?? null,
+            sender_avatar: msg.users?.avatar ?? null,
+        }));
+
+        res.json(formatted);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Erro ao buscar mensagens." });
+    }
+};
+
+export const sendMessage = async (req, res) => {
+    const { conversationId } = req.params;
+    const { userId, body, attachment } = req.body;
+
+    if (!conversationId || !userId || (!body && !attachment)) {
+        return res.status(400).json({ error: "Dados invalidos." });
+    }
+
+    try {
+        const { data: message, error } = await supabase
+            .from("messages")
+            .insert({
+                conversation_id: parseInt(conversationId),
+                user_id: userId,
+                body: body ?? "",
+                attachment: attachment ?? null,
+            })
+            .select(
+                `
+                id,
+                conversation_id,
+                user_id,
+                body,
+                attachment,
+                created_at,
+                updated_at,
+                users (
+                    id,
+                    username,
+                    avatar
+                )
+            `,
+            )
+            .single();
+
+        if (error) throw error;
+
+        // Atualizar updated_at da conversa para ordenacao correta na lista
+        await supabase
+            .from("conversations")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", conversationId);
+
+        res.status(201).json({
+            id: message.id,
+            conversation_id: message.conversation_id,
+            user_id: message.user_id,
+            body: message.body,
+            attachment: message.attachment,
+            created_at: message.created_at,
+            updated_at: message.updated_at,
+            sender_username: message.users?.username ?? null,
+            sender_avatar: message.users?.avatar ?? null,
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Erro ao enviar mensagem." });
+    }
+};
