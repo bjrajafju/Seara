@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../models/message_model.dart';
 import '../services/messages_service.dart';
 import '../services/upload_service.dart';
-import 'package:flutter/material.dart';
 
 class MessagesProvider extends ChangeNotifier {
   final MessagesService _service = MessagesService();
@@ -39,6 +38,8 @@ class MessagesProvider extends ChangeNotifier {
     required int userId,
     required String body,
     String? attachment,
+    String? attachmentType,
+    String? attachmentName,
   }) async {
     _isSending = true;
     _sendError = null;
@@ -50,6 +51,8 @@ class MessagesProvider extends ChangeNotifier {
         userId: userId,
         body: body,
         attachment: attachment,
+        attachmentType: attachmentType,
+        attachmentName: attachmentName,
       );
       _messages.add(message);
       _isSending = false;
@@ -63,29 +66,33 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> sendImageMessage({
+  Future<bool> sendFileMessage({
     required int conversationId,
     required int userId,
     required Uint8List fileBytes,
     required String fileName,
+    required String mimeType,
+    String body = "",
   }) async {
     _isSending = true;
     _sendError = null;
     notifyListeners();
 
     try {
-      final url = await UploadService.uploadImage(
+      final result = await UploadService.uploadFile(
         bucket: "attachments",
         fileName: fileName,
         fileBytes: fileBytes,
-        mimeType: "image/jpeg",
+        mimeType: mimeType,
       );
 
       final message = await _service.sendMessage(
         conversationId: conversationId,
         userId: userId,
-        body: "",
-        attachment: url,
+        body: body,
+        attachment: result.url,
+        attachmentType: result.contentType,
+        attachmentName: result.fileName,
       );
 
       _messages.add(message);

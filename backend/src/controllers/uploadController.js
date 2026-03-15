@@ -2,7 +2,29 @@ import supabase from "../services/supabase.js";
 
 const ALLOWED_BUCKETS = ["avatars", "attachments", "groups"];
 
-export const uploadImage = async (req, res) => {
+// Determina o content-type correto com base na extensao quando o browser
+// envia application/octet-stream
+const EXTENSION_MIME_MAP = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+    avi: "video/x-msvideo",
+    mp3: "audio/mpeg",
+    m4a: "audio/mp4",
+    aac: "audio/aac",
+    wav: "audio/wav",
+    ogg: "audio/ogg",
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    zip: "application/zip",
+};
+
+export const uploadFile = async (req, res) => {
     const { bucket } = req.params;
 
     if (!ALLOWED_BUCKETS.includes(bucket)) {
@@ -15,15 +37,15 @@ export const uploadImage = async (req, res) => {
 
     try {
         const timestamp = Date.now();
-        const originalName = req.file.originalname || "image.jpg";
-        const extension = originalName.split(".").pop() || "jpg";
+        const originalName = req.file.originalname || "file";
+        const extension = originalName.split(".").pop()?.toLowerCase() || "bin";
         const filePath = `${timestamp}.${extension}`;
 
-        // Determinar content-type: usar o do ficheiro ou fallback para jpeg
-        const contentType =
-            req.file.mimetype === "application/octet-stream"
-                ? "image/jpeg"
-                : req.file.mimetype;
+        let contentType = req.file.mimetype;
+        if (contentType === "application/octet-stream") {
+            contentType =
+                EXTENSION_MIME_MAP[extension] ?? "application/octet-stream";
+        }
 
         const { error: uploadError } = await supabase.storage
             .from(bucket)
@@ -36,7 +58,11 @@ export const uploadImage = async (req, res) => {
 
         const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
 
-        res.status(201).json({ url: data.publicUrl });
+        res.status(201).json({
+            url: data.publicUrl,
+            content_type: contentType,
+            file_name: originalName,
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Erro ao fazer upload." });

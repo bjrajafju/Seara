@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:seara/models/profile_model.dart';
 import 'package:seara/services/profile_service.dart';

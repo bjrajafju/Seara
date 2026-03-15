@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/profile/user_list_screen.dart';
 import 'providers/auth_provider.dart';
@@ -12,6 +14,12 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/messages/messages_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    FilePicker.platform = FilePicker.platform;
+  }
+
   runApp(const SearaApp());
 }
 
@@ -35,16 +43,12 @@ class SearaApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             home: auth.isLoggedIn ? HomeScreen() : LoginScreen(),
-
             routes: {
-              //'/': (ctx) => const LoginScreen(),
               '/home': (ctx) => const HomeScreen(),
               '/profile': (ctx) => const ProfileScreen(),
               '/settings': (ctx) => const SettingsScreen(),
               '/list': (ctx) => const UserListScreen(),
               '/messages': (ctx) => const MessagesScreen(),
-              //'/followers': (ctx) => const FollowersScreen(), // cria placeholder se precisares
-              //'/following': (ctx) => const FollowingScreen(),
             },
           );
         },

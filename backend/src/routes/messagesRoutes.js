@@ -4,10 +4,12 @@ import {
     createConversation,
     getMessages,
     sendMessage,
+    searchMessages,
 } from "../controllers/messagesController.js";
 
 const router = express.Router();
 
+router.get("/conversations/search/:userId", searchMessages);
 router.get("/conversations/:userId", listConversations);
 router.post("/conversations", createConversation);
 router.get("/conversations/:conversationId/messages", getMessages);

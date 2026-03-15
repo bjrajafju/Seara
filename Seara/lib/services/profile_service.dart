@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:seara/models/profile_model.dart';
+import 'package:seara/models/auxiliar/user_with_relationship_model.dart';
 
 class ProfileService {
   static const String baseUrl = 'http://localhost:3000';
@@ -87,6 +88,24 @@ class ProfileService {
     if (response.statusCode != 201 && response.statusCode != 200) {
       final data = jsonDecode(response.body);
       throw Exception(data['error'] ?? 'Erro ao seguir utilizador');
+    }
+  }
+
+  static Future<List<UserWithRelationship>> getUsersWithRelationship(
+    int myId,
+  ) async {
+    final url = Uri.parse('$baseUrl/profile/users-with-relationship/$myId');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      final users = data.map((u) => UserWithRelationship.fromJson(u)).toList();
+
+      // Ordenar: mutuos primeiro, depois um lado, depois nenhum
+      users.sort((a, b) => a.sortWeight.compareTo(b.sortWeight));
+      return users;
+    } else {
+      throw Exception('Erro ao carregar utilizadores');
     }
   }
 }

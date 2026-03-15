@@ -62,6 +62,8 @@ class MessagesService {
     required int userId,
     required String body,
     String? attachment,
+    String? attachmentType,
+    String? attachmentName,
   }) async {
     final response = await http.post(
       Uri.parse("$baseUrl/messages/conversations/$conversationId/messages"),
@@ -70,6 +72,8 @@ class MessagesService {
         "userId": userId,
         "body": body,
         "attachment": attachment,
+        "attachment_type": attachmentType,
+        "attachment_name": attachmentName,
       }),
     );
 
@@ -77,6 +81,28 @@ class MessagesService {
       return Message.fromJson(jsonDecode(response.body));
     } else {
       throw Exception("Erro ao enviar mensagem");
+    }
+  }
+
+  Future<List<Conversation>> searchConversations(
+    int userId,
+    String query,
+  ) async {
+    final encodedQuery = Uri.encodeQueryComponent(query);
+    final uri = Uri.parse(
+      "$baseUrl/messages/conversations/search/$userId?q=$encodedQuery",
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {"Content-Type": "application/json"},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => Conversation.fromJson(json)).toList();
+    } else {
+      throw Exception("Erro ao pesquisar conversas");
     }
   }
 }

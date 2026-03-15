@@ -146,7 +146,7 @@ export const unfollowUser = async (req, res) => {
     }
 };
 
-// Lista todos os utilizadores (para dev/testing)
+// Lista todos os utilizadores
 export const getAllUsers = async (req, res) => {
     try {
         const { data: users, error } = await supabase
@@ -156,6 +156,57 @@ export const getAllUsers = async (req, res) => {
         if (error) throw error;
 
         res.json(users ?? []);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const getUsersWithRelationship = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            return res.status(400).json({ error: "User ID obrigatorio." });
+        }
+
+        // Buscar todos os utilizadores exceto o proprio
+        const { data: users, error: usersError } = await supabase
+            .from("users")
+            .select("id, username, name, avatar")
+            .neq("id", userId);
+
+        if (usersError) throw usersError;
+
+        // Buscar quem eu sigo
+        const { data: iFollow, error: iFollowError } = await supabase
+            .from("followers")
+            .select("user_id")
+            .eq("follower_id", userId);
+
+        if (iFollowError) throw iFollowError;
+
+        // Buscar quem me segue
+        const { data: followsMe, error: followsMeError } = await supabase
+            .from("followers")
+            .select("follower_id")
+            .eq("user_id", userId);
+
+        if (followsMeError) throw followsMeError;
+
+        const iFollowIds = new Set(iFollow.map((f) => f.user_id));
+        const followsMeIds = new Set(followsMe.map((f) => f.follower_id));
+
+        const formatted = users.map((user) => ({
+            id: user.id,
+            username: user.username,
+            name: user.name,
+            avatar_url: user.avatar,
+            i_follow: iFollowIds.has(user.id),
+            follows_me: followsMeIds.has(user.id),
+        }));
+
+        res.json(formatted);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });

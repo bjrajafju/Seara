@@ -2,10 +2,22 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+class UploadResult {
+  final String url;
+  final String contentType;
+  final String fileName;
+
+  UploadResult({
+    required this.url,
+    required this.contentType,
+    required this.fileName,
+  });
+}
+
 class UploadService {
   static const String baseUrl = "http://localhost:3000";
 
-  static Future<String> uploadImage({
+  static Future<UploadResult> uploadFile({
     required String bucket,
     required String fileName,
     required Uint8List fileBytes,
@@ -18,15 +30,16 @@ class UploadService {
       http.MultipartFile.fromBytes("file", fileBytes, filename: fileName),
     );
 
-    // Definir Content-Type do ficheiro
-    request.files.last;
-
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
-      return data["url"] as String;
+      return UploadResult(
+        url: data["url"] as String,
+        contentType: data["content_type"] as String? ?? mimeType,
+        fileName: data["file_name"] as String? ?? fileName,
+      );
     } else {
       final error = jsonDecode(response.body);
       throw Exception(error["error"] ?? "Erro ao fazer upload.");

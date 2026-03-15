@@ -1,33 +1,22 @@
 import express from "express";
 import multer from "multer";
-import { uploadImage } from "../controllers/uploadController.js";
+import { uploadFile } from "../controllers/uploadController.js";
 
 const storage = multer.memoryStorage();
 
 const upload = multer({
     storage,
     limits: {
-        fileSize: 10 * 1024 * 1024,
+        fileSize: 50 * 1024 * 1024, // 50 MB
     },
     fileFilter: (req, file, cb) => {
-        // Aceitar mesmo quando o browser nao envia mimetype correto
-        const allowed = [
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/gif",
-            "application/octet-stream",
-        ];
-        if (allowed.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error("Tipo de ficheiro nao permitido."));
-        }
+        // Aceitar todos os tipos de ficheiro
+        cb(null, true);
     },
 });
 
 const router = express.Router();
 
-router.post("/:bucket", upload.single("file"), uploadImage);
+router.post("/:bucket", upload.single("file"), uploadFile);
 
 export default router;

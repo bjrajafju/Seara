@@ -6,12 +6,13 @@ import {
     followUser,
     isFollowing,
     unfollowUser,
+    getUsersWithRelationship,
 } from "../controllers/profileController.js";
 
 const router = express.Router();
 
-// temporário para fazer o perfil de outro utilizador:
 router.get("/users", getAllUsers);
+router.get("/users-with-relationship/:userId", getUsersWithRelationship);
 
 router.get("/me", getProfile);
 router.get("/:userId", getProfile);
