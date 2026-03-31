@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -13,8 +13,17 @@ import 'package:seara/models/conversation_model.dart';
 import 'package:seara/models/message_model.dart';
 import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/messages/attachment_preview_screen.dart';
+import 'package:seara/screens/messages/image_lightbox_screen.dart';
+import 'package:seara/screens/messages/video_lightbox_screen.dart';
+import 'package:seara/screens/messages/widgets/audio_message_widget.dart';
 import 'package:seara/services/auth_service.dart';
-import 'package:video_player/video_player.dart';
+
+// Import condicional: usa web em browser, stub em mobile
+import 'download_helper_stub.dart'
+    if (dart.library.html) 'download_helper_web.dart';
+
+// Intervalo maximo em minutos para agrupar mensagens do mesmo utilizador
+const int _kGroupingMinutes = 5;
 
 class ConversationScreen extends StatefulWidget {
   const ConversationScreen({super.key, required this.conversation});
@@ -37,7 +46,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _hasText = false;
 
   @override
-  @override
   void initState() {
     super.initState();
     _messagesProvider = context.read<MessagesProvider>();
@@ -47,7 +55,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   void _initFilePicker() {
-    // Garantir que o FilePicker esta inicializado no web
     if (kIsWeb) {
       FilePicker.platform = FilePicker.platform;
     }
@@ -104,7 +111,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (success) _scrollToBottom();
   }
 
-  // Abre bottom sheet com opcoes de anexo
   void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
@@ -172,7 +178,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
     Uint8List finalBytes = bytes;
 
-    // Crop so disponivel para imagens em mobile
     if (!isVideo && !kIsWeb) {
       final cropped = await _cropImageBytes(bytes, file.name);
       if (cropped != null) finalBytes = cropped;
@@ -223,7 +228,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (result == null || result.files.isEmpty || _myId == null) return;
     final file = result.files.first;
     if (file.bytes == null) return;
-
     if (!mounted) return;
 
     await _openPreviewAndSend(
@@ -243,7 +247,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (result == null || result.files.isEmpty || _myId == null) return;
     final file = result.files.first;
     if (file.bytes == null) return;
-
     if (!mounted) return;
 
     final ext = file.extension?.toLowerCase() ?? '';
@@ -308,7 +311,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Gravar audio
   Future<void> _startRecording() async {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -368,6 +370,26 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (!_isRecording) return;
     await _recorder.cancel();
     setState(() => _isRecording = false);
+  }
+
+  // Determina se uma mensagem e a primeira do seu grupo
+  bool _isFirstInGroup(List<Message> messages, int index) {
+    if (index == 0) return true;
+    final current = messages[index];
+    final previous = messages[index - 1];
+    if (current.userId != previous.userId) return true;
+    final diff = current.createdAt.difference(previous.createdAt).inMinutes;
+    return diff >= _kGroupingMinutes;
+  }
+
+  // Determina se uma mensagem e a ultima do seu grupo
+  bool _isLastInGroup(List<Message> messages, int index) {
+    if (index == messages.length - 1) return true;
+    final current = messages[index];
+    final next = messages[index + 1];
+    if (current.userId != next.userId) return true;
+    final diff = next.createdAt.difference(current.createdAt).inMinutes;
+    return diff >= _kGroupingMinutes;
   }
 
   String _getDisplayName() {
@@ -467,16 +489,21 @@ class _ConversationScreenState extends State<ConversationScreen> {
             );
           }
 
+          final messages = provider.messages;
+
           return ListView.builder(
             controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
-            itemCount: provider.messages.length,
+            itemCount: messages.length,
             itemBuilder: (context, index) {
-              final message = provider.messages[index];
+              final message = messages[index];
               final isMe = message.userId == _myId;
+              final isFirst = _isFirstInGroup(messages, index);
+              final isLast = _isLastInGroup(messages, index);
+
               return isMe
-                  ? _buildMyMessage(theme, message)
-                  : _buildOtherMessage(theme, message);
+                  ? _buildMyMessage(theme, message, isFirst, isLast)
+                  : _buildOtherMessage(theme, message, isFirst, isLast);
             },
           );
         },
@@ -486,77 +513,255 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   Widget _buildAttachmentContent(ThemeData theme, Message message) {
     switch (message.attachmentType) {
+      // ── Imagem ────────────────────────────────────────────────────────
       case AttachmentType.image:
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            message.attachment!,
-            width: 240,
-            fit: BoxFit.cover,
-          ),
-        );
-
-      case AttachmentType.video:
-        return _VideoMessageWidget(url: message.attachment!);
-
-      case AttachmentType.audio:
-        return _AudioMessageWidget(url: message.attachment!);
-
-      case AttachmentType.file:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.insert_drive_file_rounded, size: 32),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  message.attachmentName ?? "Ficheiro",
-                  style: theme.textTheme.bodySmall,
-                  overflow: TextOverflow.ellipsis,
-                ),
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            PageRouteBuilder(
+              opaque: false,
+              barrierColor: Colors.black,
+              pageBuilder: (_, __, ___) => ImageLightboxScreen(
+                imageUrl: message.attachment!,
+                fileName: message.attachmentName,
               ),
-            ],
+              transitionsBuilder: (_, animation, __, child) =>
+                  FadeTransition(opacity: animation, child: child),
+            ),
+          ),
+          child: Hero(
+            tag: message.attachment!,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                message.attachment!,
+                width: 220,
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
         );
+
+      // ── Vídeo ─────────────────────────────────────────────────────────
+      case AttachmentType.video:
+        return _VideoThumbnailWidget(
+          url: message.attachment!,
+          fileName: message.attachmentName,
+        );
+
+      // ── Áudio ─────────────────────────────────────────────────────────
+      case AttachmentType.audio:
+        return AudioMessageWidget(url: message.attachment!);
+
+      // ── Ficheiro genérico ─────────────────────────────────────────────
+      case AttachmentType.file:
+        return _buildFileAttachment(theme, message);
 
       case AttachmentType.none:
         return const SizedBox.shrink();
     }
   }
 
-  Widget _buildOtherMessage(ThemeData theme, Message message) {
+  Widget _buildFileAttachment(ThemeData theme, Message message) {
+    final name = message.attachmentName ?? 'Ficheiro';
+    final ext = name.contains('.') ? name.split('.').last.toUpperCase() : '?';
+    final icon = _fileIcon(name);
+
+    return GestureDetector(
+      onTap: () => _confirmFileDownload(message.attachment!, name),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: theme.colorScheme.primary, size: 22),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    ext,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withAlpha(120),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.download_rounded,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _fileIcon(String name) {
+    final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+    if (['pdf'].contains(ext)) return Icons.picture_as_pdf_rounded;
+    if (['doc', 'docx'].contains(ext)) return Icons.description_rounded;
+    if (['xls', 'xlsx'].contains(ext)) return Icons.table_chart_rounded;
+    if (['ppt', 'pptx'].contains(ext)) return Icons.slideshow_rounded;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].contains(ext))
+      return Icons.folder_zip_rounded;
+    return Icons.insert_drive_file_rounded;
+  }
+
+  Future<void> _confirmFileDownload(String url, String fileName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Download'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Deseja fazer download de:'),
+            const SizedBox(height: 8),
+            Text(fileName, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.download_rounded, size: 18),
+            label: const Text('Download'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    if (kIsWeb) {
+      // No browser: dispara o download diretamente via helper JS
+      downloadFile(url, fileName);
+    } else {
+      // Mobile: descarregar via http
+      try {
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200 && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('"$fileName" descarregado.')),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Erro ao fazer download.')),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildOtherMessage(
+    ThemeData theme,
+    Message message,
+    bool isFirst,
+    bool isLast,
+  ) {
     final avatarUrl =
         message.senderAvatar ??
         "https://ui-avatars.com/api/?name=${message.senderUsername ?? 'U'}";
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 1),
-      color: theme.colorScheme.surfaceContainerHighest,
+    return Padding(
+      // Mais espaco antes do primeiro de um grupo, menos entre mensagens do mesmo grupo
+      padding: EdgeInsets.only(top: isFirst ? 8 : 2, bottom: isLast ? 4 : 0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          CircleAvatar(radius: 20, backgroundImage: NetworkImage(avatarUrl)),
-          const SizedBox(width: 8),
+          // Avatar so aparece na ultima mensagem do grupo (visualmente a mais baixa)
+          SizedBox(
+            width: 52,
+            child: isLast
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundImage: NetworkImage(avatarUrl),
+                    ),
+                  )
+                : null,
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (message.body.isNotEmpty)
-                  SelectableText(
-                    message.body,
-                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+                // Nome do remetente so na primeira mensagem do grupo
+                if (isFirst && widget.conversation.isGroup)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                    child: Text(
+                      message.senderUsername ?? "",
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                if (message.attachment != null) ...[
-                  if (message.body.isNotEmpty) const SizedBox(height: 8),
-                  _buildAttachmentContent(theme, message),
-                ],
+                Container(
+                  margin: const EdgeInsets.only(right: 48),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(isFirst ? 16 : 4),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isLast ? 16 : 4),
+                      bottomRight: const Radius.circular(16),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (message.body.isNotEmpty)
+                        SelectableText(
+                          message.body,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            height: 1.4,
+                          ),
+                        ),
+                      if (message.attachment != null) ...[
+                        if (message.body.isNotEmpty) const SizedBox(height: 6),
+                        _buildAttachmentContent(theme, message),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -565,37 +770,49 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  Widget _buildMyMessage(ThemeData theme, Message message) {
-    final avatarUrl =
-        message.senderAvatar ??
-        "https://ui-avatars.com/api/?name=${message.senderUsername ?? 'Me'}";
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 1),
-      color: theme.colorScheme.surface,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.end,
+  Widget _buildMyMessage(
+    ThemeData theme,
+    Message message,
+    bool isFirst,
+    bool isLast,
+  ) {
+    return Padding(
+      // Mais espaço antes do 1.º de um grupo, reduzido entre mensagens do grupo
+      padding: EdgeInsets.only(
+        top: isFirst ? 8 : 2,
+        bottom: isLast ? 4 : 0,
+        right: 12,
+        left: 56,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Expanded(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: Radius.circular(isFirst ? 16 : 4),
+                bottomLeft: const Radius.circular(16),
+                bottomRight: Radius.circular(isLast ? 16 : 4),
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (message.body.isNotEmpty)
                   SelectableText(
                     message.body,
-                    style: theme.textTheme.bodyMedium,
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
                   ),
                 if (message.attachment != null) ...[
-                  if (message.body.isNotEmpty) const SizedBox(height: 8),
+                  if (message.body.isNotEmpty) const SizedBox(height: 6),
                   _buildAttachmentContent(theme, message),
                 ],
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          CircleAvatar(radius: 20, backgroundImage: NetworkImage(avatarUrl)),
         ],
       ),
     );
@@ -644,7 +861,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               );
             }
-            // Se tem texto, mostra botao de enviar. Se nao, mostra microfone.
             if (_hasText) {
               return IconButton(
                 icon: const Icon(Icons.send_rounded),
@@ -652,10 +868,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 onPressed: _sendMessage,
               );
             }
-            // No browser o microfone nao e suportado, mostrar botao desativado com tooltip
             if (kIsWeb) {
               return Tooltip(
-                message: "Gravação disponível apenas na app mobile",
+                message: "Gravacao disponivel apenas na app mobile",
                 child: IconButton(
                   icon: const Icon(Icons.mic_off_rounded),
                   color: theme.colorScheme.onSurface.withAlpha(80),
@@ -663,7 +878,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          "Gravação de áudio nao disponível no browser.",
+                          "Gravacao de audio nao disponivel no browser.",
                         ),
                       ),
                     );
@@ -716,7 +931,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ],
           ),
         ),
-        // No browser mostra botao de parar
         if (kIsWeb)
           IconButton(
             icon: const Icon(Icons.stop_rounded),
@@ -752,226 +966,72 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 }
 
-// Widget de video inline nas mensagens
-class _VideoMessageWidget extends StatefulWidget {
-  const _VideoMessageWidget({required this.url});
+/// Thumbnail clicável para vídeos — abre [VideoLightboxScreen] ao tocar.
+class _VideoThumbnailWidget extends StatelessWidget {
+  const _VideoThumbnailWidget({required this.url, this.fileName});
+
   final String url;
+  final String? fileName;
 
-  @override
-  State<_VideoMessageWidget> createState() => _VideoMessageWidgetState();
-}
-
-class _VideoMessageWidgetState extends State<_VideoMessageWidget> {
-  late VideoPlayerController _controller;
-  bool _initialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!kIsWeb) {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-        ..initialize().then((_) {
-          if (mounted) setState(() => _initialized = true);
-        });
-    }
-  }
-
-  @override
-  void dispose() {
-    if (!kIsWeb) _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (kIsWeb) {
-      return GestureDetector(
-        onTap: () => launchUrl(widget.url),
-        child: Container(
-          width: 240,
-          height: 135,
-          decoration: BoxDecoration(
-            color: Colors.black87,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.play_circle_outline_rounded,
-                color: Colors.white,
-                size: 48,
-              ),
-              SizedBox(height: 8),
-              Text(
-                "Ver video",
-                style: TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!_initialized) {
-      return Container(
-        width: 240,
-        height: 135,
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 240,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: VideoPlayer(_controller),
-            ),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _controller.value.isPlaying
-                      ? _controller.pause()
-                      : _controller.play();
-                });
-              },
-              child: Icon(
-                _controller.value.isPlaying
-                    ? Icons.pause_circle_filled_rounded
-                    : Icons.play_circle_filled_rounded,
-                color: Colors.white,
-                size: 48,
-              ),
-            ),
-          ],
-        ),
+  void _openLightbox(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (_, __, ___) =>
+            VideoLightboxScreen(videoUrl: url, fileName: fileName),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
       ),
     );
   }
 
-  void launchUrl(String url) {
-    // Para abrir o link no browser
-  }
-}
-
-// Widget de audio inline nas mensagens
-class _AudioMessageWidget extends StatefulWidget {
-  const _AudioMessageWidget({required this.url});
-  final String url;
-
-  @override
-  State<_AudioMessageWidget> createState() => _AudioMessageWidgetState();
-}
-
-class _AudioMessageWidgetState extends State<_AudioMessageWidget> {
-  AudioPlayer? _player;
-  bool _isPlaying = false;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
-  bool _initialized = false;
-
-  Future<void> _initPlayer() async {
-    if (_initialized) return;
-    _initialized = true;
-
-    final player = AudioPlayer();
-
-    player.onDurationChanged.listen((d) {
-      if (mounted) setState(() => _duration = d);
-    });
-    player.onPositionChanged.listen((p) {
-      if (mounted) setState(() => _position = p);
-    });
-    player.onPlayerComplete.listen((_) {
-      if (mounted) setState(() => _isPlaying = false);
-    });
-
-    if (mounted) setState(() => _player = player);
-  }
-
-  @override
-  void dispose() {
-    _player?.dispose();
-    super.dispose();
-  }
-
-  Future<void> _toggle() async {
-    await _initPlayer();
-    final player = _player;
-    if (player == null) return;
-
-    if (_isPlaying) {
-      await player.pause();
-    } else {
-      await player.play(UrlSource(widget.url));
-    }
-    setState(() => _isPlaying = !_isPlaying);
-  }
-
-  String _fmt(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return "$m:$s";
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final progress = _duration.inMilliseconds > 0
-        ? _position.inMilliseconds / _duration.inMilliseconds
-        : 0.0;
-
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            iconSize: 32,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: Icon(
-              _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: theme.colorScheme.primary,
+    return GestureDetector(
+      onTap: () => _openLightbox(context),
+      child: Container(
+        width: 220,
+        height: 124,
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Ícone de play
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black.withAlpha(140),
+              ),
+              child: const Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.white,
+                size: 34,
+              ),
             ),
-            onPressed: _toggle,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LinearProgressIndicator(
-                  value: progress.clamp(0.0, 1.0),
-                  backgroundColor: theme.colorScheme.outline.withAlpha(60),
-                  valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-                  minHeight: 3,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "${_fmt(_position)} / ${_fmt(_duration)}",
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withAlpha(150),
+            // Label no canto
+            if (fileName != null)
+              Positioned(
+                bottom: 8,
+                left: 8,
+                right: 8,
+                child: Text(
+                  fileName!,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+          ],
+        ),
       ),
     );
   }
