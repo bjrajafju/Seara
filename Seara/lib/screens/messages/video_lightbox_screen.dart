@@ -3,25 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
-// Import condicional: usa web em browser, stub em mobile
 import 'download_helper_stub.dart'
     if (dart.library.html) 'download_helper_web.dart';
 
-/// Modal fullscreen para reprodução de vídeos recebidos no chat.
-///
-/// Funcionalidades:
-/// - Play / Pause (tap central)
-/// - Barra de progresso interativa (seek)
-/// - Controlo de volume (mute / unmute)
-/// - Botão fullscreen (landscape em mobile, indicação em web)
-/// - Download
-/// - Fechar com X ou tap fora dos controlos
 class VideoLightboxScreen extends StatefulWidget {
-  const VideoLightboxScreen({
-    super.key,
-    required this.videoUrl,
-    this.fileName,
-  });
+  const VideoLightboxScreen({super.key, required this.videoUrl, this.fileName});
 
   final String videoUrl;
   final String? fileName;
@@ -33,6 +19,9 @@ class VideoLightboxScreen extends StatefulWidget {
 class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     with SingleTickerProviderStateMixin {
   late VideoPlayerController _controller;
+  late AnimationController _controlsFade;
+  late FocusNode _focusNode;
+
   bool _initialized = false;
   bool _showControls = true;
   bool _isSeeking = false;
@@ -40,11 +29,11 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   bool _isDownloading = false;
   bool _isFullscreen = false;
 
-  late AnimationController _controlsFade;
-
   @override
   void initState() {
     super.initState();
+
+    _focusNode = FocusNode();
 
     _controlsFade = AnimationController(
       vsync: this,
@@ -52,19 +41,20 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
       value: 1.0,
     );
 
-    // video_player suporta web nativamente — sem guard kIsWeb
-    _controller = VideoPlayerController.networkUrl(
-      Uri.parse(widget.videoUrl),
-    )..initialize().then((_) {
-        if (mounted) {
-          setState(() => _initialized = true);
-          _controller.play();
-          _autoHideControls();
-        }
-      }).catchError((_) {
-        // Falha silenciosa — ex: CORS no browser
-        if (mounted) setState(() => _initialized = false);
-      });
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+      ..initialize()
+          .then((_) {
+            if (mounted) {
+              setState(() => _initialized = true);
+              _controller.play();
+              _autoHideControls();
+              // Pedir foco assim que o video carrega para capturar teclas
+              _focusNode.requestFocus();
+            }
+          })
+          .catchError((_) {
+            if (mounted) setState(() => _initialized = false);
+          });
 
     _controller.addListener(() {
       if (mounted) setState(() {});
@@ -73,9 +63,9 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _controlsFade.dispose();
     _controller.dispose();
-    // SystemChrome apenas em mobile
     if (!kIsWeb) {
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -83,7 +73,16 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     super.dispose();
   }
 
-  // ── Controlos de UI ─────────────────────────────────────────────────────
+  // Controlos de UI
+
+  void _showControlsTemporarily() {
+    if (!_showControls) {
+      setState(() => _showControls = true);
+      _controlsFade.forward();
+    }
+    _autoHideControls();
+  }
+
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
     if (_showControls) {
@@ -103,15 +102,39 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     });
   }
 
-  void _showControlsTemporarily() {
-    if (!_showControls) {
-      setState(() => _showControls = true);
-      _controlsFade.forward();
+  // Teclado
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+
+    if (event.logicalKey == LogicalKeyboardKey.space ||
+        event.logicalKey == LogicalKeyboardKey.mediaPlayPause) {
+      _togglePlay();
+      return;
     }
-    _autoHideControls();
+
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      Navigator.pop(context);
+      return;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      final target = _controller.value.position + const Duration(seconds: 10);
+      _controller.seekTo(target);
+      _showControlsTemporarily();
+      return;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      final target = _controller.value.position - const Duration(seconds: 10);
+      _controller.seekTo(target < Duration.zero ? Duration.zero : target);
+      _showControlsTemporarily();
+      return;
+    }
   }
 
-  // ── Playback ────────────────────────────────────────────────────────────
+  // Playback
+
   void _togglePlay() {
     setState(() {
       _controller.value.isPlaying ? _controller.pause() : _controller.play();
@@ -121,8 +144,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
 
   Future<void> _seek(double value) async {
     final target = Duration(
-      milliseconds:
-          (value * _controller.value.duration.inMilliseconds).round(),
+      milliseconds: (value * _controller.value.duration.inMilliseconds).round(),
     );
     await _controller.seekTo(target);
   }
@@ -135,7 +157,8 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _showControlsTemporarily();
   }
 
-  // ── Fullscreen ──────────────────────────────────────────────────────────
+  // Fullscreen
+
   void _toggleFullscreen() {
     if (kIsWeb) return;
     setState(() => _isFullscreen = !_isFullscreen);
@@ -152,20 +175,12 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _showControlsTemporarily();
   }
 
-  // ── Download ────────────────────────────────────────────────────────────
+  // Download
   Future<void> _download() async {
     if (_isDownloading) return;
     setState(() => _isDownloading = true);
     try {
-      if (kIsWeb) {
-        downloadFile(widget.videoUrl, widget.fileName ?? 'video.mp4');
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Download iniciado.')),
-          );
-        }
-      }
+      downloadFile(widget.videoUrl, widget.fileName ?? 'video.mp4');
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -177,7 +192,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     }
   }
 
-  // ── Formatação de tempo ─────────────────────────────────────────────────
+  // Formatação de tempo
   String _fmt(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -185,26 +200,32 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 
-  // ── Build ───────────────────────────────────────────────────────────────
+  // Build
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTap: _toggleControls,
-        behavior: HitTestBehavior.opaque,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // ── Vídeo / placeholder web ────────────────────────────────
-            Center(child: _buildVideoContent()),
-
-            // ── Overlay de controlos (fade) ────────────────────────────
-            FadeTransition(
-              opacity: _controlsFade,
-              child: _buildControlsOverlay(),
+      body: KeyboardListener(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: MouseRegion(
+          // Mostrar controlos sempre que o rato se move
+          onHover: (_) => _showControlsTemporarily(),
+          child: GestureDetector(
+            onTap: _toggleControls,
+            behavior: HitTestBehavior.opaque,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Center(child: _buildVideoContent()),
+                FadeTransition(
+                  opacity: _controlsFade,
+                  child: _buildControlsOverlay(),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -224,11 +245,8 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   Widget _buildControlsOverlay() {
     return Column(
       children: [
-        // ── Barra superior ─────────────────────────────────────────────
         _buildTopBar(),
         const Spacer(),
-
-        // ── Botão play/pause central ───────────────────────────────────
         if (_initialized)
           GestureDetector(
             onTap: _togglePlay,
@@ -248,10 +266,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
               ),
             ),
           ),
-
         const Spacer(),
-
-        // ── Barra inferior (progress + volume + fullscreen) ────────────
         if (_initialized) _buildBottomBar(),
       ],
     );
@@ -263,10 +278,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.black.withAlpha(160),
-            Colors.transparent,
-          ],
+          colors: [Colors.black.withAlpha(160), Colors.transparent],
         ),
       ),
       child: SafeArea(
@@ -279,7 +291,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
             ),
             Expanded(
               child: Text(
-                widget.fileName ?? 'Vídeo',
+                widget.fileName ?? 'Video',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
@@ -287,7 +299,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            // Download
             _isDownloading
                 ? const Padding(
                     padding: EdgeInsets.all(14),
@@ -301,10 +312,26 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                     ),
                   )
                 : IconButton(
-                    icon: const Icon(Icons.download_rounded, color: Colors.white),
+                    icon: const Icon(
+                      Icons.download_rounded,
+                      color: Colors.white,
+                    ),
                     tooltip: 'Download',
                     onPressed: _download,
                   ),
+            // Indicacao de atalhos de teclado no browser
+            if (kIsWeb)
+              Tooltip(
+                message: 'Espaco: play/pause | Esc: fechar | ← →: 10s',
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.keyboard_rounded,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
+                  onPressed: null,
+                ),
+              ),
           ],
         ),
       ),
@@ -323,10 +350,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
         gradient: LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
-          colors: [
-            Colors.black.withAlpha(160),
-            Colors.transparent,
-          ],
+          colors: [Colors.black.withAlpha(160), Colors.transparent],
         ),
       ),
       child: SafeArea(
@@ -336,7 +360,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Barra de progresso
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 3,
@@ -357,12 +380,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                     _isSeeking = true;
                     _controller.pause();
                   },
-                  onChanged: (v) {
-                    setState(() {
-                      // Actualizar o display durante o seek
-                    });
-                    _seek(v);
-                  },
+                  onChanged: (v) => _seek(v),
                   onChangeEnd: (v) {
                     _isSeeking = false;
                     _seek(v);
@@ -371,17 +389,13 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                   },
                 ),
               ),
-              // Linha de botões + tempos
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
                   children: [
                     Text(
                       _fmt(position),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                     const Text(
                       ' / ',
@@ -395,7 +409,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                       ),
                     ),
                     const Spacer(),
-                    // Volume
                     IconButton(
                       iconSize: 22,
                       padding: EdgeInsets.zero,
@@ -409,7 +422,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                       onPressed: _toggleMute,
                     ),
                     const SizedBox(width: 16),
-                    // Fullscreen (apenas mobile)
                     if (!kIsWeb)
                       IconButton(
                         iconSize: 22,

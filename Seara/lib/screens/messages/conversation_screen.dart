@@ -627,8 +627,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (['doc', 'docx'].contains(ext)) return Icons.description_rounded;
     if (['xls', 'xlsx'].contains(ext)) return Icons.table_chart_rounded;
     if (['ppt', 'pptx'].contains(ext)) return Icons.slideshow_rounded;
-    if (['zip', 'rar', '7z', 'tar', 'gz'].contains(ext))
+    if (['zip', 'rar', '7z', 'tar', 'gz'].contains(ext)) {
       return Icons.folder_zip_rounded;
+    }
     return Icons.insert_drive_file_rounded;
   }
 
@@ -671,9 +672,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
       try {
         final response = await http.get(Uri.parse(url));
         if (response.statusCode == 200 && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('"$fileName" descarregado.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('"$fileName" descarregado.')));
         }
       } catch (_) {
         if (mounted) {
