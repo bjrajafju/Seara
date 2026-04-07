@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/profile_service.dart';
+import '../../services/auth_service.dart';
 import 'profile_screen.dart';
 
 class UserListScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class UserListScreen extends StatefulWidget {
 class _UserListScreenState extends State<UserListScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _users = [];
+  int? _myId;
 
   @override
   void initState() {
@@ -21,9 +23,11 @@ class _UserListScreenState extends State<UserListScreen> {
 
   Future<void> _loadUsers() async {
     try {
+      _myId = await AuthService.getUserId();
       final users = await ProfileService.getAllUsers();
       setState(() {
-        _users = users;
+        // Task 3: Filter out system user (id=0)
+        _users = users.where((u) => u['id'] != 0).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -52,10 +56,13 @@ class _UserListScreenState extends State<UserListScreen> {
                   ),
                   title: Text(user['username']),
                   onTap: () {
+                    // Task 1: Self -> my profile, other -> their profile
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ProfileScreen(userId: user['id']),
+                        builder: (_) => user['id'] == _myId
+                            ? const ProfileScreen()
+                            : ProfileScreen(userId: user['id']),
                       ),
                     );
                   },

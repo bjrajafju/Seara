@@ -352,6 +352,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final isImagePreview =
         lastMessage?.body.isEmpty == true && lastMessage?.attachment != null;
 
+    final unreadCount = conversation.unreadCount;
+    final isPinned = conversation.isPinned;
+
     return InkWell(
       onTap: () async {
         await Navigator.push(
@@ -377,11 +380,29 @@ class _MessagesScreenState extends State<MessagesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displayName,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Row(
+                    children: [
+                      if (isPinned)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Icon(
+                            Icons.push_pin_rounded,
+                            size: 14,
+                            color: theme.colorScheme.primary.withAlpha(150),
+                          ),
+                        ),
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: unreadCount > 0
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -389,7 +410,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
+                      color: unreadCount > 0
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurface.withAlpha(150),
+                      fontWeight: unreadCount > 0
+                          ? FontWeight.w500
+                          : FontWeight.normal,
                       fontStyle: isImagePreview
                           ? FontStyle.italic
                           : FontStyle.normal,
@@ -399,13 +425,44 @@ class _MessagesScreenState extends State<MessagesScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            if (lastMessage != null)
-              Text(
-                _formatDate(lastMessage.createdAt),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withAlpha(150),
-                ),
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (lastMessage != null)
+                  Text(
+                    _formatDate(lastMessage.createdAt),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: unreadCount > 0
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface.withAlpha(150),
+                      fontWeight: unreadCount > 0
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                if (unreadCount > 0) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: TextStyle(
+                        color: theme.colorScheme.onPrimary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ),

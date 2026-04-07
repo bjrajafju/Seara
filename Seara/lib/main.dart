@@ -13,8 +13,16 @@ import 'screens/profile/profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/messages/messages_screen.dart';
 
-void main() {
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Task 4: Initialize Supabase for real-time messaging
+  await Supabase.initialize(
+    url: 'https://nzxmjazsegtsmsdqnisq.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56eG1qYXpzZWd0c21zZHFuaXNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwNjExMzMsImV4cCI6MjA3NDYzNzEzM30.kRJQfqNMJDK4RWxxMT2tcQYrugyesedxrX-V9Nq8_mU',
+  );
 
   if (kIsWeb) {
     FilePicker.platform = FilePicker.platform;

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +19,13 @@ import 'package:seara/screens/messages/image_lightbox_screen.dart';
 import 'package:seara/screens/messages/video_lightbox_screen.dart';
 import 'package:seara/screens/messages/widgets/audio_message_widget.dart';
 import 'package:seara/services/auth_service.dart';
+import 'package:seara/services/conversation_settings_service.dart';
+import 'package:seara/screens/messages/conversation_details_screen.dart';
+import 'package:seara/utils/conversation_theme_helper.dart';
+import 'package:seara/models/link_preview_model.dart';
+import 'package:seara/services/link_preview_service.dart';
+import 'widgets/link_preview_card.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 
 // Import condicional: usa web em browser, stub em mobile
 import 'download_helper_stub.dart'
@@ -44,12 +53,27 @@ class _ConversationScreenState extends State<ConversationScreen> {
   late MessagesProvider _messagesProvider;
   bool _isRecording = false;
   bool _hasText = false;
+  int? _highlightMessageId;
+  int _convThemeId = 0;
 
   @override
   void initState() {
     super.initState();
     _messagesProvider = context.read<MessagesProvider>();
     _messageController.addListener(_onTextChanged);
+    _scrollController.addListener(_onScroll);
+    
+    // Fix: Intercept Enter key natively before it reaches the TextField to prevent paragraph inserts
+    _focusNode.onKeyEvent = (node, event) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+        if (!HardwareKeyboard.instance.isShiftPressed) {
+          _sendMessage();
+          return KeyEventResult.handled; // Stops event to prevent newline
+        }
+      }
+      return KeyEventResult.ignored;
+    };
+
     _initFilePicker();
     _init();
   }
@@ -67,16 +91,75 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
+  /// Detect scroll to top for loading more messages.
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels <= 50 &&
+        _messagesProvider.hasMore &&
+        !_messagesProvider.isLoadingMore) {
+      final prevMax = _scrollController.position.maxScrollExtent;
+      _messagesProvider.loadMore(widget.conversation.id, userId: _myId).then((
+        _,
+      ) {
+        // Maintain scroll position after prepending messages
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            final newMax = _scrollController.position.maxScrollExtent;
+            _scrollController.jumpTo(
+              _scrollController.offset + (newMax - prevMax),
+            );
+          }
+        });
+      });
+    }
+  }
+
   Future<void> _init() async {
     _myId = await AuthService.getUserId();
     if (!mounted) return;
-    await _messagesProvider.loadMessages(widget.conversation.id);
+    // Task 5: Load theme FIRST for smoother perceived performance
+    await _loadTheme();
+    await _messagesProvider.loadMessages(widget.conversation.id, userId: _myId);
     _scrollToBottom();
+    // Task 4: Subscribe to real-time messages
+    _messagesProvider.subscribeToConversation(widget.conversation.id);
+    _messagesProvider.addListener(_onNewMessage);
+    // Mark as read after a short delay
+    Future.delayed(const Duration(seconds: 1), () {
+      if (_myId != null && mounted) {
+        ConversationSettingsService.markAsRead(widget.conversation.id, _myId!);
+      }
+    });
+  }
+
+  // Task 4: Auto-scroll when new messages arrive from realtime
+  int _lastMessageCount = 0;
+  void _onNewMessage() {
+    final count = _messagesProvider.messages.length;
+    if (count > _lastMessageCount && _lastMessageCount > 0) {
+      _scrollToBottom(animate: true);
+    }
+    _lastMessageCount = count;
+  }
+
+  Future<void> _loadTheme() async {
+    try {
+      final details = await ConversationSettingsService.getDetails(
+        widget.conversation.id,
+        _myId ?? 0,
+      );
+      if (!mounted) return;
+      setState(() => _convThemeId = details.settings?.theme ?? 0);
+    } catch (_) {
+      // Keep default theme on error
+    }
   }
 
   @override
   void dispose() {
     _messageController.removeListener(_onTextChanged);
+    _scrollController.removeListener(_onScroll);
+    _messagesProvider.removeListener(_onNewMessage);
     _messageController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
@@ -85,15 +168,24 @@ class _ConversationScreenState extends State<ConversationScreen> {
     super.dispose();
   }
 
-  void _scrollToBottom() {
+  // Task 8: Reliable scroll-to-bottom with fallback
+  void _scrollToBottom({bool animate = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (_scrollController.hasClients && mounted) {
+          if (animate) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          } else {
+            _scrollController.jumpTo(
+              _scrollController.position.maxScrollExtent,
+            );
+          }
+        }
+      });
     });
   }
 
@@ -108,7 +200,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       body: text,
     );
 
-    if (success) _scrollToBottom();
+    if (success) _scrollToBottom(animate: true);
   }
 
   void _showAttachmentOptions() {
@@ -410,17 +502,124 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return "https://ui-avatars.com/api/?name=User";
   }
 
+  // Task 6: Drag & drop for web/desktop
+  bool _isDragOver = false;
+
+  Widget _wrapWithDropTarget(Widget child) {
+    // Fix #3: Use desktop_drop for proper OS-level file drops
+    return DropTarget(
+      onDragEntered: (_) {
+        if (!_isDragOver) setState(() => _isDragOver = true);
+      },
+      onDragExited: (_) {
+        if (_isDragOver) setState(() => _isDragOver = false);
+      },
+      onDragDone: (detail) async {
+        setState(() => _isDragOver = false);
+        if (detail.files.isEmpty) return;
+        // Process first dropped file (send to preview screen)
+        final xFile = detail.files.first;
+        final bytes = await xFile.readAsBytes();
+        final ext = xFile.name.contains('.') ? xFile.name.split('.').last.toLowerCase() : '';
+        
+        PreviewType type = PreviewType.file;
+        String mimeType = "application/octet-stream";
+
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext)) {
+          type = PreviewType.image;
+          mimeType = "image/$ext";
+        } else if (['mp4', 'mov', 'avi'].contains(ext)) {
+          type = PreviewType.video;
+          mimeType = "video/$ext";
+        } else if (['mp3', 'm4a', 'wav', 'ogg', 'aac'].contains(ext)) {
+          type = PreviewType.audio;
+          mimeType = "audio/$ext";
+        }
+
+        if (_myId != null && mounted) {
+          await _openPreviewAndSend(
+            bytes: bytes,
+            fileName: xFile.name,
+            mimeType: mimeType,
+            type: type,
+          );
+        }
+      },
+      child: Stack(
+        children: [
+          child,
+          if (_isDragOver)
+            Positioned.fill(
+              child: Container(
+                color: Theme.of(context).colorScheme.primary.withAlpha(30),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 20,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(25),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.upload_file_rounded,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Largar ficheiro aqui',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final convTheme = ConversationThemeHelper.getTheme(_convThemeId);
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         appBar: _buildAppBar(theme),
-        body: Column(
-          children: [_buildMessagesList(theme), _buildInputArea(theme)],
+        body: _wrapWithDropTarget(
+          Container(
+            decoration: convTheme.isDefault
+                ? null
+                : convTheme.backgroundDecoration,
+            child: Column(
+              children: [_buildMessagesList(theme), _buildInputArea(theme)],
+            ),
+          ),
         ),
       ),
     );
@@ -439,28 +638,81 @@ class _ConversationScreenState extends State<ConversationScreen> {
             color: theme.colorScheme.onPrimary,
             onPressed: () => Navigator.pop(context),
           ),
-          CircleAvatar(
-            radius: 24,
-            backgroundImage: NetworkImage(_getDisplayAvatar()),
-          ),
-          const SizedBox(width: 12),
+          // Tappable avatar + name → navigates to details
           Expanded(
-            child: Text(
-              _getDisplayName(),
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onPrimary,
-                fontWeight: FontWeight.w600,
+            child: GestureDetector(
+              onTap: () => _openDetails(),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundImage: NetworkImage(_getDisplayAvatar()),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _getDisplayName(),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.settings_sharp),
             color: theme.colorScheme.onPrimary,
-            onPressed: () {},
+            onPressed: () => _openDetails(),
           ),
         ],
       ),
     );
+  }
+
+  void _openDetails() {
+    Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConversationDetailsScreen(
+          conversation: widget.conversation,
+          myId: _myId ?? 0,
+        ),
+      ),
+    ).then((scrollToMsgId) {
+      // FIX #2: Scroll to message from search result
+      if (scrollToMsgId != null && mounted) {
+        _scrollToMessage(scrollToMsgId);
+      }
+    });
+  }
+
+  // FIX #2: Scroll to and briefly highlight a specific message
+  void _scrollToMessage(int messageId) {
+    final messages = _messagesProvider.messages;
+    final idx = messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1) return;
+
+    setState(() => _highlightMessageId = messageId);
+
+    // Approximate scroll offset (each message ~60px tall)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        final target = idx * 60.0;
+        _scrollController.animateTo(
+          target.clamp(0, _scrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
+    // Remove highlight after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _highlightMessageId = null);
+    });
   }
 
   Widget _buildMessagesList(ThemeData theme) {
@@ -481,7 +733,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
           if (provider.messages.isEmpty) {
             return Center(
               child: Text(
-                "Sem mensagens ainda. Diz ola!",
+                "Sem mensagens ainda. Diz olá!",
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withAlpha(150),
                 ),
@@ -490,23 +742,190 @@ class _ConversationScreenState extends State<ConversationScreen> {
           }
 
           final messages = provider.messages;
+          final unreadIdx = provider.unreadDividerIndex;
+
+          // Total items = messages + optional loading indicator + optional unread divider
+          int extraBefore = 0;
+          if (provider.isLoadingMore) extraBefore++;
 
           return ListView.builder(
             controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
-            itemCount: messages.length,
-            itemBuilder: (context, index) {
-              final message = messages[index];
-              final isMe = message.userId == _myId;
-              final isFirst = _isFirstInGroup(messages, index);
-              final isLast = _isLastInGroup(messages, index);
+            itemCount:
+                messages.length + extraBefore + (unreadIdx != null ? 1 : 0),
+            itemBuilder: (context, rawIndex) {
+              // Loading more indicator at top
+              if (provider.isLoadingMore && rawIndex == 0) {
+                return const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
 
-              return isMe
+              int msgIndex = rawIndex - extraBefore;
+
+              // Unread divider
+              if (unreadIdx != null && msgIndex == unreadIdx) {
+                return _buildUnreadDivider(theme);
+              }
+              // Offset for unread divider
+              if (unreadIdx != null && msgIndex > unreadIdx) {
+                msgIndex--;
+              }
+
+              if (msgIndex < 0 || msgIndex >= messages.length) {
+                return const SizedBox.shrink();
+              }
+
+              final message = messages[msgIndex];
+              final isMe = message.userId == _myId;
+
+              // Task 2: Date separator between different days
+              Widget? dateSep;
+              if (msgIndex == 0 ||
+                  !_isSameDay(
+                    messages[msgIndex - 1].createdAt,
+                    message.createdAt,
+                  )) {
+                dateSep = _buildDateSeparator(theme, message.createdAt);
+              }
+
+              // System messages rendered centered
+              if (message.isSystemMessage) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (dateSep != null) dateSep,
+                    _buildSystemMessage(theme, message),
+                  ],
+                );
+              }
+              final isFirst = _isFirstInGroup(messages, msgIndex);
+              final isLast = _isLastInGroup(messages, msgIndex);
+              final isHighlighted = message.id == _highlightMessageId;
+
+              Widget msgWidget = isMe
                   ? _buildMyMessage(theme, message, isFirst, isLast)
                   : _buildOtherMessage(theme, message, isFirst, isLast);
+
+              if (isHighlighted) {
+                msgWidget = AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withAlpha(30),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: msgWidget,
+                );
+              }
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [if (dateSep != null) dateSep, msgWidget],
+              );
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildUnreadDivider(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Divider(
+              color: theme.colorScheme.primary.withAlpha(100),
+              thickness: 1,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              'mensagens não lidas',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Divider(
+              color: theme.colorScheme.primary.withAlpha(100),
+              thickness: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Task 2: Date separator
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _formatDateLabel(DateTime date) {
+    final now = DateTime.now();
+    if (_isSameDay(date, now)) return 'Hoje';
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (_isSameDay(date, yesterday)) return 'Ontem';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  Widget _buildDateSeparator(ThemeData theme, DateTime date) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 48),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withAlpha(150),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            _formatDateLabel(date),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withAlpha(180),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // System message (joins, leaves, name changes, etc.)
+  Widget _buildSystemMessage(ThemeData theme, Message message) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withAlpha(180),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            message.body,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withAlpha(150),
+              fontStyle: FontStyle.italic,
+              fontSize: 12,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -732,13 +1151,20 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     ),
                   ),
                 Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.33,
+                  ),
                   margin: const EdgeInsets.only(right: 48),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
+                    color:
+                        ConversationThemeHelper.getTheme(
+                          _convThemeId,
+                        ).otherBubbleColor ??
+                        theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(isFirst ? 16 : 4),
                       topRight: const Radius.circular(16),
@@ -749,13 +1175,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (message.body.isNotEmpty)
-                        SelectableText(
-                          message.body,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            height: 1.4,
-                          ),
-                        ),
+                      if (message.body.isNotEmpty) ...[
+                        _buildRichMessageText(theme, message.body),
+                        _buildLinkPreview(message.body),
+                      ],
                       if (message.attachment != null) ...[
                         if (message.body.isNotEmpty) const SizedBox(height: 6),
                         _buildAttachmentContent(theme, message),
@@ -789,9 +1212,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.33,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
+              color:
+                  ConversationThemeHelper.getTheme(
+                    _convThemeId,
+                  ).myBubbleColor ??
+                  theme.colorScheme.primaryContainer,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: Radius.circular(isFirst ? 16 : 4),
@@ -802,11 +1232,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (message.body.isNotEmpty)
-                  SelectableText(
-                    message.body,
-                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
-                  ),
+                if (message.body.isNotEmpty) ...[
+                  _buildRichMessageText(theme, message.body),
+                  _buildLinkPreview(message.body),
+                ],
                 if (message.attachment != null) ...[
                   if (message.body.isNotEmpty) const SizedBox(height: 6),
                   _buildAttachmentContent(theme, message),
@@ -814,8 +1243,111 @@ class _ConversationScreenState extends State<ConversationScreen> {
               ],
             ),
           ),
+          // Read receipt status
+          if (isLast)
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 4),
+              child: _buildStatusIcon(theme, message),
+            ),
         ],
       ),
+    );
+  }
+
+  static final RegExp _urlRegex = RegExp(r'(https?:\/\/[^\s]+)');
+
+  String? _extractUrl(String text) {
+    final match = _urlRegex.firstMatch(text);
+    return match?.group(0);
+  }
+
+  // Task 9: Clickable links in messages
+  Widget _buildRichMessageText(ThemeData theme, String text) {
+    final style = theme.textTheme.bodyMedium?.copyWith(height: 1.4);
+    final linkStyle = style?.copyWith(
+      color: theme.colorScheme.primary,
+      decoration: TextDecoration.underline,
+      decorationColor: theme.colorScheme.primary,
+    );
+
+    final matches = _urlRegex.allMatches(text).toList();
+    if (matches.isEmpty) {
+      return SelectableText(text, style: style);
+    }
+
+    final spans = <TextSpan>[];
+    int lastEnd = 0;
+    for (final match in matches) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+      }
+      final url = match.group(0)!;
+      spans.add(
+        TextSpan(
+          text: url,
+          style: linkStyle,
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              final uri = Uri.tryParse(url);
+              if (uri != null) {
+                launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+        ),
+      );
+      lastEnd = match.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+
+    return RichText(
+      text: TextSpan(style: style, children: spans),
+    );
+  }
+
+  Widget _buildLinkPreview(String text) {
+    final url = _extractUrl(text);
+    if (url == null) return const SizedBox.shrink();
+
+    return FutureBuilder<LinkPreview?>(
+      future: LinkPreviewService.fetchLinkPreview(url),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          return LinkPreviewCard(preview: snapshot.data!);
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  // FIX #5: Status icon with tooltip
+  Widget _buildStatusIcon(ThemeData theme, Message message) {
+    IconData icon;
+    Color color;
+    String tooltip;
+
+    switch (message.status) {
+      case 2: // read
+        icon = Icons.done_all_rounded;
+        color = Colors.blue;
+        tooltip = 'Lido';
+        break;
+      case 1: // delivered
+        icon = Icons.done_all_rounded;
+        color = theme.colorScheme.onSurface.withAlpha(100);
+        tooltip = 'Entregue';
+        break;
+      default: // sent
+        icon = Icons.check_rounded;
+        color = theme.colorScheme.onSurface.withAlpha(100);
+        tooltip = 'Enviado';
+        break;
+    }
+
+    return Tooltip(
+      message: tooltip,
+      child: Icon(icon, size: 16, color: color),
     );
   }
 
@@ -948,7 +1480,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       controller: _messageController,
       focusNode: _focusNode,
       textCapitalization: TextCapitalization.sentences,
-      textInputAction: TextInputAction.send,
+      textInputAction: TextInputAction.newline,
       maxLines: 6,
       minLines: 1,
       decoration: InputDecoration(
@@ -962,7 +1494,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
         ),
       ),
       inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\t'))],
-      onFieldSubmitted: (_) => _sendMessage(),
     );
   }
 }

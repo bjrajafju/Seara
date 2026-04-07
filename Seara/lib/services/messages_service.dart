@@ -3,6 +3,19 @@ import 'package:http/http.dart' as http;
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
 
+/// Response from paginated message fetch.
+class MessagesPage {
+  final List<Message> messages;
+  final bool hasMore;
+  final DateTime? lastReadAt;
+
+  MessagesPage({
+    required this.messages,
+    required this.hasMore,
+    this.lastReadAt,
+  });
+}
+
 class MessagesService {
   static const String baseUrl = "http://localhost:3000";
 
@@ -43,15 +56,43 @@ class MessagesService {
     }
   }
 
-  Future<List<Message>> fetchMessages(int conversationId) async {
+  /// Fetch messages with cursor-based pagination.
+  Future<MessagesPage> fetchMessages(
+    int conversationId, {
+    int limit = 30,
+    int? before,
+    int? userId,
+  }) async {
+    final params = <String, String>{"limit": limit.toString()};
+    if (before != null) params['before'] = before.toString();
+    if (userId != null) params['userId'] = userId.toString();
+
+    final uri = Uri.parse(
+      "$baseUrl/messages/conversations/$conversationId/messages",
+    ).replace(queryParameters: params);
+
     final response = await http.get(
-      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages"),
+      uri,
       headers: {"Content-Type": "application/json"},
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Message.fromJson(json)).toList();
+      final data = jsonDecode(response.body);
+
+      final List<dynamic> messagesJson = data['messages'] ?? data;
+      final messages =
+          messagesJson.map((m) => Message.fromJson(m)).toList();
+
+      final hasMore = data['has_more'] as bool? ?? false;
+      final lastReadAt = data['last_read_at'] != null
+          ? DateTime.tryParse(data['last_read_at'])
+          : null;
+
+      return MessagesPage(
+        messages: messages,
+        hasMore: hasMore,
+        lastReadAt: lastReadAt,
+      );
     } else {
       throw Exception("Erro ao carregar mensagens");
     }
@@ -80,7 +121,8 @@ class MessagesService {
     if (response.statusCode == 201) {
       return Message.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception("Erro ao enviar mensagem");
+      final errBody = jsonDecode(response.body);
+      throw Exception(errBody['error'] ?? "Erro ao enviar mensagem");
     }
   }
 

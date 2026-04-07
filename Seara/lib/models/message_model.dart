@@ -10,6 +10,10 @@ class Message {
   final String? attachmentName;
   final String? senderUsername;
   final String? senderAvatar;
+  final int status; // 0=sent, 1=delivered, 2=read
+  final DateTime? deliveredAt;
+  final DateTime? expiresAt;
+  final bool isSystemMessage;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -23,9 +27,19 @@ class Message {
     this.attachmentName,
     this.senderUsername,
     this.senderAvatar,
+    this.status = 0,
+    this.deliveredAt,
+    this.expiresAt,
+    this.isSystemMessage = false,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Whether this message has been delivered to at least one recipient.
+  bool get isDelivered => status >= 1;
+
+  /// Whether this message has been read by at least one recipient.
+  bool get isRead => status >= 2;
 
   factory Message.fromJson(Map<String, dynamic> json) {
     final attachmentUrl = json['attachment'] as String?;
@@ -77,6 +91,14 @@ class Message {
       attachmentName: attachmentName,
       senderUsername: json['sender_username'],
       senderAvatar: json['sender_avatar'],
+      status: json['status'] as int? ?? 0,
+      deliveredAt: json['delivered_at'] != null
+          ? DateTime.tryParse(json['delivered_at'])
+          : null,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'])
+          : null,
+      isSystemMessage: json['is_system'] == true || json['user_id'] == 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
     );
