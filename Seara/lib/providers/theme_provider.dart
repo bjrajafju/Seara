@@ -5,14 +5,10 @@ import '../theme/app_theme.dart';
 /// Identifies an available theme.
 ///
 /// To add a new theme:
-///   1. Add a new value here.
-///   2. Add a matching ThemeData getter in [AppTheme].
-///   3. Register it in [ThemeProvider.themes].
-enum AppThemeId {
-  light,
-  dark,
-  highContrast,
-}
+///  1. Add a new value here.
+///  2. Add a matching ThemeData getter in [AppTheme].
+///  3. Register it in [ThemeProvider.themes].
+enum AppThemeId { light, dark, highContrast }
 
 class ThemeProvider extends ChangeNotifier {
   static const _prefKey = 'seara_theme_id';

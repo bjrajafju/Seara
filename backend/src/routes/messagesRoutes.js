@@ -24,36 +24,36 @@ import {
 
 const router = express.Router();
 
-// ── Conversation list & creation ─────────────────────────────────
+// Conversation list & creation
 router.get("/link-preview", getLinkPreview);
 
 router.get("/conversations/:userId", listConversations);
 router.post("/conversations", createConversation);
 
-// ── Messages (paginated) ─────────────────────────────────────────
+// Messages (paginated)
 router.get("/conversations/:conversationId/messages", getMessages);
 router.post("/conversations/:conversationId/messages", sendMessage);
 
-// ── Conversation details & settings ──────────────────────────────
+// Conversation details & settings 
 router.get("/conversations/:id/details", getConversationDetails);
 router.put("/conversations/:id/name", updateConversationName);
 router.put("/conversations/:id/image", updateConversationImage);
 
-// ── Members ──────────────────────────────────────────────────────
+// Members 
 router.post("/conversations/:id/members", addMembers);
 router.delete("/conversations/:id/members/:targetId", removeMember);
 router.put("/conversations/:id/members/:targetId/role", updateMemberRole);
 
-// ── Settings & notifications ─────────────────────────────────────
+// Settings & notifications
 router.put("/conversations/:id/settings", updateSettings);
 router.put("/conversations/:id/notifications", updateNotifications);
 
-// ── Actions ──────────────────────────────────────────────────────
+// Actions 
 router.post("/conversations/:id/leave", leaveConversation);
 router.put("/conversations/:id/pin", togglePin);
 router.post("/conversations/:id/read", markAsRead);
 
-// ── Search & media ───────────────────────────────────────────────
+// Search & media
 router.get("/conversations/:id/search", searchConversationMessages);
 router.get("/conversations/:id/media", getSharedMedia);
 

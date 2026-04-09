@@ -15,7 +15,7 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         children: [
-          // ── Section header ──────────────────────────────
+          // Section header
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 12),
             child: Text(
@@ -28,15 +28,12 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
 
-          // ── Theme tiles ─────────────────────────────────
+          // Theme tiles
           Container(
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withAlpha(80),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: cs.onSurface.withAlpha(18),
-                width: 1,
-              ),
+              border: Border.all(color: cs.onSurface.withAlpha(18), width: 1),
             ),
             child: Consumer<ThemeProvider>(
               builder: (context, provider, _) {
@@ -69,7 +66,7 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 32),
 
-          // ── Future settings sections go here ─────────────
+          // Future settings sections go here
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 12),
             child: Text(
@@ -88,7 +85,10 @@ class SettingsScreen extends StatelessWidget {
               border: Border.all(color: cs.onSurface.withAlpha(18), width: 1),
             ),
             child: ListTile(
-              leading: Icon(Icons.person_outline_rounded, color: cs.onSurfaceVariant),
+              leading: Icon(
+                Icons.person_outline_rounded,
+                color: cs.onSurfaceVariant,
+              ),
               title: Text('Perfil', style: TextStyle(color: cs.onSurface)),
               trailing: Icon(
                 Icons.chevron_right_rounded,
@@ -106,9 +106,9 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 // Individual theme option tile
-// ─────────────────────────────────────────────────────────────────────────────
+//
 
 class _ThemeTile extends StatelessWidget {
   const _ThemeTile({
@@ -159,8 +159,7 @@ class _ThemeTile extends StatelessWidget {
                 style: TextStyle(
                   color: cs.onSurface,
                   fontSize: 15,
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.w400,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
             ),

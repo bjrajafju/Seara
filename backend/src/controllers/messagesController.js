@@ -2,7 +2,7 @@ import supabase from "../services/supabase.js";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-// ── Constants ────────────────────────────────────────────────────
+// Constants 
 const DEFAULT_PAGE_SIZE = 30;
 
 // Ephemeral duration in ms: 0=off, 1=24h, 2=7d, 3=30d
@@ -13,9 +13,7 @@ const EPHEMERAL_MS = {
     3: 30 * 24 * 60 * 60 * 1000,
 };
 
-// ══════════════════════════════════════════════════════════════════
 // GET /conversations/:userId — List conversations
-// ══════════════════════════════════════════════════════════════════
 export const listConversations = async (req, res) => {
     const { userId } = req.params;
     const {
@@ -218,9 +216,7 @@ export const listConversations = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // POST /conversations — Create conversation
-// ══════════════════════════════════════════════════════════════════
 export const createConversation = async (req, res) => {
     const { creatorId, participantIds, name } = req.body;
 
@@ -232,7 +228,7 @@ export const createConversation = async (req, res) => {
         const allParticipants = [...new Set([creatorId, ...participantIds])];
         const isGroup = allParticipants.length > 2;
 
-        // ── 1:1: check for existing (including archived) ─────────────
+        // 1:1: check for existing (including archived)
         if (!isGroup) {
             const { data: conversations, error } = await supabase
                 .from("conversations")
@@ -319,7 +315,7 @@ export const createConversation = async (req, res) => {
             }
         }
 
-        // ── Create conversation ──────────────────────────────────────
+        // Create conversation 
         const { data: newConversation, error } = await supabase
             .from("conversations")
             .insert({
@@ -331,7 +327,7 @@ export const createConversation = async (req, res) => {
 
         if (error) throw error;
 
-        // ── Insert participants with roles ────────────────────────────
+        // Insert participants with roles 
         const inserts = allParticipants.map((uid) => ({
             conversation_id: newConversation.id,
             user_id: uid,
@@ -345,14 +341,14 @@ export const createConversation = async (req, res) => {
 
         if (insertError) throw insertError;
 
-        // ── Create default settings ──────────────────────────────────
+        // Create default settings 
         const { error: settingsError } = await supabase
             .from("conversation_settings")
             .insert({ conversation_id: newConversation.id });
 
         if (settingsError) throw settingsError;
 
-        // ── Return formatted conversation ────────────────────────────
+        // Return formatted conversation 
         const { data: fullConversation } = await supabase
             .from("conversations")
             .select(
@@ -388,9 +384,7 @@ export const createConversation = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // GET /conversations/:conversationId/messages — Paginated
-// ══════════════════════════════════════════════════════════════════
 export const getMessages = async (req, res) => {
     const { conversationId } = req.params;
     const limit = parseInt(req.query.limit) || DEFAULT_PAGE_SIZE;
@@ -408,7 +402,7 @@ export const getMessages = async (req, res) => {
     try {
         const now = new Date().toISOString();
 
-        // ── Mark undelivered messages as delivered ───────────────────
+        // Mark undelivered messages as delivered
         if (requestingUserId) {
             await supabase
                 .from("messages")
@@ -418,7 +412,7 @@ export const getMessages = async (req, res) => {
                 .is("delivered_at", null);
         }
 
-        // ── Build query ──────────────────────────────────────────────
+        // Build query 
         let query = supabase
             .from("messages")
             .select(
@@ -469,7 +463,7 @@ export const getMessages = async (req, res) => {
         const hasMore = messages.length > limit;
         const pageMessages = hasMore ? messages.slice(0, limit) : messages;
 
-        // ── Get last_read_at for other participants (for read receipts) ──
+        // Get last_read_at for other participants (for read receipts) 
         let othersLastRead = [];
         if (requestingUserId) {
             const { data: otherReads } = await supabase
@@ -541,9 +535,7 @@ export const getMessages = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // POST /conversations/:conversationId/messages — Send message
-// ══════════════════════════════════════════════════════════════════
 export const sendMessage = async (req, res) => {
     const { conversationId } = req.params;
     const { userId, body, attachment, attachment_type, attachment_name } =
@@ -554,7 +546,7 @@ export const sendMessage = async (req, res) => {
     }
 
     try {
-        // ── Check send permission ────────────────────────────────────
+        // Check send permission 
         const { data: settings } = await supabase
             .from("conversation_settings")
             .select("who_can_send_messages, ephemeral_duration")
@@ -577,7 +569,7 @@ export const sendMessage = async (req, res) => {
             }
         }
 
-        // ── Calculate expires_at if ephemeral ────────────────────────
+        // Calculate expires_at if ephemeral 
         let expiresAt = null;
         if (settings && settings.ephemeral_duration > 0) {
             const durationMs = EPHEMERAL_MS[settings.ephemeral_duration] || 0;
@@ -586,7 +578,7 @@ export const sendMessage = async (req, res) => {
             }
         }
 
-        // ── Insert message ───────────────────────────────────────────
+        // Insert message
         const { data: message, error } = await supabase
             .from("messages")
             .insert({
@@ -651,9 +643,7 @@ export const sendMessage = async (req, res) => {
 
 // Removed searchMessages (Logic unified into listConversations)
 
-// ══════════════════════════════════════════════════════════════════
 // GET /messages/link-preview — Link preview
-// ══════════════════════════════════════════════════════════════════
 export const getLinkPreview = async (req, res) => {
     const { url } = req.query;
 

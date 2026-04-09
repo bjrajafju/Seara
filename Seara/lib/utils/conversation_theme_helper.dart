@@ -7,11 +7,12 @@ class ConversationThemeHelper {
     ConversationThemeData(
       id: 0,
       name: 'Padrão',
+      // Maintaining the dark modern background for default
       backgroundColors: [Color(0xFF1C1C1E), Color(0xFF2C2C2E)],
-      myBubbleColor: null, // uses theme primaryContainer
-      otherBubbleColor: null, // uses theme surfaceContainerHighest
-      myTextColor: null,
-      otherTextColor: null,
+      myBubbleColor: Color(0xFF1C63B8), // Muted dark blue
+      otherBubbleColor: Color(0xFF38383A), // Dark grey
+      myTextColor: Colors.white,
+      otherTextColor: Colors.white,
     ),
     ConversationThemeData(
       id: 1,

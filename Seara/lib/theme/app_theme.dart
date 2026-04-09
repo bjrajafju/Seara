@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 /// All theme definitions for Seara.
 ///
 /// To add a new theme:
-///   1. Define a static ThemeData getter here.
-///   2. Add a new value to [AppThemeId] in theme_provider.dart.
-///   3. Register it in [ThemeProvider.themes].
+///  1. Define a static ThemeData getter here.
+///  2. Add a new value to [AppThemeId] in theme_provider.dart.
+///  3. Register it in [ThemeProvider.themes].
 class AppTheme {
   AppTheme._();
 
-  // ─────────────────────────────────────────────
+  //
   // LIGHT
-  // ─────────────────────────────────────────────
+  //
   static ThemeData get light {
     const cs = ColorScheme(
       brightness: Brightness.light,
@@ -29,9 +29,9 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ─────────────────────────────────────────────
+  //
   // DARK (true dark)
-  // ─────────────────────────────────────────────
+  //
   static ThemeData get dark {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -49,9 +49,9 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ─────────────────────────────────────────────
+  //
   // HIGH CONTRAST (light bg, maximum contrast)
-  // ─────────────────────────────────────────────
+  //
   static ThemeData get highContrast {
     const cs = ColorScheme(
       brightness: Brightness.light,
@@ -69,16 +69,16 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ─────────────────────────────────────────────
+  //
   // SHARED THEME BUILDER
-  // ─────────────────────────────────────────────
+  //
   static ThemeData _buildTheme(ColorScheme cs) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: cs,
       scaffoldBackgroundColor: cs.surface,
 
-      // ── AppBar ──────────────────────────────
+      // AppBar
       appBarTheme: AppBarTheme(
         backgroundColor: cs.surface,
         foregroundColor: cs.onSurface,
@@ -94,7 +94,7 @@ class AppTheme {
         actionsIconTheme: IconThemeData(color: cs.onSurface),
       ),
 
-      // ── Input fields ────────────────────────
+      // Input fields
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: cs.surfaceContainerHighest.withAlpha(
@@ -119,7 +119,7 @@ class AppTheme {
         ),
       ),
 
-      // ── Elevated button ─────────────────────
+      // Elevated button
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: cs.primary,
@@ -129,19 +129,16 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
 
-      // ── Text button ─────────────────────────
+      // Text button
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: cs.primary),
       ),
 
-      // ── Outlined button ──────────────────────
+      // Outlined button
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: cs.primary,
@@ -152,7 +149,7 @@ class AppTheme {
         ),
       ),
 
-      // ── FAB ─────────────────────────────────
+      // FAB
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: cs.primary,
         foregroundColor: cs.onPrimary,
@@ -160,7 +157,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
 
-      // ── Chip ────────────────────────────────
+      // Chip
       chipTheme: ChipThemeData(
         backgroundColor: cs.surfaceContainerHighest,
         labelStyle: TextStyle(color: cs.onSurfaceVariant),
@@ -170,14 +167,14 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
 
-      // ── Divider ─────────────────────────────
+      // Divider
       dividerTheme: DividerThemeData(
         color: cs.onSurface.withAlpha(25),
         thickness: 0.5,
         space: 1,
       ),
 
-      // ── ListTile ────────────────────────────
+      // ListTile
       listTileTheme: ListTileThemeData(
         iconColor: cs.onSurfaceVariant,
         textColor: cs.onSurface,
@@ -185,7 +182,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
 
-      // ── BottomSheet ─────────────────────────
+      // BottomSheet
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: cs.surface,
         shape: const RoundedRectangleBorder(

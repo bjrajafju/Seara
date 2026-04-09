@@ -140,7 +140,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     }
   }
 
-  // ── FIX #8: Creator sees "Delete group", others see "Leave" ────
+  // FIX #8: Creator sees "Delete group", others see "Leave"
   Future<void> _dangerAction() async {
     final isGroup = widget.conversation.isGroup;
     final isCreator = _details?.isCreator ?? false;
@@ -308,7 +308,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // ── Sliver AppBar with header ──────────────────────────────────
+  // Sliver AppBar with header
   Widget _buildSliverAppBar(ThemeData theme) {
     return SliverAppBar(
       backgroundColor: theme.colorScheme.surface,
@@ -444,7 +444,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // ── Quick action buttons ───────────────────────────────────────
+  // Quick action buttons
   // FIX #7: Removed duplicate notification — only Search + Call + Video
   Widget _buildActionButtons(ThemeData theme) {
     final actions = [
@@ -503,7 +503,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // ── Settings sections ──────────────────────────────────────────
+  // Settings sections
   // FIX #3: Hide "Members" for 1:1, show "Ver perfil" that opens profile
   Widget _buildSettingsSections(ThemeData theme) {
     return Column(
@@ -641,7 +641,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // ── Shared media tabs ──────────────────────────────────────────
+  // Shared media tabs
   TabBar _buildTabBar(ThemeData theme) {
     return TabBar(
       controller: _tabController,
@@ -683,7 +683,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // ── Danger zone (leave/delete/archive) ─────────────────────────
+  // Danger zone (leave/delete/archive)
   // FIX #8: Creator sees "Delete group", others see "Leave"
   Widget _buildDangerZone(ThemeData theme) {
     final isGroup = widget.conversation.isGroup;
@@ -734,7 +734,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // ── Navigation helpers ─────────────────────────────────────────
+  // Navigation helpers
 
   // Task 1: Self -> my profile, other -> their profile
   void _openProfile(int userId) {
@@ -929,7 +929,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
   }
 }
 
-// ── Quick action data class ──────────────────────────────────────
+// Quick action data class
 class _QuickAction {
   final IconData icon;
   final String label;
@@ -942,7 +942,7 @@ class _QuickAction {
   });
 }
 
-// ── FIX #10: Sticky tab bar delegate ─────────────────────────────
+// FIX #10: Sticky tab bar delegate
 class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   final Color color;
@@ -970,7 +970,7 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-// ── Shared media grid widget ─────────────────────────────────────
+// Shared media grid widget
 // FIX #9: Handles 'media' (image+video), 'file', 'link' types properly
 class _MediaGrid extends StatefulWidget {
   const _MediaGrid({

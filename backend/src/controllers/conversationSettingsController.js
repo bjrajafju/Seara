@@ -1,6 +1,6 @@
 import supabase from "../services/supabase.js";
 
-// ── Helper: check if user is admin in conversation ──────────────
+// Helper: check if user is admin in conversation
 const isAdmin = async (conversationId, userId) => {
     const { data } = await supabase
         .from("conversation_user")
@@ -11,7 +11,7 @@ const isAdmin = async (conversationId, userId) => {
     return data && (data.role === 1 || data.is_creator);
 };
 
-// ── Helper: check if user is member ─────────────────────────────
+// Helper: check if user is member
 const isMember = async (conversationId, userId) => {
     const { data } = await supabase
         .from("conversation_user")
@@ -22,7 +22,7 @@ const isMember = async (conversationId, userId) => {
     return !!data;
 };
 
-// ── Helper: insert system message ───────────────────────────────
+// Helper: insert system message
 const insertSystemMessage = async (conversationId, body) => {
     await supabase.from("messages").insert({
         conversation_id: conversationId,
@@ -39,7 +39,7 @@ const insertSystemMessage = async (conversationId, body) => {
         .eq("id", conversationId);
 };
 
-// ── Helper: check permission level ──────────────────────────────
+// Helper: check permission level
 const hasPermission = async (conversationId, userId, permissionField) => {
     const { data: settings } = await supabase
         .from("conversation_settings")
@@ -54,9 +54,7 @@ const hasPermission = async (conversationId, userId, permissionField) => {
     return isAdmin(conversationId, userId);
 };
 
-// ══════════════════════════════════════════════════════════════════
 // GET /:id/details — Full conversation details
-// ══════════════════════════════════════════════════════════════════
 export const getConversationDetails = async (req, res) => {
     const { id } = req.params;
     const userId = parseInt(req.query.userId);
@@ -169,9 +167,7 @@ export const getConversationDetails = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // PUT /:id/name — Update conversation name
-// ══════════════════════════════════════════════════════════════════
 export const updateConversationName = async (req, res) => {
     const { id } = req.params;
     const { userId, name } = req.body;
@@ -212,9 +208,7 @@ export const updateConversationName = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // PUT /:id/image — Update conversation image
-// ══════════════════════════════════════════════════════════════════
 export const updateConversationImage = async (req, res) => {
     const { id } = req.params;
     const { userId, image } = req.body;
@@ -255,9 +249,7 @@ export const updateConversationImage = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // POST /:id/members — Add members
-// ══════════════════════════════════════════════════════════════════
 export const addMembers = async (req, res) => {
     const { id } = req.params;
     const { userId, memberIds } = req.body;
@@ -333,9 +325,7 @@ export const addMembers = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // DELETE /:id/members/:targetId — Remove member
-// ══════════════════════════════════════════════════════════════════
 export const removeMember = async (req, res) => {
     const { id, targetId } = req.params;
     const userId = parseInt(req.query.userId);
@@ -399,9 +389,7 @@ export const removeMember = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // PUT /:id/members/:targetId/role — Promote/demote
-// ══════════════════════════════════════════════════════════════════
 export const updateMemberRole = async (req, res) => {
     const { id, targetId } = req.params;
     const { userId, role } = req.body;
@@ -447,9 +435,7 @@ export const updateMemberRole = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // PUT /:id/settings — Update conversation settings
-// ══════════════════════════════════════════════════════════════════
 export const updateSettings = async (req, res) => {
     const { id } = req.params;
     const { userId, ...settingsUpdate } = req.body;
@@ -570,9 +556,7 @@ export const updateSettings = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // PUT /:id/notifications — Update user notification preferences
-// ══════════════════════════════════════════════════════════════════
 export const updateNotifications = async (req, res) => {
     const { id } = req.params;
     const { userId, isMuted, mutedUntil } = req.body;
@@ -603,9 +587,7 @@ export const updateNotifications = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // POST /:id/leave — Leave conversation
-// ══════════════════════════════════════════════════════════════════
 export const leaveConversation = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -678,9 +660,7 @@ export const leaveConversation = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // PUT /:id/pin — Toggle pin
-// ══════════════════════════════════════════════════════════════════
 export const togglePin = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -721,9 +701,7 @@ export const togglePin = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // POST /:id/read — Mark conversation as read
-// ══════════════════════════════════════════════════════════════════
 export const markAsRead = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -750,9 +728,7 @@ export const markAsRead = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // GET /:id/search — Search messages with filters
-// ══════════════════════════════════════════════════════════════════
 export const searchConversationMessages = async (req, res) => {
     const { id } = req.params;
     const { userId, q, type, senderId, from, to } = req.query;
@@ -857,9 +833,7 @@ export const searchConversationMessages = async (req, res) => {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════
 // GET /:id/media — Get shared media by type
-// ══════════════════════════════════════════════════════════════════
 export const getSharedMedia = async (req, res) => {
     const { id } = req.params;
     const { userId, type } = req.query;

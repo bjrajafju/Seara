@@ -29,7 +29,7 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
 
   double get _currentSpeed => _speeds[_speedIndex];
 
-  // ── Inicialização lazy (só quando o utilizador prime play) ──────────────
+  // Inicialização lazy (só quando o utilizador prime play)
   Future<void> _ensurePlayer() async {
     if (_initialized) return;
     _initialized = true;
@@ -62,7 +62,7 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
     super.dispose();
   }
 
-  // ── Controlo de playback ────────────────────────────────────────────────
+  // Controlo de playback
   Future<void> _toggle() async {
     await _ensurePlayer();
     final player = _player;
@@ -99,14 +99,14 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
     }
   }
 
-  // ── Formatação de tempo ─────────────────────────────────────────────────
+  // Formatação de tempo
   String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
   }
 
-  // ── UI ──────────────────────────────────────────────────────────────────
+  // UI
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -153,11 +153,9 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
                       overlayRadius: 12,
                     ),
                     activeTrackColor: theme.colorScheme.primary,
-                    inactiveTrackColor:
-                        theme.colorScheme.outline.withAlpha(60),
+                    inactiveTrackColor: theme.colorScheme.outline.withAlpha(60),
                     thumbColor: theme.colorScheme.primary,
-                    overlayColor:
-                        theme.colorScheme.primary.withAlpha(30),
+                    overlayColor: theme.colorScheme.primary.withAlpha(30),
                   ),
                   child: Slider(
                     value: progress,
@@ -166,8 +164,8 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
                       if (mounted) {
                         setState(() {
                           _position = Duration(
-                            milliseconds:
-                                (v * _duration.inMilliseconds).round(),
+                            milliseconds: (v * _duration.inMilliseconds)
+                                .round(),
                           );
                         });
                       }

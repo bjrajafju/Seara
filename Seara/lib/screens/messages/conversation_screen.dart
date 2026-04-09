@@ -62,10 +62,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _messagesProvider = context.read<MessagesProvider>();
     _messageController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
-    
+
     // Fix: Intercept Enter key natively before it reaches the TextField to prevent paragraph inserts
     _focusNode.onKeyEvent = (node, event) {
-      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+      if (event is KeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.enter) {
         if (!HardwareKeyboard.instance.isShiftPressed) {
           _sendMessage();
           return KeyEventResult.handled; // Stops event to prevent newline
@@ -520,8 +521,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
         // Process first dropped file (send to preview screen)
         final xFile = detail.files.first;
         final bytes = await xFile.readAsBytes();
-        final ext = xFile.name.contains('.') ? xFile.name.split('.').last.toLowerCase() : '';
-        
+        final ext = xFile.name.contains('.')
+            ? xFile.name.split('.').last.toLowerCase()
+            : '';
+
         PreviewType type = PreviewType.file;
         String mimeType = "application/octet-stream";
 
@@ -567,7 +570,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context).colorScheme.shadow.withAlpha(40),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.shadow.withAlpha(40),
                           blurRadius: 20,
                           offset: const Offset(0, 4),
                         ),
@@ -685,6 +690,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
       // FIX #2: Scroll to message from search result
       if (scrollToMsgId != null && mounted) {
         _scrollToMessage(scrollToMsgId);
+      }
+      if (mounted) {
+        _loadTheme();
       }
     });
   }
@@ -932,7 +940,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   Widget _buildAttachmentContent(ThemeData theme, Message message) {
     switch (message.attachmentType) {
-      // ── Imagem ────────────────────────────────────────────────────────
+      // Imagem
       case AttachmentType.image:
         return GestureDetector(
           onTap: () => Navigator.push(
@@ -961,18 +969,18 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ),
         );
 
-      // ── Vídeo ─────────────────────────────────────────────────────────
+      // Vídeo
       case AttachmentType.video:
         return _VideoThumbnailWidget(
           url: message.attachment!,
           fileName: message.attachmentName,
         );
 
-      // ── Áudio ─────────────────────────────────────────────────────────
+      // Áudio
       case AttachmentType.audio:
         return AudioMessageWidget(url: message.attachment!);
 
-      // ── Ficheiro genérico ─────────────────────────────────────────────
+      // Ficheiro genérico
       case AttachmentType.file:
         return _buildFileAttachment(theme, message);
 

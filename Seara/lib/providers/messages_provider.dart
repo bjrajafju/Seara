@@ -189,7 +189,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
-  /// Find the index of the "unread divider" based on lastReadAt.
+  // Find the index of the "unread divider" based on lastReadAt.
   int? get unreadDividerIndex {
     if (_lastReadAt == null) return null;
     for (int i = 0; i < _messages.length; i++) {
