@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:seara/models/conversation_model.dart';
 import 'package:seara/models/message_model.dart';
@@ -6,8 +7,8 @@ import 'package:seara/screens/messages/new_conversation_screen.dart';
 import 'package:seara/services/auth_service.dart';
 import 'package:seara/services/messages_service.dart';
 
-// Tipos de filtro de conteudo
-enum ContentFilter { all, images }
+enum ContentFilter { all, images, videos, audio, documents }
+enum TypeFilter { all, group, direct }
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -19,181 +20,112 @@ class MessagesScreen extends StatefulWidget {
 class _MessagesScreenState extends State<MessagesScreen> {
   final TextEditingController _searchController = TextEditingController();
   final MessagesService _messagesService = MessagesService();
+  Timer? _debounce;
 
-  List<Conversation> _allConversations = [];
-  List<Conversation> _filteredConversations = [];
+  List<Conversation> _conversations = [];
   bool _isLoading = true;
   bool _isSearching = false;
   int? _myId;
 
   // Filtros
   ContentFilter _contentFilter = ContentFilter.all;
+  TypeFilter _typeFilter = TypeFilter.all;
+  bool _filterUnread = false;
+  bool _filterPinned = false;
+  bool _filterOnlyUsernames = false;
   DateTime? _filterDateFrom;
   DateTime? _filterDateTo;
 
   @override
   void initState() {
     super.initState();
-    _loadConversations();
     _searchController.addListener(_onSearchChanged);
+    _loadConversations();
   }
 
   @override
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _loadConversations();
+    });
   }
 
   Future<void> _loadConversations() async {
     try {
       int? myId = await AuthService.getUserId();
       if (myId == null) return;
-      final data = await _messagesService.fetchConversations(myId);
+      
+      if (mounted) setState(() {
+        _isSearching = _searchController.text.isNotEmpty;
+        if (_conversations.isEmpty) _isLoading = true;
+      });
 
-      setState(() {
-        _allConversations = data;
-        _filteredConversations = data;
+      final Map<String, String> filters = {};
+      final q = _searchController.text.trim();
+      
+      if (q.isNotEmpty) filters['q'] = q;
+      if (_filterOnlyUsernames) filters['only_usernames'] = 'true';
+      if (_filterUnread) filters['unread'] = 'true';
+      if (_filterPinned) filters['is_pinned'] = 'true';
+      if (_typeFilter == TypeFilter.group) filters['type'] = 'group';
+      else if (_typeFilter == TypeFilter.direct) filters['type'] = 'direct';
+
+      if (_contentFilter == ContentFilter.images) filters['file_type'] = 'images';
+      else if (_contentFilter == ContentFilter.videos) filters['file_type'] = 'videos';
+      else if (_contentFilter == ContentFilter.audio) filters['file_type'] = 'audio';
+      else if (_contentFilter == ContentFilter.documents) filters['file_type'] = 'documents';
+
+      if (_filterDateFrom != null) filters['date_from'] = _filterDateFrom!.toIso8601String();
+      if (_filterDateTo != null) filters['date_to'] = _filterDateTo!.toIso8601String();
+
+      final data = await _messagesService.fetchConversations(myId, filters: filters);
+
+      if (mounted) {
+        setState(() {
+          _conversations = data;
+          _isLoading = false;
+          _isSearching = false;
+          _myId = myId;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() {
         _isLoading = false;
-        _myId = myId;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  // Chamado sempre que o texto da pesquisa muda
-  void _onSearchChanged() {
-    final query = _searchController.text.trim();
-
-    if (query.isEmpty) {
-      setState(() {
-        _filteredConversations = _applyFilters(_allConversations);
         _isSearching = false;
       });
-      return;
-    }
-
-    // Pesquisa local imediata por nome e ultima mensagem
-    final localResults = _allConversations.where((conv) {
-      final otherUser = conv.participants.where((u) => u.id != _myId).toList();
-
-      final displayName = conv.isGroup
-          ? (conv.name ?? "").toLowerCase()
-          : (otherUser.isNotEmpty
-                ? "${otherUser.first.username} ${otherUser.first.name}"
-                      .toLowerCase()
-                : "");
-
-      final lastMessageBody = conv.messages.isNotEmpty
-          ? conv.messages.first.body.toLowerCase()
-          : "";
-
-      return displayName.contains(query.toLowerCase()) ||
-          lastMessageBody.contains(query.toLowerCase());
-    }).toList();
-
-    setState(() {
-      _filteredConversations = _applyFilters(localResults);
-    });
-
-    // Pesquisa remota por texto de mensagens antigas (3+ caracteres)
-    if (query.length >= 3 && _myId != null) {
-      _searchRemote(query);
-    }
-  }
-
-  Future<void> _searchRemote(String query) async {
-    setState(() => _isSearching = true);
-
-    try {
-      final remoteResults = await _messagesService.searchConversations(
-        _myId!,
-        query,
-      );
-
-      if (!mounted) return;
-
-      // Construir mapa dos resultados remotos por id
-      final remoteById = {for (final c in remoteResults) c.id: c};
-
-      // Para cada conversa na lista filtrada atual:
-      // se existe versao remota com match, substitui (para mostrar mensagem correta no preview)
-      // se nao existe localmente mas existe remotamente, adiciona
-      final localIds = _filteredConversations.map((c) => c.id).toSet();
-
-      final merged = [
-        ..._filteredConversations.map(
-          (c) => remoteById.containsKey(c.id) ? remoteById[c.id]! : c,
-        ),
-        ...remoteResults.where((c) => !localIds.contains(c.id)),
-      ];
-
-      setState(() {
-        _filteredConversations = _applyFilters(merged);
-        _isSearching = false;
-      });
-    } catch (e) {
-      if (mounted) setState(() => _isSearching = false);
-    }
-  }
-
-  // Aplica filtros de data e tipo sobre uma lista
-  List<Conversation> _applyFilters(List<Conversation> list) {
-    return list.where((conv) {
-      // Filtro por tipo de conteudo
-      if (_contentFilter == ContentFilter.images) {
-        final lastMsg = conv.messages.isNotEmpty ? conv.messages.first : null;
-        if (lastMsg == null || lastMsg.attachment == null) return false;
-      }
-
-      // Filtro por data (usa updated_at da conversa)
-      if (_filterDateFrom != null) {
-        if (conv.updatedAt.isBefore(_filterDateFrom!)) return false;
-      }
-      if (_filterDateTo != null) {
-        // Incluir o dia completo da data de fim
-        final endOfDay = DateTime(
-          _filterDateTo!.year,
-          _filterDateTo!.month,
-          _filterDateTo!.day,
-          23,
-          59,
-          59,
-        );
-        if (conv.updatedAt.isAfter(endOfDay)) return false;
-      }
-
-      return true;
-    }).toList();
-  }
-
-  void _applyAndRefresh() {
-    final query = _searchController.text.trim();
-    if (query.isEmpty) {
-      setState(() {
-        _filteredConversations = _applyFilters(_allConversations);
-      });
-    } else {
-      _onSearchChanged();
     }
   }
 
   void _clearFilters() {
     setState(() {
       _contentFilter = ContentFilter.all;
+      _typeFilter = TypeFilter.all;
+      _filterUnread = false;
+      _filterPinned = false;
+      _filterOnlyUsernames = false;
       _filterDateFrom = null;
       _filterDateTo = null;
-      _filteredConversations = _applyFilters(_allConversations);
     });
+    _loadConversations();
   }
 
   bool get _hasActiveFilters =>
       _contentFilter != ContentFilter.all ||
+      _typeFilter != TypeFilter.all ||
+      _filterUnread ||
+      _filterPinned ||
+      _filterOnlyUsernames ||
       _filterDateFrom != null ||
       _filterDateTo != null;
 
-  // Abre painel de filtros avancados
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -203,15 +135,23 @@ class _MessagesScreenState extends State<MessagesScreen> {
       ),
       builder: (_) => _FilterPanel(
         contentFilter: _contentFilter,
+        typeFilter: _typeFilter,
+        filterUnread: _filterUnread,
+        filterPinned: _filterPinned,
+        filterOnlyUsernames: _filterOnlyUsernames,
         dateFrom: _filterDateFrom,
         dateTo: _filterDateTo,
-        onApply: (filter, from, to) {
+        onApply: (cFilter, tFilter, unread, pinned, onlyUsers, from, to) {
           setState(() {
-            _contentFilter = filter;
+            _contentFilter = cFilter;
+            _typeFilter = tFilter;
+            _filterUnread = unread;
+            _filterPinned = pinned;
+            _filterOnlyUsernames = onlyUsers;
             _filterDateFrom = from;
             _filterDateTo = to;
           });
-          _applyAndRefresh();
+          _loadConversations();
         },
         onClear: _clearFilters,
       ),
@@ -248,8 +188,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded),
                         onPressed: () {
-                          _searchController.clear();
-                          _applyAndRefresh();
+                          _searchController.clear(); // Will trigger _onSearchChanged automatically
                         },
                       )
                     : _isSearching
@@ -305,7 +244,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           ),
           const SizedBox(width: 6),
           Text(
-            "${_filteredConversations.length}",
+            "${_conversations.length}",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withAlpha(150),
             ),
@@ -493,7 +432,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       return const Expanded(child: Center(child: CircularProgressIndicator()));
     }
 
-    if (_filteredConversations.isEmpty) {
+    if (_conversations.isEmpty) {
       return Expanded(
         child: Center(
           child: Text(
@@ -511,11 +450,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return Expanded(
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemCount: _filteredConversations.length,
+        itemCount: _conversations.length,
         separatorBuilder: (_, __) =>
             Divider(height: 1, thickness: 0.5, color: theme.dividerColor),
         itemBuilder: (_, index) =>
-            _buildMessageItem(theme, _filteredConversations[index]),
+            _buildMessageItem(theme, _conversations[index]),
       ),
     );
   }
@@ -578,7 +517,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
 // Painel de filtros avancados
 class _FilterPanel extends StatefulWidget {
   const _FilterPanel({
+    super.key,
     required this.contentFilter,
+    required this.typeFilter,
+    required this.filterUnread,
+    required this.filterPinned,
+    required this.filterOnlyUsernames,
     required this.dateFrom,
     required this.dateTo,
     required this.onApply,
@@ -586,9 +530,21 @@ class _FilterPanel extends StatefulWidget {
   });
 
   final ContentFilter contentFilter;
+  final TypeFilter typeFilter;
+  final bool filterUnread;
+  final bool filterPinned;
+  final bool filterOnlyUsernames;
   final DateTime? dateFrom;
   final DateTime? dateTo;
-  final void Function(ContentFilter, DateTime?, DateTime?) onApply;
+  final void Function(
+    ContentFilter,
+    TypeFilter,
+    bool,
+    bool,
+    bool,
+    DateTime?,
+    DateTime?,
+  ) onApply;
   final VoidCallback onClear;
 
   @override
@@ -597,6 +553,10 @@ class _FilterPanel extends StatefulWidget {
 
 class _FilterPanelState extends State<_FilterPanel> {
   late ContentFilter _contentFilter;
+  late TypeFilter _typeFilter;
+  late bool _filterUnread;
+  late bool _filterPinned;
+  late bool _filterOnlyUsernames;
   DateTime? _dateFrom;
   DateTime? _dateTo;
 
@@ -604,6 +564,10 @@ class _FilterPanelState extends State<_FilterPanel> {
   void initState() {
     super.initState();
     _contentFilter = widget.contentFilter;
+    _typeFilter = widget.typeFilter;
+    _filterUnread = widget.filterUnread;
+    _filterPinned = widget.filterPinned;
+    _filterOnlyUsernames = widget.filterOnlyUsernames;
     _dateFrom = widget.dateFrom;
     _dateTo = widget.dateTo;
   }
@@ -619,7 +583,6 @@ class _FilterPanelState extends State<_FilterPanel> {
     setState(() {
       if (isFrom) {
         _dateFrom = picked;
-        // Garantir que data de fim nao e anterior a data de inicio
         if (_dateTo != null && _dateTo!.isBefore(_dateFrom!)) {
           _dateTo = _dateFrom;
         }
@@ -670,79 +633,162 @@ class _FilterPanelState extends State<_FilterPanel> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Type
+                  Text(
+                    "Tipo de conversa",
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      ChoiceChip(
+                        label: const Text("Todas"),
+                        selected: _typeFilter == TypeFilter.all,
+                        onSelected: (_) => setState(() => _typeFilter = TypeFilter.all),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Individuais"),
+                        selected: _typeFilter == TypeFilter.direct,
+                        onSelected: (_) => setState(() => _typeFilter = TypeFilter.direct),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Grupos"),
+                        selected: _typeFilter == TypeFilter.group,
+                        onSelected: (_) => setState(() => _typeFilter = TypeFilter.group),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-          // Tipo de conteudo
-          Text(
-            "Tipo de conteudo",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
+                  // Status
+                  Text(
+                    "Status",
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      FilterChip(
+                        label: const Text("Não Lidas"),
+                        selected: _filterUnread,
+                        onSelected: (val) => setState(() => _filterUnread = val),
+                      ),
+                      FilterChip(
+                        label: const Text("Fixadas"),
+                        selected: _filterPinned,
+                        onSelected: (val) => setState(() => _filterPinned = val),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Content Type
+                  Text(
+                    "Mídia/Arquivos",
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      ChoiceChip(
+                        label: const Text("Tudo"),
+                        selected: _contentFilter == ContentFilter.all,
+                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.all),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Imagens"),
+                        selected: _contentFilter == ContentFilter.images,
+                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.images),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Vídeos"),
+                        selected: _contentFilter == ContentFilter.videos,
+                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.videos),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Áudio"),
+                        selected: _contentFilter == ContentFilter.audio,
+                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.audio),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Documentos"),
+                        selected: _contentFilter == ContentFilter.documents,
+                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.documents),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Usernames search toggle
+                  SwitchListTile(
+                    title: const Text("Pesquisar apenas identificadores/nomes"),
+                    subtitle: const Text("Ignorar o conteúdo das mensagens ao buscar."),
+                    value: _filterOnlyUsernames,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (val) => setState(() => _filterOnlyUsernames = val),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Dates
+                  Text(
+                    "Período",
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickDate(true),
+                          icon: const Icon(Icons.calendar_today_rounded, size: 16),
+                          label: Text(_formatPickedDate(_dateFrom), style: theme.textTheme.bodySmall),
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text("até"),
+                      ),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickDate(false),
+                          icon: const Icon(Icons.calendar_today_rounded, size: 16),
+                          label: Text(_formatPickedDate(_dateTo), style: theme.textTheme.bodySmall),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            children: [
-              FilterChip(
-                label: const Text("Todos"),
-                selected: _contentFilter == ContentFilter.all,
-                onSelected: (_) =>
-                    setState(() => _contentFilter = ContentFilter.all),
-              ),
-              FilterChip(
-                label: const Text("Imagens"),
-                selected: _contentFilter == ContentFilter.images,
-                onSelected: (_) =>
-                    setState(() => _contentFilter = ContentFilter.images),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Filtro por data
-          Text(
-            "Periodo",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickDate(true),
-                  icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                  label: Text(
-                    _formatPickedDate(_dateFrom),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text("ate"),
-              ),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickDate(false),
-                  icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                  label: Text(
-                    _formatPickedDate(_dateTo),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Botao aplicar
+          
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                widget.onApply(_contentFilter, _dateFrom, _dateTo);
+                widget.onApply(
+                  _contentFilter,
+                  _typeFilter,
+                  _filterUnread,
+                  _filterPinned,
+                  _filterOnlyUsernames,
+                  _dateFrom,
+                  _dateTo,
+                );
                 Navigator.pop(context);
               },
               child: const Text("Aplicar filtros"),

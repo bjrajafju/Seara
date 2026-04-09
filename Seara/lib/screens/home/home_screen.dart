@@ -15,7 +15,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _token = '';
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
@@ -34,52 +33,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadToken() async {
-    final token = await AuthService.getToken();
-    setState(() {
-      _token = token ?? 'Nenhum token encontrado';
-    });
-  }
-
-  void _logout() async {
-    await AuthService.logout();
-    setState(() {
-      _token = '';
-    });
+    await AuthService.getToken();
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: Text('Seara')),
+      appBar: AppBar(title: const Text('Seara')),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color.fromARGB(255, 67, 17, 38),
-        selectedItemColor: const Color.fromARGB(255, 255, 0, 0),
-        unselectedItemColor: const Color.fromARGB(222, 149, 211, 247),
+        backgroundColor: cs.surface,
+        selectedItemColor: cs.primary,
+        unselectedItemColor: cs.onSurface.withAlpha(120),
         currentIndex: _selectedIndex,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.message),
-            label: "Mensagens",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.flash_on),
-            label: "Desafios",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: "Definições",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Perfil"),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Listar"),
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.message_rounded), label: 'Mensagens'),
+          BottomNavigationBarItem(icon: Icon(Icons.flash_on_rounded), label: 'Desafios'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Definições'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Perfil'),
+          BottomNavigationBarItem(icon: Icon(Icons.people_rounded), label: 'Listar'),
         ],
-        onTap: (int index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onTap: (int index) => setState(() => _selectedIndex = index),
       ),
     );
   }

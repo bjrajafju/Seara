@@ -479,7 +479,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
+                    color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(

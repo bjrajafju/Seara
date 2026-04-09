@@ -29,20 +29,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (error == null) {
-      // sucesso
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Conta criada com sucesso! Verifique o seu email.'),
         ),
       );
-
-      // vai para login screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => LoginScreen()),
       );
     } else {
-      // erro
       setState(() => _message = error);
     }
   }
@@ -56,35 +52,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: Text('Registar')),
+      appBar: AppBar(title: const Text('Registar')),
       body: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
               controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(labelText: 'Email'),
+              keyboardType: TextInputType.emailAddress,
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _isLoading
-                ? CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _register,
-                    child: Text('Criar conta'),
+                ? const CircularProgressIndicator()
+                : SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _register,
+                      child: const Text('Criar conta'),
+                    ),
                   ),
-            SizedBox(height: 10),
-            Text(_message, style: TextStyle(color: Colors.red)),
-            SizedBox(height: 20),
+            const SizedBox(height: 10),
+            if (_message.isNotEmpty)
+              Text(
+                _message,
+                style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
+                textAlign: TextAlign.center,
+              ),
+            const SizedBox(height: 20),
             TextButton(
               onPressed: _goToLogin,
-              child: Text("Já tem conta? Faça login"),
+              child: const Text("Já tem conta? Faça login"),
             ),
           ],
         ),

@@ -19,9 +19,17 @@ class MessagesPage {
 class MessagesService {
   static const String baseUrl = "http://localhost:3000";
 
-  Future<List<Conversation>> fetchConversations(int userId) async {
+  Future<List<Conversation>> fetchConversations(
+    int userId, {
+    Map<String, String>? filters,
+  }) async {
+    Uri uri = Uri.parse("$baseUrl/messages/conversations/$userId");
+    if (filters != null && filters.isNotEmpty) {
+      uri = uri.replace(queryParameters: filters);
+    }
+
     final response = await http.get(
-      Uri.parse("$baseUrl/messages/conversations/$userId"),
+      uri,
       headers: {"Content-Type": "application/json"},
     );
 
@@ -126,25 +134,5 @@ class MessagesService {
     }
   }
 
-  Future<List<Conversation>> searchConversations(
-    int userId,
-    String query,
-  ) async {
-    final encodedQuery = Uri.encodeQueryComponent(query);
-    final uri = Uri.parse(
-      "$baseUrl/messages/conversations/search/$userId?q=$encodedQuery",
-    );
-
-    final response = await http.get(
-      uri,
-      headers: {"Content-Type": "application/json"},
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Conversation.fromJson(json)).toList();
-    } else {
-      throw Exception("Erro ao pesquisar conversas");
-    }
-  }
+// Removed searchConversations as logic was unified into fetchConversations
 }

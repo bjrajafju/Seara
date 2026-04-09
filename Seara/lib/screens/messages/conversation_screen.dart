@@ -567,7 +567,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withAlpha(25),
+                          color: Theme.of(context).colorScheme.shadow.withAlpha(40),
                           blurRadius: 20,
                           offset: const Offset(0, 4),
                         ),
@@ -1176,7 +1176,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (message.body.isNotEmpty) ...[
-                        _buildRichMessageText(theme, message.body),
+                        _buildRichMessageText(
+                          theme,
+                          message.body,
+                          textColor: ConversationThemeHelper.getTheme(
+                            _convThemeId,
+                          ).otherTextColor,
+                        ),
                         _buildLinkPreview(message.body),
                       ],
                       if (message.attachment != null) ...[
@@ -1233,7 +1239,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (message.body.isNotEmpty) ...[
-                  _buildRichMessageText(theme, message.body),
+                  _buildRichMessageText(
+                    theme,
+                    message.body,
+                    textColor: ConversationThemeHelper.getTheme(
+                      _convThemeId,
+                    ).myTextColor,
+                  ),
                   _buildLinkPreview(message.body),
                 ],
                 if (message.attachment != null) ...[
@@ -1262,8 +1274,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   // Task 9: Clickable links in messages
-  Widget _buildRichMessageText(ThemeData theme, String text) {
-    final style = theme.textTheme.bodyMedium?.copyWith(height: 1.4);
+  Widget _buildRichMessageText(
+    ThemeData theme,
+    String text, {
+    Color? textColor,
+  }) {
+    final style = theme.textTheme.bodyMedium?.copyWith(
+      height: 1.4,
+      color: textColor,
+    );
     final linkStyle = style?.copyWith(
       color: theme.colorScheme.primary,
       decoration: TextDecoration.underline,
@@ -1330,7 +1349,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     switch (message.status) {
       case 2: // read
         icon = Icons.done_all_rounded;
-        color = Colors.blue;
+        color = theme.colorScheme.primary;
         tooltip = 'Lido';
         break;
       case 1: // delivered
@@ -1449,9 +1468,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
               Container(
                 width: 10,
                 height: 10,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.red,
+                  color: theme.colorScheme.error,
                 ),
               ),
               const SizedBox(width: 8),

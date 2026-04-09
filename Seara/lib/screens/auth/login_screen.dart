@@ -30,17 +30,15 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (error == null) {
-      // ✅ sucesso
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Login efetuado com sucesso!')));
+      ).showSnackBar(const SnackBar(content: Text('Login efetuado com sucesso!')));
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => HomeScreen()),
       );
     } else {
-      // ⚠️ erro
       setState(() => _message = error);
     }
   }
@@ -54,36 +52,49 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
+      appBar: AppBar(title: const Text('Login')),
       body: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
               controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(labelText: 'Email'),
+              keyboardType: TextInputType.emailAddress,
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _isLoading
-                ? CircularProgressIndicator()
-                : ElevatedButton(onPressed: _login, child: Text('Entrar')),
-            SizedBox(height: 10),
-            Text(
-              _message,
-              style: TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 20),
+                ? const CircularProgressIndicator()
+                : SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _login,
+                      child: const Text('Entrar'),
+                    ),
+                  ),
+            const SizedBox(height: 10),
+            if (_message.isNotEmpty)
+              Text(
+                _message,
+                // Use semantic error role — visible on all themes
+                style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
+                textAlign: TextAlign.center,
+              ),
+            const SizedBox(height: 20),
             TextButton(
               onPressed: _goToRegister,
-              child: Text("Não tem conta? Registe-se"),
+              child: const Text("Não tem conta? Registe-se"),
             ),
           ],
         ),

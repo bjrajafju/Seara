@@ -10,6 +10,8 @@ class ConversationThemeHelper {
       backgroundColors: [Color(0xFF1C1C1E), Color(0xFF2C2C2E)],
       myBubbleColor: null, // uses theme primaryContainer
       otherBubbleColor: null, // uses theme surfaceContainerHighest
+      myTextColor: null,
+      otherTextColor: null,
     ),
     ConversationThemeData(
       id: 1,
@@ -17,6 +19,8 @@ class ConversationThemeHelper {
       backgroundColors: [Color(0xFF0D1B2A), Color(0xFF1B3A4B)],
       myBubbleColor: Color(0xFF1B5E7E),
       otherBubbleColor: Color(0xFF0D3248),
+      myTextColor: Colors.white,
+      otherTextColor: Colors.white,
     ),
     ConversationThemeData(
       id: 2,
@@ -24,6 +28,8 @@ class ConversationThemeHelper {
       backgroundColors: [Color(0xFF2D1B69), Color(0xFF862F58)],
       myBubbleColor: Color(0xFF7B2D5F),
       otherBubbleColor: Color(0xFF3D2470),
+      myTextColor: Colors.white,
+      otherTextColor: Colors.white,
     ),
     ConversationThemeData(
       id: 3,
@@ -31,6 +37,8 @@ class ConversationThemeHelper {
       backgroundColors: [Color(0xFF0B3D2C), Color(0xFF1A5C3A)],
       myBubbleColor: Color(0xFF1E6B3F),
       otherBubbleColor: Color(0xFF0E4530),
+      myTextColor: Colors.white,
+      otherTextColor: Colors.white,
     ),
     ConversationThemeData(
       id: 4,
@@ -38,6 +46,8 @@ class ConversationThemeHelper {
       backgroundColors: [Color(0xFF0A0A1A), Color(0xFF1A1A3A)],
       myBubbleColor: Color(0xFF2A2A5A),
       otherBubbleColor: Color(0xFF141430),
+      myTextColor: Colors.white,
+      otherTextColor: Colors.white,
     ),
   ];
 
@@ -53,6 +63,8 @@ class ConversationThemeData {
   final List<Color> backgroundColors;
   final Color? myBubbleColor;
   final Color? otherBubbleColor;
+  final Color? myTextColor;
+  final Color? otherTextColor;
 
   const ConversationThemeData({
     required this.id,
@@ -60,6 +72,8 @@ class ConversationThemeData {
     required this.backgroundColors,
     this.myBubbleColor,
     this.otherBubbleColor,
+    this.myTextColor,
+    this.otherTextColor,
   });
 
   /// Returns true if this is the default theme (no custom colors)

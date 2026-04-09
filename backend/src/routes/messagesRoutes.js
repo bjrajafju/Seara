@@ -4,7 +4,6 @@ import {
     createConversation,
     getMessages,
     sendMessage,
-    searchMessages,
     getLinkPreview,
 } from "../controllers/messagesController.js";
 import {
@@ -27,7 +26,7 @@ const router = express.Router();
 
 // ── Conversation list & creation ─────────────────────────────────
 router.get("/link-preview", getLinkPreview);
-router.get("/conversations/search/:userId", searchMessages);
+
 router.get("/conversations/:userId", listConversations);
 router.post("/conversations", createConversation);
 

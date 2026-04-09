@@ -6,7 +6,7 @@ import 'package:seara/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.userId});
-  final int? userId; // se null, é o meu perfil
+  final int? userId;
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -58,29 +58,25 @@ class _ProfileScreenState extends State<ProfileScreen>
         isFollowing = isFollowingAsync;
       });
     } catch (e) {
-      print(e);
+      debugPrint('$e');
     }
   }
 
   Future<void> _follow() async {
-    if (_isProcessingFollow) return; // evita spam click
+    if (_isProcessingFollow) return;
 
     final myId = await AuthService.getUserId();
     final userId = widget.userId;
 
     if (myId == null || userId == null) return;
 
-    setState(() {
-      _isProcessingFollow = true;
-    });
+    setState(() => _isProcessingFollow = true);
 
     final previousState = isFollowing;
     final previousFollowers = profile!.followers;
 
-    // Optimistic UI update
     setState(() {
       isFollowing = !isFollowing;
-
       profile = Profile(
         id: profile!.id,
         username: profile!.username,
@@ -100,10 +96,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         isFollowing: previousState,
       );
     } catch (e) {
-      // rollback se falhar
       setState(() {
         isFollowing = previousState;
-
         profile = Profile(
           id: profile!.id,
           username: profile!.username,
@@ -116,11 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessingFollow = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessingFollow = false);
     }
   }
 
@@ -132,76 +122,89 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   // ---------- Build Widgets ----------
 
-  Widget _buildAvatarSection() {
+  Widget _buildAvatarSection(ThemeData theme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // Avatar
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(shape: BoxShape.circle),
-          child: Image.network(profile!.avatarUrl, fit: BoxFit.cover),
+        CircleAvatar(
+          radius: 50,
+          backgroundImage: NetworkImage(profile!.avatarUrl),
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
         ),
-
-        // Nome, username e stats
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildNameUsername(),
+            _buildNameUsername(theme),
             const SizedBox(height: 8),
-            _buildStatsRow(),
+            _buildStatsRow(theme),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildNameUsername() {
+  Widget _buildNameUsername(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           profile!.name.isNotEmpty ? profile!.name : profile!.username,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         Text(
           '@${profile!.username}',
-          style: TextStyle(color: Colors.grey[600]),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withAlpha(140),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(ThemeData theme) {
     return Row(
       children: [
-        _buildStatItem(profile!.posts.toString(), "Posts"),
+        _buildStatItem(theme, profile!.posts.toString(), 'Posts'),
         const SizedBox(width: 16),
-        _buildStatItem(profile!.following.toString(), "Following"),
+        _buildStatItem(theme, profile!.following.toString(), 'Following'),
         const SizedBox(width: 16),
-        _buildStatItem(profile!.followers.toString(), "Followers"),
+        _buildStatItem(theme, profile!.followers.toString(), 'Followers'),
       ],
     );
   }
 
-  Widget _buildStatItem(String value, String label) {
+  Widget _buildStatItem(ThemeData theme, String value, String label) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        Text(label),
+        Text(
+          value,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withAlpha(140),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildBioSection() {
+  Widget _buildBioSection(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(profile!.bio),
+      child: Text(
+        profile!.bio,
+        style: theme.textTheme.bodyMedium,
+      ),
     );
   }
 
-  Widget _buildButtonsRow() {
+  Widget _buildButtonsRow(ThemeData theme) {
     final isMyProfile = widget.userId == null;
 
     return Row(
@@ -217,10 +220,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               );
               if (updated == true) _loadProfile();
             },
-            child: const Text("Editar Perfil"),
+            child: const Text('Editar Perfil'),
           ),
-        TextButton(onPressed: () {}, child: const Text("Partilhar Perfil")),
-
+        TextButton(onPressed: () {}, child: const Text('Partilhar Perfil')),
         if (!isMyProfile)
           TextButton(
             onPressed: _isProcessingFollow ? null : _follow,
@@ -230,21 +232,25 @@ class _ProfileScreenState extends State<ProfileScreen>
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(isFollowing ? "Unfollow" : "Follow"),
+                : Text(isFollowing ? 'Unfollow' : 'Follow'),
           ),
         if (!isMyProfile)
-          TextButton(onPressed: () {}, child: const Text("Message")),
+          TextButton(onPressed: () {}, child: const Text('Message')),
       ],
     );
   }
 
-  Widget _buildProfileHeader() {
+  Widget _buildProfileHeader(ThemeData theme) {
     return Column(
-      children: [_buildAvatarSection(), _buildBioSection(), _buildButtonsRow()],
+      children: [
+        _buildAvatarSection(theme),
+        _buildBioSection(theme),
+        _buildButtonsRow(theme),
+      ],
     );
   }
 
-  Widget _buildPostsGrid() {
+  Widget _buildPostsGrid(ThemeData theme) {
     return GridView.builder(
       padding: EdgeInsets.zero,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -254,7 +260,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
       itemCount: 60,
       itemBuilder: (context, index) {
-        return Container(color: Colors.grey);
+        return Container(
+          color: theme.colorScheme.surfaceContainerHighest,
+        );
       },
     );
   }
@@ -263,6 +271,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     if (isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -272,7 +282,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
-            SliverToBoxAdapter(child: _buildProfileHeader()),
+            SliverToBoxAdapter(child: _buildProfileHeader(theme)),
             SliverAppBar(
               pinned: true,
               automaticallyImplyLeading: false,
@@ -283,7 +293,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         },
         body: TabBarView(
           controller: _tabController,
-          children: [_buildPostsGrid(), _buildPostsGrid(), _buildPostsGrid()],
+          children: [
+            _buildPostsGrid(theme),
+            _buildPostsGrid(theme),
+            _buildPostsGrid(theme),
+          ],
         ),
       ),
     );

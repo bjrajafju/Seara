@@ -78,7 +78,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Text(
             'Change profile photo',
             style: TextStyle(
-              color: Theme.of(context).primaryColor,
+              color: Theme.of(context).colorScheme.primary,
               fontWeight: FontWeight.w500,
             ),
           ),
