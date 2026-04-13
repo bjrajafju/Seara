@@ -45,6 +45,36 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
+  /// Load messages around a specific message (for jump-to-message feature).
+  /// Returns the index of the target message in the loaded messages.
+  Future<int?> loadMessagesAround(
+    int conversationId,
+    int messageId, {
+    int? userId,
+  }) async {
+    _isLoading = true;
+    _loadError = null;
+    notifyListeners();
+
+    try {
+      final page = await _service.fetchMessages(
+        conversationId,
+        around: messageId,
+        userId: userId,
+      );
+      _messages = page.messages;
+      _hasMore = page.hasMore;
+      _lastReadAt = page.lastReadAt;
+      return page.targetIndex;
+    } catch (e) {
+      _loadError = e.toString();
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Load older messages (scroll up).
   Future<void> loadMore(int conversationId, {int? userId}) async {
     if (_isLoadingMore || !_hasMore || _messages.isEmpty) return;

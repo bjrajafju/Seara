@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:seara/services/api_client.dart';
 import '../models/link_preview_model.dart';
 
 class LinkPreviewService {
@@ -18,7 +18,7 @@ class LinkPreviewService {
         queryParameters: {'url': url},
       );
 
-      final response = await http.get(uri);
+      final response = await ApiClient.get(uri);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

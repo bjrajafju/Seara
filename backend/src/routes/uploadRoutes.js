@@ -1,4 +1,5 @@
 import express from "express";
+import { authenticate } from "../middleware/authMiddleware.js";
 import multer from "multer";
 import { uploadFile } from "../controllers/uploadController.js";
 
@@ -16,6 +17,8 @@ const upload = multer({
 });
 
 const router = express.Router();
+
+router.use(authenticate);
 
 router.post("/:bucket", upload.single("file"), uploadFile);
 

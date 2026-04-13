@@ -389,6 +389,7 @@ export const getMessages = async (req, res) => {
     const { conversationId } = req.params;
     const limit = parseInt(req.query.limit) || DEFAULT_PAGE_SIZE;
     const before = req.query.before ? parseInt(req.query.before) : null;
+    const around = req.query.around ? parseInt(req.query.around) : null;
     const requestingUserId = req.query.userId
         ? parseInt(req.query.userId)
         : null;
@@ -412,7 +413,181 @@ export const getMessages = async (req, res) => {
                 .is("delivered_at", null);
         }
 
-        // Build query 
+        // ===== SPECIAL CASE: Around a specific message =====
+        if (around) {
+            // Get the target message
+            const { data: targetMsg, error: targetErr } = await supabase
+                .from("messages")
+                .select("created_at, id")
+                .eq("id", around)
+                .eq("conversation_id", conversationId)
+                .single();
+
+            if (targetErr || !targetMsg) {
+                return res.status(404).json({ error: "Mensagem não encontrada." });
+            }
+
+            const aroundLimit = Math.floor(limit / 2);
+
+            // Get messages BEFORE the target
+            const { data: before_msgs } = await supabase
+                .from("messages")
+                .select(
+                    `
+                    id,
+                    conversation_id,
+                    user_id,
+                    body,
+                    attachment,
+                    attachment_type,
+                    attachment_name,
+                    delivered_at,
+                    expires_at,
+                    is_system,
+                    created_at,
+                    updated_at,
+                    users (
+                        id,
+                        username,
+                        avatar
+                    )
+                `
+                )
+                .eq("conversation_id", conversationId)
+                .or(`expires_at.is.null,expires_at.gt.${now}`)
+                .lt("created_at", targetMsg.created_at)
+                .order("created_at", { ascending: false })
+                .limit(aroundLimit);
+
+            // Get the target message details
+            const { data: target_full } = await supabase
+                .from("messages")
+                .select(
+                    `
+                    id,
+                    conversation_id,
+                    user_id,
+                    body,
+                    attachment,
+                    attachment_type,
+                    attachment_name,
+                    delivered_at,
+                    expires_at,
+                    is_system,
+                    created_at,
+                    updated_at,
+                    users (
+                        id,
+                        username,
+                        avatar
+                    )
+                `
+                )
+                .eq("id", around)
+                .single();
+
+            // Get messages AFTER the target
+            const { data: after_msgs } = await supabase
+                .from("messages")
+                .select(
+                    `
+                    id,
+                    conversation_id,
+                    user_id,
+                    body,
+                    attachment,
+                    attachment_type,
+                    attachment_name,
+                    delivered_at,
+                    expires_at,
+                    is_system,
+                    created_at,
+                    updated_at,
+                    users (
+                        id,
+                        username,
+                        avatar
+                    )
+                `
+                )
+                .eq("conversation_id", conversationId)
+                .or(`expires_at.is.null,expires_at.gt.${now}`)
+                .gt("created_at", targetMsg.created_at)
+                .order("created_at", { ascending: true })
+                .limit(aroundLimit + 5);
+
+            const combined = [
+                ...(before_msgs || []).reverse(),
+                target_full,
+                ...(after_msgs || []),
+            ];
+
+            let othersLastRead = [];
+            if (requestingUserId) {
+                const { data: otherReads } = await supabase
+                    .from("conversation_user")
+                    .select("user_id, last_read_at")
+                    .eq("conversation_id", conversationId)
+                    .neq("user_id", requestingUserId);
+
+                othersLastRead = otherReads || [];
+            }
+
+            const formatted = combined.map((msg) => {
+                let status = 0;
+                if (msg.user_id === requestingUserId) {
+                    if (msg.delivered_at) status = 1;
+                    const isRead = othersLastRead.some(
+                        (r) =>
+                            r.last_read_at &&
+                            new Date(r.last_read_at) >=
+                                new Date(msg.created_at),
+                    );
+                    if (isRead) status = 2;
+                }
+
+                return {
+                    id: msg.id,
+                    conversation_id: msg.conversation_id,
+                    user_id: msg.user_id,
+                    body: msg.body,
+                    attachment: msg.attachment,
+                    attachment_type: msg.attachment_type,
+                    attachment_name: msg.attachment_name,
+                    delivered_at: msg.delivered_at,
+                    is_system: msg.is_system || false,
+                    status,
+                    created_at: msg.created_at,
+                    updated_at: msg.updated_at,
+                    sender_username: msg.users?.username ?? null,
+                    sender_avatar: msg.users?.avatar ?? null,
+                };
+            });
+
+            const targetIndex = formatted.findIndex((m) => m.id === around);
+
+            let myLastReadAt = null;
+            if (requestingUserId) {
+                const { data: myMembership } = await supabase
+                    .from("conversation_user")
+                    .select("last_read_at")
+                    .eq("conversation_id", conversationId)
+                    .eq("user_id", requestingUserId)
+                    .single();
+
+                myLastReadAt = myMembership?.last_read_at || null;
+            }
+
+            return res.json({
+                messages: formatted,
+                has_more: false,
+                target_index: targetIndex,
+                target_message_id: around,
+                last_read_at: myLastReadAt,
+            });
+        }
+
+        // ===== NORMAL PAGINATION =====
         let query = supabase
             .from("messages")
             .select(
@@ -439,7 +614,7 @@ export const getMessages = async (req, res) => {
             .eq("conversation_id", conversationId)
             .or(`expires_at.is.null,expires_at.gt.${now}`)
             .order("created_at", { ascending: false })
-            .limit(limit + 1); // +1 to check has_more
+            .limit(limit + 1);
 
         // Cursor pagination: load messages before this ID
         if (before) {

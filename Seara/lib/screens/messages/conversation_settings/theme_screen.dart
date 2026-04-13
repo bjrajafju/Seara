@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:seara/services/conversation_settings_service.dart';
+import 'package:seara/utils/conversation_theme_helper.dart';
 
 class ThemeScreen extends StatefulWidget {
   const ThemeScreen({
@@ -22,14 +23,6 @@ class ThemeScreen extends StatefulWidget {
 class _ThemeScreenState extends State<ThemeScreen> {
   late int _selectedTheme;
   bool _isSaving = false;
-
-  static const _themes = [
-    _ThemeOption(0, 'Padrão', [Color(0xFF1C1C1E), Color(0xFF2C2C2E)]),
-    _ThemeOption(1, 'Oceano', [Color(0xFF0D1B2A), Color(0xFF1B3A4B)]),
-    _ThemeOption(2, 'Pôr do Sol', [Color(0xFF2D1B69), Color(0xFF862F58)]),
-    _ThemeOption(3, 'Floresta', [Color(0xFF0B3D2C), Color(0xFF1A5C3A)]),
-    _ThemeOption(4, 'Meia-noite', [Color(0xFF0A0A1A), Color(0xFF1A1A3A)]),
-  ];
 
   @override
   void initState() {
@@ -62,7 +55,7 @@ class _ThemeScreenState extends State<ThemeScreen> {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Tema alterado para ${_themes[theme].name}'),
+          content: Text('Tema alterado para ${ConversationThemeHelper.getTheme(theme).name}'),
           duration: const Duration(seconds: 1),
         ),
       );
@@ -101,9 +94,9 @@ class _ThemeScreenState extends State<ThemeScreen> {
                 crossAxisSpacing: 12,
                 childAspectRatio: 1.3,
               ),
-              itemCount: _themes.length,
+              itemCount: ConversationThemeHelper.themes.length,
               itemBuilder: (context, index) {
-                final t = _themes[index];
+                final t = ConversationThemeHelper.themes[index];
                 final isSelected = _selectedTheme == t.id;
 
                 return GestureDetector(
@@ -112,7 +105,7 @@ class _ThemeScreenState extends State<ThemeScreen> {
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: t.colors,
+                        colors: t.backgroundColors,
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -146,13 +139,13 @@ class _ThemeScreenState extends State<ThemeScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(25),
+                              color: t.otherBubbleColor ?? Colors.white.withAlpha(25),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Olá! 👋',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: t.otherTextColor ?? Colors.white70,
                                 fontSize: 11,
                               ),
                             ),
@@ -167,13 +160,13 @@ class _ThemeScreenState extends State<ThemeScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(40),
+                              color: t.myBubbleColor ?? Colors.white.withAlpha(40),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Tudo bem? 😊',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: t.myTextColor ?? Colors.white70,
                                 fontSize: 11,
                               ),
                             ),
@@ -218,11 +211,4 @@ class _ThemeScreenState extends State<ThemeScreen> {
             ),
     );
   }
-}
-
-class _ThemeOption {
-  final int id;
-  final String name;
-  final List<Color> colors;
-  const _ThemeOption(this.id, this.name, this.colors);
 }

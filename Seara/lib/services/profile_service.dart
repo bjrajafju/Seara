@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:seara/services/api_client.dart';
 import 'package:seara/models/profile_model.dart';
 import 'package:seara/models/auxiliar/user_with_relationship_model.dart';
 
@@ -8,7 +8,7 @@ class ProfileService {
 
   static Future<Profile> getProfile(int userId) async {
     final url = Uri.parse('$baseUrl/profile/$userId');
-    final response = await http.get(url);
+    final response = await ApiClient.get(url);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -27,7 +27,7 @@ class ProfileService {
   }) async {
     final url = Uri.parse('$baseUrl/profile/$userId');
 
-    final response = await http.put(
+    final response = await ApiClient.put(
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -46,7 +46,7 @@ class ProfileService {
 
   static Future<List<Map<String, dynamic>>> getAllUsers() async {
     final url = Uri.parse('$baseUrl/profile/users');
-    final response = await http.get(url);
+    final response = await ApiClient.get(url);
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -61,7 +61,7 @@ class ProfileService {
     required int followingId,
   }) async {
     final url = Uri.parse('$baseUrl/profile/isFollowing');
-    final response = await http.post(
+    final response = await ApiClient.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'followerId': followerId, 'followingId': followingId}),
@@ -79,7 +79,7 @@ class ProfileService {
   }) async {
     final endpoint = isFollowing ? 'unfollow' : 'follow';
 
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse('$baseUrl/profile/$endpoint'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'followerId': followerId, 'followingId': followingId}),
@@ -95,7 +95,7 @@ class ProfileService {
     int myId,
   ) async {
     final url = Uri.parse('$baseUrl/profile/users-with-relationship/$myId');
-    final response = await http.get(url);
+    final response = await ApiClient.get(url);
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);

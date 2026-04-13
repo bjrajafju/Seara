@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../home/home_screen.dart';
 import 'register_screen.dart';
 
@@ -13,33 +14,55 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String _message = '';
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    super.dispose();
+  }
+
   void _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _message = 'Todos os campos são obrigatórios.');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _message = '';
     });
 
-    final error = await AuthService.login(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final error = await authProvider.login(email, password);
 
-    setState(() => _isLoading = false);
+    if (!mounted) return;
 
     if (error == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Login efetuado com sucesso!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login efetuado com sucesso!')),
+      );
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => HomeScreen()),
       );
     } else {
-      setState(() => _message = error);
+      setState(() {
+        _isLoading = false;
+        _message = error;
+      });
     }
   }
 
@@ -57,46 +80,76 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 20),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _login,
-                      child: const Text('Entrar'),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: AutofillGroup(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextField(
+                  controller: _emailController,
+                  focusNode: _emailFocusNode,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  textInputAction: TextInputAction.next,
+                  enabled: !_isLoading,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  onSubmitted: (_) {
+                    FocusScope.of(context).requestFocus(_passwordFocusNode);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _passwordController,
+                  focusNode: _passwordFocusNode,
+                  obscureText: _obscurePassword,
+                  autofillHints: const [AutofillHints.password],
+                  textInputAction: TextInputAction.done,
+                  enabled: !_isLoading,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
                     ),
                   ),
-            const SizedBox(height: 10),
-            if (_message.isNotEmpty)
-              Text(
-                _message,
-                // Use semantic error role — visible on all themes
-                style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
-                textAlign: TextAlign.center,
-              ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: _goToRegister,
-              child: const Text("Não tem conta? Registe-se"),
+                  onSubmitted: (_) => _login(),
+                ),
+                const SizedBox(height: 20),
+                _isLoading
+                    ? const CircularProgressIndicator()
+                    : SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _login,
+                          child: const Text('Entrar'),
+                        ),
+                      ),
+                const SizedBox(height: 10),
+                if (_message.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      _message,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: _isLoading ? null : _goToRegister,
+                  child: const Text("Não tem conta? Registe-se"),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

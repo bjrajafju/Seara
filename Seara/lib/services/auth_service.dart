@@ -1,43 +1,43 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
   static const String baseUrl =
       'http://localhost:3000/auth'; // mudar dependendo do disposivito
+
+  static const _storage = FlutterSecureStorage(
+     aOptions: AndroidOptions(encryptedSharedPreferences: true)
+  );
 
   // Guarda tokens localmente
   static Future<void> saveSession(
     String accessToken,
     String refreshToken,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('access_token', accessToken);
-    await prefs.setString('refresh_token', refreshToken);
+    await _storage.write(key: 'access_token', value: accessToken);
+    await _storage.write(key: 'refresh_token', value: refreshToken);
   }
 
   // Carrega token
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('access_token');
+    return await _storage.read(key: 'access_token');
   }
 
   // Guarda userId localmente
   static Future<void> saveUserId(int userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('user_id', userId);
+    await _storage.write(key: 'user_id', value: userId.toString());
   }
 
   // Lê userId
   static Future<int?> getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('user_id');
+    final val = await _storage.read(key: 'user_id');
+    return val != null ? int.tryParse(val) : null;
   }
 
   // Logout
   static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await _storage.deleteAll();
   }
 
   // REGISTER

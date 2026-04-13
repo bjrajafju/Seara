@@ -299,7 +299,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ConversationScreen(conversation: conversation),
+            builder: (_) => ConversationScreen(
+              conversation: conversation,
+              initialScrollToMessageId: 
+                _searchController.text.isNotEmpty && conversation.messages.isNotEmpty 
+                  ? conversation.messages.first.id 
+                  : null,
+            ),
           ),
         );
         // Recarregar conversas ao voltar para atualizar previews

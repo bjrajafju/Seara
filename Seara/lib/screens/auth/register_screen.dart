@@ -12,21 +12,62 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+  final _confirmPasswordFocusNode = FocusNode();
+
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String _message = '';
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
+    super.dispose();
+  }
+
   void _register() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      setState(() => _message = 'Todos os campos são obrigatórios.');
+      return;
+    }
+
+    // Basic email format check
+    if (!RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(email)) {
+      setState(() => _message = 'Formato de email inválido.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setState(() => _message = 'A password deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      setState(() => _message = 'As passwords não coincidem.');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _message = '';
     });
 
-    final error = await AuthService.register(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
+    final error = await AuthService.register(email, password);
 
-    setState(() => _isLoading = false);
+    if (!mounted) return;
 
     if (error == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -39,7 +80,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(builder: (_) => LoginScreen()),
       );
     } else {
-      setState(() => _message = error);
+      setState(() {
+        _isLoading = false;
+        _message = error;
+      });
     }
   }
 
@@ -57,45 +101,102 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Registar')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 20),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _register,
-                      child: const Text('Criar conta'),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: AutofillGroup(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextField(
+                  controller: _emailController,
+                  focusNode: _emailFocusNode,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  textInputAction: TextInputAction.next,
+                  enabled: !_isLoading,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  onSubmitted: (_) {
+                    FocusScope.of(context).requestFocus(_passwordFocusNode);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _passwordController,
+                  focusNode: _passwordFocusNode,
+                  obscureText: _obscurePassword,
+                  autofillHints: const [AutofillHints.newPassword],
+                  textInputAction: TextInputAction.next,
+                  enabled: !_isLoading,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    helperText: 'A password deve ter no mínimo 6 caracteres.',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
                     ),
                   ),
-            const SizedBox(height: 10),
-            if (_message.isNotEmpty)
-              Text(
-                _message,
-                style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
-                textAlign: TextAlign.center,
-              ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: _goToLogin,
-              child: const Text("Já tem conta? Faça login"),
+                  onSubmitted: (_) {
+                    FocusScope.of(context).requestFocus(_confirmPasswordFocusNode);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _confirmPasswordController,
+                  focusNode: _confirmPasswordFocusNode,
+                  obscureText: _obscureConfirmPassword,
+                  autofillHints: const [AutofillHints.newPassword],
+                  textInputAction: TextInputAction.done,
+                  enabled: !_isLoading,
+                  decoration: InputDecoration(
+                    labelText: 'Confirmar Password',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
+                        });
+                      },
+                    ),
+                  ),
+                  onSubmitted: (_) => _register(),
+                ),
+                const SizedBox(height: 24),
+                _isLoading
+                    ? const CircularProgressIndicator()
+                    : SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _register,
+                          child: const Text('Criar conta'),
+                        ),
+                      ),
+                const SizedBox(height: 10),
+                if (_message.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      _message,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: _isLoading ? null : _goToLogin,
+                  child: const Text("Já tem conta? Faça login"),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

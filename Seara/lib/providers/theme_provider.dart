@@ -8,30 +8,84 @@ import '../theme/app_theme.dart';
 ///  1. Add a new value here.
 ///  2. Add a matching ThemeData getter in [AppTheme].
 ///  3. Register it in [ThemeProvider.themes].
-enum AppThemeId { light, dark, highContrast }
+
+enum AppThemeId {
+  light,
+  dark,
+  highContrast,
+  amoled,
+  ocean,
+  sunset,
+  forest,
+  midnight,
+  rose,
+  amber,
+  nord,
+  dracula,
+  mocha,
+  arctic,
+  sakura,
+  slate,
+}
 
 class ThemeProvider extends ChangeNotifier {
   static const _prefKey = 'seara_theme_id';
 
-  /// Registry of all available themes. Add new entries here to expose them.
   static final Map<AppThemeId, ThemeData> themes = {
     AppThemeId.light: AppTheme.light,
     AppThemeId.dark: AppTheme.dark,
     AppThemeId.highContrast: AppTheme.highContrast,
+    AppThemeId.amoled: AppTheme.amoled,
+    AppThemeId.ocean: AppTheme.ocean,
+    AppThemeId.sunset: AppTheme.sunset,
+    AppThemeId.forest: AppTheme.forest,
+    AppThemeId.midnight: AppTheme.midnight,
+    AppThemeId.rose: AppTheme.rose,
+    AppThemeId.amber: AppTheme.amber,
+    AppThemeId.nord: AppTheme.nord,
+    AppThemeId.dracula: AppTheme.dracula,
+    AppThemeId.mocha: AppTheme.mocha,
+    AppThemeId.arctic: AppTheme.arctic,
+    AppThemeId.sakura: AppTheme.sakura,
+    AppThemeId.slate: AppTheme.slate,
   };
 
-  /// Human-readable labels for each theme (used in Settings UI).
   static const Map<AppThemeId, String> labels = {
     AppThemeId.light: 'Claro',
     AppThemeId.dark: 'Escuro',
     AppThemeId.highContrast: 'Alto Contraste',
+    AppThemeId.amoled: 'AMOLED',
+    AppThemeId.ocean: 'Oceano',
+    AppThemeId.sunset: 'Por do Sol',
+    AppThemeId.forest: 'Floresta',
+    AppThemeId.midnight: 'Meia-noite',
+    AppThemeId.rose: 'Rosa',
+    AppThemeId.amber: 'Ambar',
+    AppThemeId.nord: 'Nord',
+    AppThemeId.dracula: 'Dracula',
+    AppThemeId.mocha: 'Mocha',
+    AppThemeId.arctic: 'Artico',
+    AppThemeId.sakura: 'Sakura',
+    AppThemeId.slate: 'Ardosia',
   };
 
-  /// Icons for each theme (used in Settings UI).
   static const Map<AppThemeId, IconData> icons = {
     AppThemeId.light: Icons.light_mode_rounded,
     AppThemeId.dark: Icons.dark_mode_rounded,
     AppThemeId.highContrast: Icons.contrast_rounded,
+    AppThemeId.amoled: Icons.phone_android_rounded,
+    AppThemeId.ocean: Icons.water_rounded,
+    AppThemeId.sunset: Icons.wb_twilight_rounded,
+    AppThemeId.forest: Icons.forest_rounded,
+    AppThemeId.midnight: Icons.nightlight_rounded,
+    AppThemeId.rose: Icons.favorite_rounded,
+    AppThemeId.amber: Icons.wb_sunny_rounded,
+    AppThemeId.nord: Icons.ac_unit_rounded,
+    AppThemeId.dracula: Icons.dark_mode_rounded,
+    AppThemeId.mocha: Icons.coffee_rounded,
+    AppThemeId.arctic: Icons.severe_cold_rounded,
+    AppThemeId.sakura: Icons.local_florist_rounded,
+    AppThemeId.slate: Icons.layers_rounded,
   };
 
   AppThemeId _activeId = AppThemeId.dark;
@@ -40,7 +94,6 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeData get currentTheme => themes[_activeId] ?? AppTheme.dark;
 
-  /// Call once at startup (inside ChangeNotifierProvider create callback).
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefKey);
@@ -53,7 +106,6 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  /// Switch to [id] and persist the selection.
   Future<void> setTheme(AppThemeId id) async {
     if (_activeId == id) return;
     _activeId = id;

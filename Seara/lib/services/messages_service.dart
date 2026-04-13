@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:seara/services/api_client.dart';
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
 
@@ -8,11 +8,15 @@ class MessagesPage {
   final List<Message> messages;
   final bool hasMore;
   final DateTime? lastReadAt;
+  final int? targetIndex; // Position of target message for jumping
+  final int? targetMessageId; // ID of the target message (for highlighting)
 
   MessagesPage({
     required this.messages,
     required this.hasMore,
     this.lastReadAt,
+    this.targetIndex,
+    this.targetMessageId,
   });
 }
 
@@ -28,7 +32,7 @@ class MessagesService {
       uri = uri.replace(queryParameters: filters);
     }
 
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {"Content-Type": "application/json"},
     );
@@ -46,7 +50,7 @@ class MessagesService {
     required List<int> participantIds,
     String? name,
   }) async {
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse("$baseUrl/messages/conversations"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
@@ -64,22 +68,24 @@ class MessagesService {
     }
   }
 
-  /// Fetch messages with cursor-based pagination.
+  /// Fetch messages with cursor-based pagination or around a target message.
   Future<MessagesPage> fetchMessages(
     int conversationId, {
     int limit = 30,
     int? before,
+    int? around,
     int? userId,
   }) async {
     final params = <String, String>{"limit": limit.toString()};
     if (before != null) params['before'] = before.toString();
+    if (around != null) params['around'] = around.toString();
     if (userId != null) params['userId'] = userId.toString();
 
     final uri = Uri.parse(
       "$baseUrl/messages/conversations/$conversationId/messages",
     ).replace(queryParameters: params);
 
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {"Content-Type": "application/json"},
     );
@@ -88,18 +94,22 @@ class MessagesService {
       final data = jsonDecode(response.body);
 
       final List<dynamic> messagesJson = data['messages'] ?? data;
-      final messages =
-          messagesJson.map((m) => Message.fromJson(m)).toList();
+      final messages = messagesJson.map((m) => Message.fromJson(m)).toList();
 
       final hasMore = data['has_more'] as bool? ?? false;
       final lastReadAt = data['last_read_at'] != null
           ? DateTime.tryParse(data['last_read_at'])
           : null;
 
+      final targetIndex = data['target_index'] as int?;
+      final targetMessageId = data['target_message_id'] as int?;
+
       return MessagesPage(
         messages: messages,
         hasMore: hasMore,
         lastReadAt: lastReadAt,
+        targetIndex: targetIndex,
+        targetMessageId: targetMessageId,
       );
     } else {
       throw Exception("Erro ao carregar mensagens");
@@ -114,7 +124,7 @@ class MessagesService {
     String? attachmentType,
     String? attachmentName,
   }) async {
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse("$baseUrl/messages/conversations/$conversationId/messages"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
@@ -134,5 +144,5 @@ class MessagesService {
     }
   }
 
-// Removed searchConversations as logic was unified into fetchConversations
+  // Removed searchConversations as logic was unified into fetchConversations
 }

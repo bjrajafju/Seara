@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:seara/services/profile_service.dart';
+import 'package:seara/services/auth_service.dart';
+import 'package:seara/services/messages_service.dart';
+import 'package:seara/screens/messages/conversation_screen.dart';
 import 'edit_profile_screen.dart';
 import 'package:seara/models/profile_model.dart';
-import 'package:seara/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.userId});
@@ -25,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool isLoading = true;
   bool isFollowing = false;
   bool _isProcessingFollow = false;
+  bool _isCreatingMessage = false; // Track message creation state
 
   @override
   void initState() {
@@ -114,6 +117,42 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  /// Create or fetch 1:1 conversation and navigate to it
+  Future<void> _startMessage() async {
+    if (_isCreatingMessage) return;
+
+    final myId = await AuthService.getUserId();
+    final userId = widget.userId;
+
+    if (myId == null || userId == null) return;
+
+    setState(() => _isCreatingMessage = true);
+
+    try {
+      final messagesService = MessagesService();
+      final conversation = await messagesService.createConversation(
+        creatorId: myId,
+        participantIds: [userId],
+      );
+
+      if (!mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ConversationScreen(conversation: conversation),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao iniciar conversa: $e')));
+    } finally {
+      if (mounted) setState(() => _isCreatingMessage = false);
+    }
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -197,10 +236,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildBioSection(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        profile!.bio,
-        style: theme.textTheme.bodyMedium,
-      ),
+      child: Text(profile!.bio, style: theme.textTheme.bodyMedium),
     );
   }
 
@@ -235,7 +271,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                 : Text(isFollowing ? 'Unfollow' : 'Follow'),
           ),
         if (!isMyProfile)
-          TextButton(onPressed: () {}, child: const Text('Message')),
+          TextButton(
+            onPressed: _isCreatingMessage ? null : _startMessage,
+            child: _isCreatingMessage
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Message'),
+          ),
       ],
     );
   }
@@ -260,9 +305,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
       itemCount: 60,
       itemBuilder: (context, index) {
-        return Container(
-          color: theme.colorScheme.surfaceContainerHighest,
-        );
+        return Container(color: theme.colorScheme.surfaceContainerHighest);
       },
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:seara/services/api_client.dart';
 
 class UploadResult {
   final String url;
@@ -25,6 +26,7 @@ class UploadService {
   }) async {
     final uri = Uri.parse("$baseUrl/upload/$bucket");
     final request = http.MultipartRequest("POST", uri);
+    request.headers.addAll(await ApiClient.attachAuthHeaders(null));
 
     request.files.add(
       http.MultipartFile.fromBytes("file", fileBytes, filename: fileName),

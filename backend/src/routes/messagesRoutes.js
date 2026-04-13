@@ -1,4 +1,5 @@
 import express from "express";
+import { authenticate } from "../middleware/authMiddleware.js";
 import {
     listConversations,
     createConversation,
@@ -23,6 +24,8 @@ import {
 } from "../controllers/conversationSettingsController.js";
 
 const router = express.Router();
+
+router.use(authenticate);
 
 // Conversation list & creation
 router.get("/link-preview", getLinkPreview);

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:seara/services/api_client.dart';
 import '../models/conversation_settings_model.dart';
 import '../models/message_model.dart';
 
@@ -11,7 +11,7 @@ class ConversationSettingsService {
     int conversationId,
     int userId,
   ) async {
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse(
         "$baseUrl/conversations/$conversationId/details?userId=$userId",
       ),
@@ -30,7 +30,7 @@ class ConversationSettingsService {
     int userId,
     String name,
   ) async {
-    final response = await http.put(
+    final response = await ApiClient.put(
       Uri.parse("$baseUrl/conversations/$conversationId/name"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId, "name": name}),
@@ -48,7 +48,7 @@ class ConversationSettingsService {
     int userId,
     String imageUrl,
   ) async {
-    final response = await http.put(
+    final response = await ApiClient.put(
       Uri.parse("$baseUrl/conversations/$conversationId/image"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId, "image": imageUrl}),
@@ -66,7 +66,7 @@ class ConversationSettingsService {
     int userId,
     List<int> memberIds,
   ) async {
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse("$baseUrl/conversations/$conversationId/members"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId, "memberIds": memberIds}),
@@ -89,7 +89,7 @@ class ConversationSettingsService {
     int targetId,
     int userId,
   ) async {
-    final response = await http.delete(
+    final response = await ApiClient.delete(
       Uri.parse(
         "$baseUrl/conversations/$conversationId/members/$targetId?userId=$userId",
       ),
@@ -108,7 +108,7 @@ class ConversationSettingsService {
     int userId,
     int role,
   ) async {
-    final response = await http.put(
+    final response = await ApiClient.put(
       Uri.parse(
         "$baseUrl/conversations/$conversationId/members/$targetId/role",
       ),
@@ -128,7 +128,7 @@ class ConversationSettingsService {
     int userId,
     Map<String, dynamic> settings,
   ) async {
-    final response = await http.put(
+    final response = await ApiClient.put(
       Uri.parse("$baseUrl/conversations/$conversationId/settings"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId, ...settings}),
@@ -147,7 +147,7 @@ class ConversationSettingsService {
     required bool isMuted,
     String? mutedUntil,
   }) async {
-    final response = await http.put(
+    final response = await ApiClient.put(
       Uri.parse("$baseUrl/conversations/$conversationId/notifications"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
@@ -168,7 +168,7 @@ class ConversationSettingsService {
     int conversationId,
     int userId,
   ) async {
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse("$baseUrl/conversations/$conversationId/leave"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId}),
@@ -182,7 +182,7 @@ class ConversationSettingsService {
 
   /// Toggle pin conversation.
   static Future<bool> togglePin(int conversationId, int userId) async {
-    final response = await http.put(
+    final response = await ApiClient.put(
       Uri.parse("$baseUrl/conversations/$conversationId/pin"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId}),
@@ -198,7 +198,7 @@ class ConversationSettingsService {
 
   /// Mark conversation as read.
   static Future<void> markAsRead(int conversationId, int userId) async {
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse("$baseUrl/conversations/$conversationId/read"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId}),
@@ -230,7 +230,7 @@ class ConversationSettingsService {
       "$baseUrl/conversations/$conversationId/search",
     ).replace(queryParameters: params);
 
-    final response = await http.get(uri);
+    final response = await ApiClient.get(uri);
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -253,7 +253,7 @@ class ConversationSettingsService {
       "$baseUrl/conversations/$conversationId/media",
     ).replace(queryParameters: params);
 
-    final response = await http.get(uri);
+    final response = await ApiClient.get(uri);
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);

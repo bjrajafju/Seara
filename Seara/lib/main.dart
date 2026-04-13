@@ -31,19 +31,23 @@ void main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.init();
 
-  runApp(SearaApp(themeProvider: themeProvider));
+  final authProvider = AuthProvider();
+  await authProvider.checkSession();
+
+  runApp(SearaApp(themeProvider: themeProvider, authProvider: authProvider));
 }
 
 class SearaApp extends StatelessWidget {
-  const SearaApp({super.key, required this.themeProvider});
+  const SearaApp({super.key, required this.themeProvider, required this.authProvider});
 
   final ThemeProvider themeProvider;
+  final AuthProvider authProvider;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
         // Reuse the already-initialised instance so there's no flicker.
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => MessagesProvider()),

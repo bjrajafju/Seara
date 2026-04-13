@@ -5,7 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
+import 'package:seara/services/api_client.dart' as http;
+
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -35,8 +36,14 @@ import 'download_helper_stub.dart'
 const int _kGroupingMinutes = 5;
 
 class ConversationScreen extends StatefulWidget {
-  const ConversationScreen({super.key, required this.conversation});
+  const ConversationScreen({
+    super.key, 
+    required this.conversation,
+    this.initialScrollToMessageId,
+  });
+  
   final Conversation conversation;
+  final int? initialScrollToMessageId;
 
   @override
   State<ConversationScreen> createState() => _ConversationScreenState();
@@ -55,6 +62,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _hasText = false;
   int? _highlightMessageId;
   int _convThemeId = 0;
+  bool _isUserNearBottom = true; // Track if user is near bottom
+  bool _isJumpingToMessage = false; // Track if we're jumping to a message
+  final GlobalKey _targetMessageKey = GlobalKey();
 
   @override
   void initState() {
@@ -92,13 +102,29 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  /// Detect scroll to top for loading more messages.
+  /// Detect scroll to top for loading more messages and track scroll position.
   void _onScroll() {
-    if (_scrollController.hasClients &&
-        _scrollController.position.pixels <= 50 &&
+    if (!_scrollController.hasClients) return;
+
+    final pixels = _scrollController.position.pixels;
+    final maxExtent = _scrollController.position.maxScrollExtent;
+
+    // Track if user is near bottom (within 100px)
+    final wasNearBottom = _isUserNearBottom;
+    _isUserNearBottom = (maxExtent - pixels) < 100;
+
+    // If user just moved away from bottom, don't auto-scroll
+    if (wasNearBottom && !_isUserNearBottom) {
+      // User scrolled up manually, so stop auto-scrolling
+      _isUserNearBottom = false;
+    }
+
+    // Load more messages if scrolled to top
+    if (pixels <= 50 &&
         _messagesProvider.hasMore &&
-        !_messagesProvider.isLoadingMore) {
-      final prevMax = _scrollController.position.maxScrollExtent;
+        !_messagesProvider.isLoadingMore &&
+        !_isJumpingToMessage) {
+      final prevMax = maxExtent;
       _messagesProvider.loadMore(widget.conversation.id, userId: _myId).then((
         _,
       ) {
@@ -120,8 +146,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (!mounted) return;
     // Task 5: Load theme FIRST for smoother perceived performance
     await _loadTheme();
-    await _messagesProvider.loadMessages(widget.conversation.id, userId: _myId);
-    _scrollToBottom();
+    
+    if (widget.initialScrollToMessageId != null) {
+      _scrollToMessage(widget.initialScrollToMessageId!);
+    } else {
+      await _messagesProvider.loadMessages(widget.conversation.id, userId: _myId);
+      _scrollToBottom();
+    }
     // Task 4: Subscribe to real-time messages
     _messagesProvider.subscribeToConversation(widget.conversation.id);
     _messagesProvider.addListener(_onNewMessage);
@@ -133,12 +164,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
     });
   }
 
-  // Task 4: Auto-scroll when new messages arrive from realtime
+  // Task 4: Auto-scroll when new messages arrive from realtime (only if at bottom)
   int _lastMessageCount = 0;
   void _onNewMessage() {
     final count = _messagesProvider.messages.length;
     if (count > _lastMessageCount && _lastMessageCount > 0) {
-      _scrollToBottom(animate: true);
+      // Only auto-scroll if user was already at the bottom
+      if (_isUserNearBottom && !_isJumpingToMessage) {
+        _scrollToBottom(animate: true);
+      }
     }
     _lastMessageCount = count;
   }
@@ -170,24 +204,37 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   // Task 8: Reliable scroll-to-bottom with fallback
-  void _scrollToBottom({bool animate = false}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 50), () {
-        if (_scrollController.hasClients && mounted) {
-          if (animate) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          } else {
-            _scrollController.jumpTo(
-              _scrollController.position.maxScrollExtent,
-            );
-          }
-        }
-      });
-    });
+  void _scrollToBottom({bool animate = false, int attempts = 0}) {
+    if (!mounted || _isJumpingToMessage) return; // Prevent conflicts
+
+    if (!_scrollController.hasClients) {
+      if (attempts < 10) {
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) _scrollToBottom(animate: animate, attempts: attempts + 1);
+        });
+      }
+      return;
+    }
+
+    _isUserNearBottom = true; // Mark that we should be at bottom
+
+    if (animate) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else {
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      _scrollController.jumpTo(maxExtent);
+
+      // Retry jumping a few times to account for images that change the max extent as they render
+      if (attempts < 3) {
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (mounted) _scrollToBottom(animate: false, attempts: attempts + 1);
+        });
+      }
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -698,29 +745,82 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   // FIX #2: Scroll to and briefly highlight a specific message
-  void _scrollToMessage(int messageId) {
-    final messages = _messagesProvider.messages;
-    final idx = messages.indexWhere((m) => m.id == messageId);
-    if (idx == -1) return;
-
+  Future<void> _scrollToMessage(int messageId) async {
+    _isJumpingToMessage = true;
     setState(() => _highlightMessageId = messageId);
 
-    // Approximate scroll offset (each message ~60px tall)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        final target = idx * 60.0;
-        _scrollController.animateTo(
-          target.clamp(0, _scrollController.position.maxScrollExtent),
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    try {
+      // Load messages around the target with context
+      final targetIndex = await _messagesProvider.loadMessagesAround(
+        widget.conversation.id,
+        messageId,
+        userId: _myId,
+      );
 
-    // Remove highlight after 2 seconds
-    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) {
+        _isJumpingToMessage = false;
+        return;
+      }
+
+      // If target was loaded successfully, scroll to it
+      if (targetIndex != null) {
+        void attemptScroll(int attempts) {
+          if (!mounted) {
+            _isJumpingToMessage = false;
+            return;
+          }
+
+          if (!_scrollController.hasClients) {
+            if (attempts < 10) {
+              Future.delayed(const Duration(milliseconds: 50), () => attemptScroll(attempts + 1));
+            } else {
+              _isJumpingToMessage = false;
+            }
+            return;
+          }
+
+          double scrollOffset = 12.0;
+          if (_messagesProvider.isLoadingMore) scrollOffset += 44;
+          for (int i = 0; i < targetIndex; i++) scrollOffset += 90;
+          final unreadIdx = _messagesProvider.unreadDividerIndex;
+          if (unreadIdx != null && unreadIdx < targetIndex) scrollOffset += 56;
+
+          scrollOffset = (scrollOffset - 60).clamp(0.0, _scrollController.position.maxScrollExtent) as double;
+
+          // Jump roughly to the area to trigger rendering
+          _scrollController.jumpTo(scrollOffset);
+
+          // Wait for render frame, then precisely scroll to the key
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_targetMessageKey.currentContext != null && mounted) {
+              Scrollable.ensureVisible(
+                _targetMessageKey.currentContext!,
+                alignment: 0.5,
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOut,
+              );
+              _isJumpingToMessage = false;
+            } else if (attempts < 10) {
+              Future.delayed(const Duration(milliseconds: 50), () => attemptScroll(attempts + 1));
+            } else {
+              _isJumpingToMessage = false; // Give up
+            }
+          });
+        }
+
+        attemptScroll(0);
+
+        // Remove highlight after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _highlightMessageId = null);
+        });
+      } else {
+        _isJumpingToMessage = false;
+      }
+    } catch (e) {
       if (mounted) setState(() => _highlightMessageId = null);
-    });
+      _isJumpingToMessage = false;
+    }
   }
 
   Widget _buildMessagesList(ThemeData theme) {
@@ -825,6 +925,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
               if (isHighlighted) {
                 msgWidget = AnimatedContainer(
+                  key: _targetMessageKey,
                   duration: const Duration(milliseconds: 500),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withAlpha(30),
@@ -1097,7 +1198,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     } else {
       // Mobile: descarregar via http
       try {
-        final response = await http.get(Uri.parse(url));
+        final response = await http.ApiClient.get(Uri.parse(url));
         if (response.statusCode == 200 && mounted) {
           ScaffoldMessenger.of(
             context,

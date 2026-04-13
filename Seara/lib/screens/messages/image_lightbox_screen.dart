@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:seara/services/api_client.dart' as http;
 
 // Import condicional: usa web em browser, stub em mobile
 import 'download_helper_stub.dart'
@@ -48,7 +48,7 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
   }
 
   Future<void> _downloadMobile() async {
-    final response = await http.get(Uri.parse(widget.imageUrl));
+    final response = await http.ApiClient.get(Uri.parse(widget.imageUrl));
     if (response.statusCode != 200) throw Exception('Falha no download.');
     if (mounted) {
       ScaffoldMessenger.of(

@@ -1,4 +1,5 @@
 import express from "express";
+import { authenticate } from "../middleware/authMiddleware.js";
 import {
     getProfile,
     updateProfile,
@@ -10,6 +11,8 @@ import {
 } from "../controllers/profileController.js";
 
 const router = express.Router();
+
+router.use(authenticate);
 
 router.get("/users", getAllUsers);
 router.get("/users-with-relationship/:userId", getUsersWithRelationship);
