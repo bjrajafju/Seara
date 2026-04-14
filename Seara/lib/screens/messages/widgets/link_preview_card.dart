@@ -53,13 +53,13 @@ class LinkPreviewCard extends StatelessWidget {
                   if (_isYouTube)
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: Colors.black54,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.scrim.withAlpha(140),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.play_arrow_rounded,
-                        color: Colors.white,
+                        color: theme.colorScheme.onInverseSurface,
                         size: 32,
                       ),
                     ),

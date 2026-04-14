@@ -13,6 +13,73 @@ const EPHEMERAL_MS = {
     3: 30 * 24 * 60 * 60 * 1000,
 };
 
+const enrichMessagesWithReplyAndReactions = async (messages, requestingUserId) => {
+    if (!messages || messages.length === 0) return messages;
+
+    const messageIds = messages.map((m) => m.id);
+    const replyIds = [...new Set(messages.map((m) => m.reply_to_message_id).filter(Boolean))];
+
+    let replyMap = new Map();
+    if (replyIds.length > 0) {
+        const { data: replyMessages } = await supabase
+            .from("messages")
+            .select(`
+                id,
+                user_id,
+                body,
+                attachment_type,
+                attachment_name,
+                deleted_at,
+                users (
+                    username
+                )
+            `)
+            .in("id", replyIds);
+
+        replyMap = new Map(
+            (replyMessages || []).map((msg) => [
+                msg.id,
+                {
+                    id: msg.id,
+                    user_id: msg.user_id,
+                    sender_username: msg.users?.username ?? null,
+                    body: msg.deleted_at ? null : msg.body,
+                    attachment_type: msg.deleted_at ? null : msg.attachment_type,
+                    attachment_name: msg.deleted_at ? null : msg.attachment_name,
+                    deleted_at: msg.deleted_at,
+                },
+            ]),
+        );
+    }
+
+    const reactionsByMessage = new Map();
+    const { data: reactionRows } = await supabase
+        .from("message_reactions")
+        .select("message_id, reaction, user_id")
+        .in("message_id", messageIds);
+
+    for (const row of reactionRows || []) {
+        const messageReactionMap = reactionsByMessage.get(row.message_id) || new Map();
+        const entry = messageReactionMap.get(row.reaction) || {
+            reaction: row.reaction,
+            count: 0,
+            reacted_by_me: false,
+        };
+        entry.count += 1;
+        if (requestingUserId && row.user_id === requestingUserId) {
+            entry.reacted_by_me = true;
+        }
+        messageReactionMap.set(row.reaction, entry);
+        reactionsByMessage.set(row.message_id, messageReactionMap);
+    }
+
+    return messages.map((msg) => ({
+        ...msg,
+        reply_to: msg.reply_to_message_id ? (replyMap.get(msg.reply_to_message_id) || null) : null,
+        reactions: Array.from((reactionsByMessage.get(msg.id) || new Map()).values()),
+    }));
+};
+
 // GET /conversations/:userId — List conversations
 export const listConversations = async (req, res) => {
     const { userId } = req.params;
@@ -442,6 +509,7 @@ export const getMessages = async (req, res) => {
                     attachment,
                     attachment_type,
                     attachment_name,
+                    reply_to_message_id,
                     delivered_at,
                     expires_at,
                     is_system,
@@ -475,6 +543,7 @@ export const getMessages = async (req, res) => {
                     attachment,
                     attachment_type,
                     attachment_name,
+                    reply_to_message_id,
                     delivered_at,
                     expires_at,
                     is_system,
@@ -504,6 +573,7 @@ export const getMessages = async (req, res) => {
                     attachment,
                     attachment_type,
                     attachment_name,
+                    reply_to_message_id,
                     delivered_at,
                     expires_at,
                     is_system,
@@ -563,6 +633,7 @@ export const getMessages = async (req, res) => {
                     attachment: msg.attachment,
                     attachment_type: msg.attachment_type,
                     attachment_name: msg.attachment_name,
+                    reply_to_message_id: msg.reply_to_message_id,
                     delivered_at: msg.delivered_at,
                     is_system: msg.is_system || false,
                     status,
@@ -576,6 +647,7 @@ export const getMessages = async (req, res) => {
             });
 
             const targetIndex = formatted.findIndex((m) => m.id === around);
+            const enrichedAround = await enrichMessagesWithReplyAndReactions(formatted, requestingUserId);
 
             let myLastReadAt = null;
             if (requestingUserId) {
@@ -590,7 +662,7 @@ export const getMessages = async (req, res) => {
             }
 
             return res.json({
-                messages: formatted,
+                messages: enrichedAround,
                 has_more: false,
                 target_index: targetIndex,
                 target_message_id: around,
@@ -610,6 +682,7 @@ export const getMessages = async (req, res) => {
                 attachment,
                 attachment_type,
                 attachment_name,
+                reply_to_message_id,
                 delivered_at,
                 expires_at,
                 is_system,
@@ -689,6 +762,7 @@ export const getMessages = async (req, res) => {
                     attachment: msg.attachment,
                     attachment_type: msg.attachment_type,
                     attachment_name: msg.attachment_name,
+                    reply_to_message_id: msg.reply_to_message_id,
                     delivered_at: msg.delivered_at,
                     is_system: msg.is_system || false,
                     status,
@@ -700,6 +774,7 @@ export const getMessages = async (req, res) => {
                 };
             })
             .reverse(); // Reverse so oldest first
+        const enrichedMessages = await enrichMessagesWithReplyAndReactions(formatted, requestingUserId);
 
         // Get my last_read_at for unread divider
         let myLastReadAt = null;
@@ -715,7 +790,7 @@ export const getMessages = async (req, res) => {
         }
 
         res.json({
-            messages: formatted,
+            messages: enrichedMessages,
             has_more: hasMore,
             last_read_at: myLastReadAt,
         });
@@ -728,7 +803,7 @@ export const getMessages = async (req, res) => {
 // POST /conversations/:conversationId/messages — Send message
 export const sendMessage = async (req, res) => {
     const { conversationId } = req.params;
-    const { userId, body, attachment, attachment_type, attachment_name, is_forwarded } =
+    const { userId, body, attachment, attachment_type, attachment_name, is_forwarded, reply_to_message_id } =
         req.body;
 
     if (!conversationId || !userId) {
@@ -759,6 +834,23 @@ export const sendMessage = async (req, res) => {
             }
         }
 
+        let safeReplyToMessageId = null;
+        if (reply_to_message_id) {
+            const { data: replyTarget, error: replyErr } = await supabase
+                .from("messages")
+                .select("id, conversation_id")
+                .eq("id", reply_to_message_id)
+                .single();
+
+            if (replyErr || !replyTarget) {
+                return res.status(400).json({ error: "Mensagem de resposta inválida." });
+            }
+            if (Number(replyTarget.conversation_id) !== Number(conversationId)) {
+                return res.status(400).json({ error: "A resposta deve apontar para a mesma conversa." });
+            }
+            safeReplyToMessageId = replyTarget.id;
+        }
+
         // Calculate expires_at if ephemeral 
         let expiresAt = null;
         if (settings && settings.ephemeral_duration > 0) {
@@ -778,6 +870,7 @@ export const sendMessage = async (req, res) => {
                 attachment: attachment ?? null,
                 attachment_type: attachment_type ?? null,
                 attachment_name: attachment_name ?? null,
+                reply_to_message_id: safeReplyToMessageId,
                 expires_at: expiresAt,
                 is_forwarded: is_forwarded || false,
             })
@@ -790,6 +883,7 @@ export const sendMessage = async (req, res) => {
                 attachment,
                 attachment_type,
                 attachment_name,
+                reply_to_message_id,
                 delivered_at,
                 expires_at,
                 created_at,
@@ -806,6 +900,37 @@ export const sendMessage = async (req, res) => {
 
         if (error) throw error;
 
+        let replyTo = null;
+        if (message.reply_to_message_id) {
+            const { data: replyMessage } = await supabase
+                .from("messages")
+                .select(`
+                    id,
+                    user_id,
+                    body,
+                    attachment_type,
+                    attachment_name,
+                    deleted_at,
+                    users (
+                        username
+                    )
+                `)
+                .eq("id", message.reply_to_message_id)
+                .single();
+
+            if (replyMessage) {
+                replyTo = {
+                    id: replyMessage.id,
+                    user_id: replyMessage.user_id,
+                    sender_username: replyMessage.users?.username ?? null,
+                    body: replyMessage.deleted_at ? null : replyMessage.body,
+                    attachment_type: replyMessage.deleted_at ? null : replyMessage.attachment_type,
+                    attachment_name: replyMessage.deleted_at ? null : replyMessage.attachment_name,
+                    deleted_at: replyMessage.deleted_at,
+                };
+            }
+        }
+
         // Update conversation updated_at
         await supabase
             .from("conversations")
@@ -820,6 +945,8 @@ export const sendMessage = async (req, res) => {
             attachment: message.attachment,
             attachment_type: message.attachment_type,
             attachment_name: message.attachment_name,
+            reply_to_message_id: message.reply_to_message_id,
+            reply_to: replyTo,
             delivered_at: message.delivered_at,
             status: 0, // just sent
             is_forwarded: message.is_forwarded || false,
@@ -827,10 +954,66 @@ export const sendMessage = async (req, res) => {
             updated_at: message.updated_at,
             sender_username: message.users?.username ?? null,
             sender_avatar: message.users?.avatar ?? null,
+            reactions: [],
         });
     } catch (err) {
         console.error("sendMessage:", err);
         res.status(500).json({ error: "Erro ao enviar mensagem." });
+    }
+};
+
+// POST /messages/:id/reactions — Toggle reaction atomically
+export const toggleMessageReaction = async (req, res) => {
+    const messageId = Number(req.params.id);
+    const { userId, reaction } = req.body || {};
+
+    if (!messageId || !userId || !reaction) {
+        return res.status(400).json({ error: "Dados inválidos para reação." });
+    }
+
+    try {
+        const { data: message, error: messageErr } = await supabase
+            .from("messages")
+            .select("id, conversation_id")
+            .eq("id", messageId)
+            .single();
+
+        if (messageErr || !message) {
+            return res.status(404).json({ error: "Mensagem não encontrada." });
+        }
+
+        const { error: insertErr } = await supabase
+            .from("message_reactions")
+            .insert({
+                message_id: messageId,
+                user_id: userId,
+                reaction,
+            });
+
+        let added = true;
+        if (insertErr) {
+            if (insertErr.code !== "23505") throw insertErr;
+
+            const { error: deleteErr } = await supabase
+                .from("message_reactions")
+                .delete()
+                .eq("message_id", messageId)
+                .eq("user_id", userId)
+                .eq("reaction", reaction);
+
+            if (deleteErr) throw deleteErr;
+            added = false;
+        }
+
+        return res.status(200).json({
+            message_id: messageId,
+            conversation_id: message.conversation_id,
+            reaction,
+            added,
+        });
+    } catch (err) {
+        console.error("toggleMessageReaction:", err);
+        return res.status(500).json({ error: "Erro ao alternar reação." });
     }
 };
 

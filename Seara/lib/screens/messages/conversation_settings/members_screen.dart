@@ -307,17 +307,17 @@ class _MembersScreenState extends State<MembersScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color: Colors.amber,
+                              color: theme.colorScheme.tertiary,
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: theme.colorScheme.surface,
                                 width: 2,
                               ),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.star_rounded,
                               size: 12,
-                              color: Colors.white,
+                              color: theme.colorScheme.onTertiary,
                             ),
                           ),
                         ),
@@ -372,7 +372,7 @@ class _MembersScreenState extends State<MembersScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: member.isCreator
-                              ? Colors.amber.withAlpha(30)
+                              ? theme.colorScheme.tertiaryContainer
                               : theme.colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -380,7 +380,7 @@ class _MembersScreenState extends State<MembersScreen> {
                           member.isCreator ? 'Criador' : 'Admin',
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: member.isCreator
-                                ? Colors.amber.shade700
+                                ? theme.colorScheme.onTertiaryContainer
                                 : theme.colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.w600,
                           ),

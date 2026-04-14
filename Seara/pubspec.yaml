@@ -49,6 +49,7 @@ dependencies:
     provider: ^6.1.5+1
     url_launcher: ^6.3.2
     desktop_drop: ^0.7.0
+    emoji_picker_flutter: ^4.4.0
 
 dev_dependencies:
     flutter_test:

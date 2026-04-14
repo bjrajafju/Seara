@@ -39,11 +39,11 @@ const int _kGroupingMinutes = 5;
 
 class ConversationScreen extends StatefulWidget {
   const ConversationScreen({
-    super.key, 
+    super.key,
     required this.conversation,
     this.initialScrollToMessageId,
   });
-  
+
   final Conversation conversation;
   final int? initialScrollToMessageId;
 
@@ -157,11 +157,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (!mounted) return;
     // Task 5: Load theme FIRST for smoother perceived performance
     await _loadTheme();
-    
+
     if (widget.initialScrollToMessageId != null) {
       _scrollToMessage(widget.initialScrollToMessageId!);
     } else {
-      await _messagesProvider.loadMessages(widget.conversation.id, userId: _myId);
+      await _messagesProvider.loadMessages(
+        widget.conversation.id,
+        userId: _myId,
+      );
       _scrollToBottom();
     }
     // Task 4: Subscribe to real-time messages
@@ -222,7 +225,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (!_scrollController.hasClients) {
       if (attempts < 10) {
         Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted) _scrollToBottom(animate: animate, attempts: attempts + 1);
+          if (mounted)
+            _scrollToBottom(animate: animate, attempts: attempts + 1);
         });
       }
       return;
@@ -258,6 +262,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       conversationId: widget.conversation.id,
       userId: _myId!,
       body: text,
+      replyToMessageId: _messagesProvider.replyingTo?.id,
     );
 
     if (success) _scrollToBottom(animate: true);
@@ -453,6 +458,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       fileName: result['fileName'] as String,
       mimeType: result['mimeType'] as String,
       body: result['caption'] as String? ?? "",
+      replyToMessageId: _messagesProvider.replyingTo?.id,
     );
 
     if (success && mounted) _scrollToBottom();
@@ -683,8 +689,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
             child: Column(
               children: [
                 _buildPinnedMessageBar(theme),
-                _buildMessagesList(theme), 
-                _buildInputArea(theme)
+                _buildMessagesList(theme),
+                _buildInputArea(theme),
               ],
             ),
           ),
@@ -766,7 +772,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     setState(() => _highlightMessageId = messageId);
 
     try {
-      final targetIndex = await _messagesProvider.ensureMessageLoaded(
+      final targetIndex = await _messagesProvider.ensureMessageLoadedSafe(
         widget.conversation.id,
         messageId,
         userId: _myId,
@@ -816,8 +822,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
           final approxItemIndex = targetIndex + extraBefore + extraUnread;
 
           // Approximate height per row to get close without "reloading" the screen.
-          final approxOffset = (approxItemIndex * 88.0 - 120.0)
-              .clamp(0.0, _scrollController.position.maxScrollExtent);
+          final approxOffset = (approxItemIndex * 88.0 - 120.0).clamp(
+            0.0,
+            _scrollController.position.maxScrollExtent,
+          );
 
           _scrollController
               .animateTo(
@@ -826,25 +834,25 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 curve: Curves.easeOut,
               )
               .whenComplete(() {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              if (targetKey.currentContext != null) {
-                Scrollable.ensureVisible(
-                  targetKey.currentContext!,
-                  alignment: 0.35,
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.easeInOut,
-                ).whenComplete(() => _isJumpingToMessage = false);
-              } else if (attempts < 10) {
-                Future.delayed(
-                  const Duration(milliseconds: 60),
-                  () => attemptScroll(attempts + 1),
-                );
-              } else {
-                _isJumpingToMessage = false;
-              }
-            });
-          });
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  if (targetKey.currentContext != null) {
+                    Scrollable.ensureVisible(
+                      targetKey.currentContext!,
+                      alignment: 0.35,
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeInOut,
+                    ).whenComplete(() => _isJumpingToMessage = false);
+                  } else if (attempts < 10) {
+                    Future.delayed(
+                      const Duration(milliseconds: 60),
+                      () => attemptScroll(attempts + 1),
+                    );
+                  } else {
+                    _isJumpingToMessage = false;
+                  }
+                });
+              });
         }
 
         attemptScroll(0);
@@ -854,6 +862,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
           if (mounted) setState(() => _highlightMessageId = null);
         });
       } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Mensagem indisponível')),
+          );
+        }
         _isJumpingToMessage = false;
       }
     } catch (e) {
@@ -861,7 +874,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
       _isJumpingToMessage = false;
     }
   }
-
 
   Widget _buildPinnedMessageBar(ThemeData theme) {
     return Consumer<MessagesProvider>(
@@ -874,7 +886,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         }
 
         final currentPin = pinned[_currentPinnedIndex];
-        
+
         return GestureDetector(
           onTap: () {
             _scrollToMessage(currentPin.id);
@@ -898,14 +910,20 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.push_pin, size: 20, color: theme.colorScheme.primary),
+                Icon(
+                  Icons.push_pin,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        pinned.length > 1 ? "Mensagem Fixada (${_currentPinnedIndex + 1}/${pinned.length})" : "Mensagem Fixada",
+                        pinned.length > 1
+                            ? "Mensagem Fixada (${_currentPinnedIndex + 1}/${pinned.length})"
+                            : "Mensagem Fixada",
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.bold,
@@ -913,7 +931,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        currentPin.body.isNotEmpty ? currentPin.body.replaceAll('\n', ' ') : 'Anexo',
+                        currentPin.body.isNotEmpty
+                            ? currentPin.body.replaceAll('\n', ' ')
+                            : 'Anexo',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -1038,7 +1058,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
               // Apply alignment relative to whoever sent the message
               msgWidget = Align(
-                alignment: message.userId == _myId ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: message.userId == _myId
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: msgWidget,
               );
 
@@ -1171,7 +1193,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
             context,
             PageRouteBuilder(
               opaque: false,
-              barrierColor: Colors.black,
+              barrierColor: Theme.of(context).colorScheme.scrim,
               pageBuilder: (_, __, ___) => ImageLightboxScreen(
                 imageUrl: message.attachment!,
                 fileName: message.attachmentName,
@@ -1347,9 +1369,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
         message.senderAvatar ??
         "https://ui-avatars.com/api/?name=${message.senderUsername ?? 'U'}";
 
-    final currentBgColor = ConversationThemeHelper.getTheme(_convThemeId).backgroundColors.first;
-    final isLightBg = ThemeData.estimateBrightnessForColor(currentBgColor) == Brightness.light;
-    final editadaColor = isLightBg ? Colors.grey[700]! : theme.colorScheme.onSurfaceVariant;
+    final currentBgColor = ConversationThemeHelper.getTheme(
+      _convThemeId,
+    ).backgroundColors.first;
+    final isLightBg =
+        ThemeData.estimateBrightnessForColor(currentBgColor) ==
+        Brightness.light;
+    final editadaColor = isLightBg
+        ? theme.colorScheme.onSurface.withAlpha(170)
+        : theme.colorScheme.onSurfaceVariant;
 
     return Padding(
       // Mais espaco antes do primeiro de um grupo, menos entre mensagens do mesmo grupo
@@ -1358,8 +1386,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min, // Fix row expanding full width
         children: [
-            // Avatar so aparece na ultima mensagem do grupo (visualmente a mais baixa)
-            SizedBox(
+          // Avatar so aparece na ultima mensagem do grupo (visualmente a mais baixa)
+          SizedBox(
             width: 52,
             child: isLast
                 ? Padding(
@@ -1398,6 +1426,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     onCopy: _handleCopyMessage,
                     onPin: _handlePinMessage,
                     onForward: _handleForwardMessage,
+                    onReply: _handleReplyMessage,
+                    onReact: _handleReactToMessage,
+                    quickReactions: context
+                        .watch<MessagesProvider>()
+                        .quickReactions,
+                    onReplaceQuickReaction: (slot, emoji) => context
+                        .read<MessagesProvider>()
+                        .setQuickReactionSlot(slotIndex: slot, emoji: emoji),
                     child: Container(
                       constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.33,
@@ -1422,18 +1458,35 @@ class _ConversationScreenState extends State<ConversationScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          _buildReplySnippet(theme, message),
                           if (message.isForwarded)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 2),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.forward_rounded, size: 12, color: ConversationThemeHelper.getTheme(_convThemeId).otherTextColor?.withAlpha(150) ?? theme.colorScheme.onSurface.withAlpha(150)),
+                                  Icon(
+                                    Icons.forward_rounded,
+                                    size: 12,
+                                    color:
+                                        ConversationThemeHelper.getTheme(
+                                          _convThemeId,
+                                        ).otherTextColor?.withAlpha(150) ??
+                                        theme.colorScheme.onSurface.withAlpha(
+                                          150,
+                                        ),
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     "Reencaminhada",
                                     style: theme.textTheme.labelSmall?.copyWith(
-                                      color: ConversationThemeHelper.getTheme(_convThemeId).otherTextColor?.withAlpha(150) ?? theme.colorScheme.onSurface.withAlpha(150),
+                                      color:
+                                          ConversationThemeHelper.getTheme(
+                                            _convThemeId,
+                                          ).otherTextColor?.withAlpha(150) ??
+                                          theme.colorScheme.onSurface.withAlpha(
+                                            150,
+                                          ),
                                       fontStyle: FontStyle.italic,
                                       fontSize: 10,
                                     ),
@@ -1452,7 +1505,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
                             _buildLinkPreview(message.body),
                           ],
                           if (message.attachment != null) ...[
-                            if (message.body.isNotEmpty) const SizedBox(height: 6),
+                            if (message.body.isNotEmpty)
+                              const SizedBox(height: 6),
                             _buildAttachmentContent(theme, message),
                           ],
                         ],
@@ -1460,17 +1514,23 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     ),
                   ),
                 ),
+                _buildReactionsRow(theme, message),
                 if (message.isEdited)
                   Padding(
                     padding: const EdgeInsets.only(top: 2, left: 4),
-                    child: Text('editada', style: theme.textTheme.labelSmall?.copyWith(color: editadaColor)),
+                    child: Text(
+                      'editada',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: editadaColor,
+                      ),
+                    ),
                   ),
               ],
             ),
           ),
-          ],
-        ),
-      );
+        ],
+      ),
+    );
   }
 
   Widget _buildMyMessage(
@@ -1479,9 +1539,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
     bool isFirst,
     bool isLast,
   ) {
-    final currentBgColor = ConversationThemeHelper.getTheme(_convThemeId).backgroundColors.first;
-    final isLightBg = ThemeData.estimateBrightnessForColor(currentBgColor) == Brightness.light;
-    final editadaColor = isLightBg ? Colors.grey[700]! : theme.colorScheme.onSurfaceVariant;
+    final currentBgColor = ConversationThemeHelper.getTheme(
+      _convThemeId,
+    ).backgroundColors.first;
+    final isLightBg =
+        ThemeData.estimateBrightnessForColor(currentBgColor) ==
+        Brightness.light;
+    final editadaColor = isLightBg
+        ? theme.colorScheme.onSurface.withAlpha(170)
+        : theme.colorScheme.onSurfaceVariant;
 
     return Padding(
       // Mais espaço antes do 1.º de um grupo, reduzido entre mensagens do grupo
@@ -1503,6 +1569,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
             onCopy: _handleCopyMessage,
             onPin: _handlePinMessage,
             onForward: _handleForwardMessage,
+            onReply: _handleReplyMessage,
+            onReact: _handleReactToMessage,
+            quickReactions: context.watch<MessagesProvider>().quickReactions,
+            onReplaceQuickReaction: (slot, emoji) => context
+                .read<MessagesProvider>()
+                .setQuickReactionSlot(slotIndex: slot, emoji: emoji),
             child: Container(
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.33,
@@ -1524,18 +1596,31 @@ class _ConversationScreenState extends State<ConversationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  _buildReplySnippet(theme, message),
                   if (message.isForwarded)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.forward_rounded, size: 12, color: ConversationThemeHelper.getTheme(_convThemeId).myTextColor?.withAlpha(150) ?? theme.colorScheme.onPrimary.withAlpha(150)),
+                          Icon(
+                            Icons.forward_rounded,
+                            size: 12,
+                            color:
+                                ConversationThemeHelper.getTheme(
+                                  _convThemeId,
+                                ).myTextColor?.withAlpha(150) ??
+                                theme.colorScheme.onPrimary.withAlpha(150),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             "Reencaminhada",
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: ConversationThemeHelper.getTheme(_convThemeId).myTextColor?.withAlpha(150) ?? theme.colorScheme.onPrimary.withAlpha(150),
+                              color:
+                                  ConversationThemeHelper.getTheme(
+                                    _convThemeId,
+                                  ).myTextColor?.withAlpha(150) ??
+                                  theme.colorScheme.onPrimary.withAlpha(150),
                               fontStyle: FontStyle.italic,
                               fontSize: 10,
                             ),
@@ -1561,6 +1646,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
               ),
             ),
           ),
+          _buildReactionsRow(theme, message),
           // Footer with "editada" and read receipts
           if (isLast || message.isEdited)
             Padding(
@@ -1571,7 +1657,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
                   if (message.isEdited)
                     Padding(
                       padding: EdgeInsets.only(right: isLast ? 4 : 0),
-                      child: Text('editada', style: theme.textTheme.labelSmall?.copyWith(color: editadaColor)),
+                      child: Text(
+                        'editada',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: editadaColor,
+                        ),
+                      ),
                     ),
                   if (isLast) _buildStatusIcon(theme, message),
                 ],
@@ -1702,12 +1793,17 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   Future<void> _saveEditedMessage(Message message) async {
     final newText = _editMessageController.text.trim();
-    if (newText.isEmpty) return; 
+    if (newText.isEmpty) return;
 
     // Optimistic UI updates are handled partially by the provider (if it was synchronous), but we know it awaits network.
     // So we close the edit modal immediately so user doesn't wait:
     _cancelEdit();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mensagem editada'), duration: Duration(seconds: 1)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Mensagem editada'),
+        duration: Duration(seconds: 1),
+      ),
+    );
 
     // Call provider edit
     final success = await context.read<MessagesProvider>().editMessage(
@@ -1718,7 +1814,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao editar mensagem. As alterações não foram guardadas.')),
+        const SnackBar(
+          content: Text(
+            'Erro ao editar mensagem. As alterações não foram guardadas.',
+          ),
+        ),
       );
       // Wait for provider reload to restore original state or let realtime fix it
     }
@@ -1729,7 +1829,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar mensagem?'),
-        content: const Text('Tem a certeza que pretende eliminar esta mensagem?'),
+        content: const Text(
+          'Tem a certeza que pretende eliminar esta mensagem?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -1737,7 +1839,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('Eliminar'),
           ),
         ],
@@ -1745,8 +1849,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
 
     if (confirmed == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mensagem eliminada'), duration: Duration(seconds: 1)));
-      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mensagem eliminada'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
       final success = await context.read<MessagesProvider>().deleteMessage(
         conversationId: message.conversationId,
         messageId: message.id,
@@ -1762,11 +1871,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   void _handleCopyMessage(Message message) {
     Clipboard.setData(ClipboardData(text: message.body));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mensagem copiada')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Mensagem copiada')));
   }
-
 
   Widget _buildEditMessageBubble(ThemeData theme, Message message) {
     final isMe = message.userId == _myId;
@@ -1804,7 +1912,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 TextButton(
                   onPressed: _cancelEdit,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     minimumSize: Size.zero,
                   ),
                   child: const Text('Cancelar', style: TextStyle(fontSize: 13)),
@@ -1813,13 +1924,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 ElevatedButton(
                   onPressed: () => _saveEditedMessage(message),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     minimumSize: Size.zero,
                   ),
                   child: const Text('Guardar', style: TextStyle(fontSize: 13)),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -1827,7 +1941,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   void _handlePinMessage(Message message) async {
-    final success = await context.read<MessagesProvider>().togglePinMessage(widget.conversation.id, message);
+    final success = await context.read<MessagesProvider>().togglePinMessage(
+      widget.conversation.id,
+      message,
+    );
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Erro ao modificar o estado de fixacao.')),
@@ -1840,11 +1957,23 @@ class _ConversationScreenState extends State<ConversationScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ForwardMessageScreen(
-          message: message,
-          myId: _myId ?? 0,
-        ),
+        builder: (_) =>
+            ForwardMessageScreen(message: message, myId: _myId ?? 0),
       ),
+    );
+  }
+
+  void _handleReplyMessage(Message message) {
+    context.read<MessagesProvider>().startReply(message);
+    _focusNode.requestFocus();
+  }
+
+  void _handleReactToMessage(Message message, String reaction) {
+    if (_myId == null) return;
+    context.read<MessagesProvider>().toggleReaction(
+      messageId: message.id,
+      userId: _myId!,
+      reaction: reaction,
     );
   }
 
@@ -1866,8 +1995,149 @@ class _ConversationScreenState extends State<ConversationScreen> {
           padding: const EdgeInsets.all(12),
           child: _isRecording
               ? _buildRecordingIndicator(theme)
-              : _buildNormalInput(theme),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildReplyComposerPreview(theme),
+                    _buildNormalInput(theme),
+                  ],
+                ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildReplyComposerPreview(ThemeData theme) {
+    return Consumer<MessagesProvider>(
+      builder: (context, provider, _) {
+        final reply = provider.replyingTo;
+        if (reply == null) return const SizedBox.shrink();
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Respondendo a ${reply.senderUsername ?? 'Utilizador'}',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      _replyPreviewText(reply),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: provider.cancelReply,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _replyPreviewText(ReplyPreview reply) {
+    if (reply.isUnavailable) return 'Mensagem indisponível';
+    if ((reply.body ?? '').trim().isNotEmpty) return reply.body!.trim();
+    final type = (reply.attachmentType ?? '').toLowerCase();
+    if (type.startsWith('image/')) return '📷 Foto';
+    if (type.startsWith('video/')) return '🎥 Vídeo';
+    if (type.isNotEmpty) return '📎 Anexo';
+    return 'Mensagem indisponível';
+  }
+
+  Widget _buildReplySnippet(ThemeData theme, Message message) {
+    if (message.replyToMessageId == null) return const SizedBox.shrink();
+    final reply = message.replyTo;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        onTap: () => _scrollToMessage(message.replyToMessageId!),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface.withAlpha(120),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                reply?.senderUsername ?? 'Utilizador',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                reply != null
+                    ? _replyPreviewText(reply)
+                    : 'Mensagem indisponível',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReactionsRow(ThemeData theme, Message message) {
+    if (message.reactions.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: message.reactions
+            .map(
+              (reaction) => InkWell(
+                onTap: () {
+                  if (_myId == null) return;
+                  _messagesProvider.toggleReaction(
+                    messageId: message.id,
+                    userId: _myId!,
+                    reaction: reaction.reaction,
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: reaction.reactedByMe
+                        ? theme.colorScheme.primaryContainer
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text('${reaction.reaction} ${reaction.count}'),
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }
@@ -2007,7 +2277,7 @@ class _VideoThumbnailWidget extends StatelessWidget {
       context,
       PageRouteBuilder(
         opaque: false,
-        barrierColor: Colors.black,
+        barrierColor: Theme.of(context).colorScheme.scrim,
         pageBuilder: (_, __, ___) =>
             VideoLightboxScreen(videoUrl: url, fileName: fileName),
         transitionsBuilder: (_, animation, __, child) =>
@@ -2018,13 +2288,15 @@ class _VideoThumbnailWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return GestureDetector(
       onTap: () => _openLightbox(context),
       child: Container(
         width: 220,
         height: 124,
         decoration: BoxDecoration(
-          color: Colors.black87,
+          color: cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Stack(
@@ -2036,11 +2308,11 @@ class _VideoThumbnailWidget extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.black.withAlpha(140),
+                color: cs.scrim.withAlpha(140),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.play_arrow_rounded,
-                color: Colors.white,
+                color: cs.onInverseSurface,
                 size: 34,
               ),
             ),
@@ -2052,8 +2324,8 @@ class _VideoThumbnailWidget extends StatelessWidget {
                 right: 8,
                 child: Text(
                   fileName!,
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: cs.onSurface.withAlpha(200),
                     fontSize: 11,
                     overflow: TextOverflow.ellipsis,
                   ),

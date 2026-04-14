@@ -67,6 +67,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -175,15 +176,15 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withAlpha(20),
+                  color: cs.tertiaryContainer,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.amber.withAlpha(60)),
+                  border: Border.all(color: cs.tertiary.withAlpha(160)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.campaign_rounded,
-                      color: Colors.amber,
+                      color: cs.tertiary,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -191,7 +192,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                       child: Text(
                         'Modo anúncio ativado — apenas admins podem enviar mensagens.',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.amber.shade700,
+                          color: cs.onTertiaryContainer,
                         ),
                       ),
                     ),

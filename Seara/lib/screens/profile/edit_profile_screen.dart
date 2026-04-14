@@ -37,6 +37,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // ---------- Widgets Privados ----------
 
   Widget _buildAvatar() {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return Center(
       child: Column(
         children: [
@@ -60,12 +62,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.45),
+                        color: cs.scrim.withValues(alpha: 0.45),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.edit,
-                        color: Colors.white,
+                        color: cs.onSurface,
                         size: 28,
                       ),
                     ),
@@ -78,7 +80,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Text(
             'Change profile photo',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
+              color: cs.primary,
               fontWeight: FontWeight.w500,
             ),
           ),

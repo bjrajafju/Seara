@@ -71,6 +71,7 @@ class _ThemeScreenState extends State<ThemeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -139,13 +140,17 @@ class _ThemeScreenState extends State<ThemeScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: t.otherBubbleColor ?? Colors.white.withAlpha(25),
+                              color:
+                                  t.otherBubbleColor ??
+                                  cs.surfaceContainerHighest.withAlpha(200),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               'Olá! 👋',
                               style: TextStyle(
-                                color: t.otherTextColor ?? Colors.white70,
+                                color:
+                                    t.otherTextColor ??
+                                    cs.onSurface.withAlpha(200),
                                 fontSize: 11,
                               ),
                             ),
@@ -160,13 +165,16 @@ class _ThemeScreenState extends State<ThemeScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: t.myBubbleColor ?? Colors.white.withAlpha(40),
+                              color:
+                                  t.myBubbleColor ??
+                                  cs.surfaceContainerHighest.withAlpha(220),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               'Tudo bem? 😊',
                               style: TextStyle(
-                                color: t.myTextColor ?? Colors.white70,
+                                color:
+                                    t.myTextColor ?? cs.onSurface.withAlpha(200),
                                 fontSize: 11,
                               ),
                             ),
@@ -178,8 +186,8 @@ class _ThemeScreenState extends State<ThemeScreen> {
                           bottom: 12,
                           child: Text(
                             t.name,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: cs.onSurface,
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                             ),

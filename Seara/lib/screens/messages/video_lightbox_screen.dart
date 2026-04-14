@@ -203,8 +203,10 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   // Build
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: cs.inverseSurface,
       body: KeyboardListener(
         focusNode: _focusNode,
         autofocus: true,
@@ -233,7 +235,9 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
 
   Widget _buildVideoContent() {
     if (!_initialized) {
-      return const CircularProgressIndicator(color: Colors.white);
+      return CircularProgressIndicator(
+        color: Theme.of(context).colorScheme.onInverseSurface,
+      );
     }
 
     return AspectRatio(
@@ -243,6 +247,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   }
 
   Widget _buildControlsOverlay() {
+    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         _buildTopBar(),
@@ -255,13 +260,13 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.black.withAlpha(120),
+                color: cs.scrim.withAlpha(140),
               ),
               child: Icon(
                 _controller.value.isPlaying
                     ? Icons.pause_rounded
                     : Icons.play_arrow_rounded,
-                color: Colors.white,
+                color: cs.onInverseSurface,
                 size: 40,
               ),
             ),
@@ -273,12 +278,14 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   }
 
   Widget _buildTopBar() {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.black.withAlpha(160), Colors.transparent],
+          colors: [cs.inverseSurface.withAlpha(200), Colors.transparent],
         ),
       ),
       child: SafeArea(
@@ -286,36 +293,33 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
+              icon: Icon(Icons.close_rounded, color: cs.onInverseSurface),
               onPressed: () => Navigator.pop(context),
             ),
             Expanded(
               child: Text(
                 widget.fileName ?? 'Video',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: cs.onInverseSurface,
                   fontWeight: FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             _isDownloading
-                ? const Padding(
-                    padding: EdgeInsets.all(14),
+                ? Padding(
+                    padding: const EdgeInsets.all(14),
                     child: SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: cs.onInverseSurface,
                       ),
                     ),
                   )
                 : IconButton(
-                    icon: const Icon(
-                      Icons.download_rounded,
-                      color: Colors.white,
-                    ),
+                    icon: Icon(Icons.download_rounded, color: cs.onInverseSurface),
                     tooltip: 'Download',
                     onPressed: _download,
                   ),
@@ -324,9 +328,9 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
               Tooltip(
                 message: 'Espaco: play/pause | Esc: fechar | ← →: 10s',
                 child: IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.keyboard_rounded,
-                    color: Colors.white54,
+                    color: cs.onInverseSurface.withAlpha(140),
                     size: 20,
                   ),
                   onPressed: null,
@@ -339,6 +343,8 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   }
 
   Widget _buildBottomBar() {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final duration = _controller.value.duration;
     final position = _controller.value.position;
     final progress = duration.inMilliseconds > 0
@@ -350,7 +356,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
         gradient: LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
-          colors: [Colors.black.withAlpha(160), Colors.transparent],
+          colors: [cs.inverseSurface.withAlpha(200), Colors.transparent],
         ),
       ),
       child: SafeArea(
@@ -369,10 +375,10 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                   overlayShape: const RoundSliderOverlayShape(
                     overlayRadius: 14,
                   ),
-                  activeTrackColor: Colors.white,
-                  inactiveTrackColor: Colors.white38,
-                  thumbColor: Colors.white,
-                  overlayColor: Colors.white24,
+                  activeTrackColor: cs.primary,
+                  inactiveTrackColor: cs.onInverseSurface.withAlpha(70),
+                  thumbColor: cs.primary,
+                  overlayColor: cs.primary.withAlpha(60),
                 ),
                 child: Slider(
                   value: progress.toDouble(),
@@ -395,16 +401,22 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                   children: [
                     Text(
                       _fmt(position),
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onInverseSurface,
+                        fontSize: 12,
+                      ),
                     ),
-                    const Text(
+                    Text(
                       ' / ',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onInverseSurface.withAlpha(160),
+                        fontSize: 12,
+                      ),
                     ),
                     Text(
                       _fmt(duration),
-                      style: const TextStyle(
-                        color: Colors.white54,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onInverseSurface.withAlpha(160),
                         fontSize: 12,
                       ),
                     ),
@@ -417,7 +429,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                         _isMuted
                             ? Icons.volume_off_rounded
                             : Icons.volume_up_rounded,
-                        color: Colors.white,
+                        color: cs.onInverseSurface,
                       ),
                       onPressed: _toggleMute,
                     ),
@@ -431,7 +443,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                           _isFullscreen
                               ? Icons.fullscreen_exit_rounded
                               : Icons.fullscreen_rounded,
-                          color: Colors.white,
+                          color: cs.onInverseSurface,
                         ),
                         onPressed: _toggleFullscreen,
                       ),

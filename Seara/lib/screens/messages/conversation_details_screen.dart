@@ -1149,12 +1149,12 @@ class _MediaGridState extends State<_MediaGrid>
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(120),
+                        color: theme.colorScheme.scrim.withAlpha(140),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.play_arrow_rounded,
-                        color: Colors.white,
+                        color: theme.colorScheme.onInverseSurface,
                         size: 20,
                       ),
                     ),
@@ -1295,7 +1295,7 @@ class _MediaGridState extends State<_MediaGrid>
       context,
       PageRouteBuilder(
         opaque: false,
-        barrierColor: Colors.black,
+        barrierColor: Theme.of(context).colorScheme.scrim,
         pageBuilder: (_, __, ___) => ImageLightboxScreen(imageUrl: url),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
@@ -1309,7 +1309,7 @@ class _MediaGridState extends State<_MediaGrid>
       context,
       PageRouteBuilder(
         opaque: false,
-        barrierColor: Colors.black,
+        barrierColor: Theme.of(context).colorScheme.scrim,
         pageBuilder: (_, __, ___) => VideoLightboxScreen(videoUrl: url),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),

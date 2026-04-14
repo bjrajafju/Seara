@@ -121,6 +121,7 @@ CREATE TABLE public.messages (
   updated_at timestamp without time zone DEFAULT now(),
   attachment_type text,
   attachment_name text,
+  reply_to_message_id bigint,
   delivered_at timestamp with time zone,
   expires_at timestamp with time zone,
   is_system boolean DEFAULT false,
@@ -129,8 +130,30 @@ CREATE TABLE public.messages (
   is_forwarded boolean DEFAULT false,
   CONSTRAINT messages_pkey PRIMARY KEY (id),
   CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id),
-  CONSTRAINT messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT messages_reply_to_message_id_fkey FOREIGN KEY (reply_to_message_id) REFERENCES public.messages(id) ON DELETE SET NULL
 );
+CREATE TABLE public.message_reactions (
+  id bigint NOT NULL DEFAULT nextval('message_reactions_id_seq'::regclass),
+  message_id bigint NOT NULL,
+  user_id bigint NOT NULL,
+  reaction text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT message_reactions_pkey PRIMARY KEY (id),
+  CONSTRAINT message_reactions_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.messages(id) ON DELETE CASCADE,
+  CONSTRAINT message_reactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+  CONSTRAINT message_reactions_message_id_user_id_reaction_key UNIQUE (message_id, user_id, reaction)
+);
+CREATE VIEW public.message_reactions_with_conversation AS
+SELECT
+  mr.id,
+  mr.message_id,
+  mr.user_id,
+  mr.reaction,
+  mr.created_at,
+  m.conversation_id
+FROM public.message_reactions mr
+JOIN public.messages m ON m.id = mr.message_id;
 CREATE TABLE public.migrations (
   id integer NOT NULL DEFAULT nextval('migrations_id_seq'::regclass),
   migration text NOT NULL,
@@ -207,3 +230,5 @@ CREATE TABLE public.users (
   username text NOT NULL UNIQUE,
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
+CREATE INDEX messages_reply_to_message_id_idx ON public.messages USING btree (reply_to_message_id);
+CREATE INDEX message_reactions_message_id_idx ON public.message_reactions USING btree (message_id);

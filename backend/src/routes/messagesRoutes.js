@@ -10,6 +10,7 @@ import {
     getLinkPreview,
     getPinnedMessages,
     toggleMessagePin,
+    toggleMessageReaction,
 } from "../controllers/messagesController.js";
 import {
     getConversationDetails,
@@ -42,6 +43,7 @@ router.get("/conversations/:conversationId/messages", getMessages);
 router.post("/conversations/:conversationId/messages", sendMessage);
 router.put("/conversations/:conversationId/messages/:messageId", editMessage);
 router.delete("/conversations/:conversationId/messages/:messageId", deleteMessage);
+router.post("/:id/reactions", toggleMessageReaction);
 
 // Pinned Messages
 router.get("/conversations/:conversationId/messages/pinned", getPinnedMessages);

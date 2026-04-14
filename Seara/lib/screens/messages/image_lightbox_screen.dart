@@ -59,8 +59,10 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: cs.inverseSurface,
       extendBodyBehindAppBar: true,
       appBar: _buildAppBar(),
       body: GestureDetector(
@@ -81,17 +83,20 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
                   fit: BoxFit.contain,
                   loadingBuilder: (context, child, progress) {
                     if (progress == null) return child;
-                    return const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                    return Center(
+                      child: CircularProgressIndicator(color: cs.onInverseSurface),
                     );
                   },
-                  errorBuilder: (context, error, stack) => const Center(
-                    child: Icon(
-                      Icons.broken_image_rounded,
-                      color: Colors.white54,
-                      size: 64,
-                    ),
-                  ),
+                  errorBuilder: (context, error, stack) {
+                    final cs = Theme.of(context).colorScheme;
+                    return Center(
+                      child: Icon(
+                        Icons.broken_image_rounded,
+                        color: cs.onInverseSurface.withAlpha(140),
+                        size: 64,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -102,18 +107,20 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return AppBar(
-      backgroundColor: Colors.black.withAlpha(180),
+      backgroundColor: cs.inverseSurface.withAlpha(200),
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.close_rounded, color: Colors.white),
+        icon: Icon(Icons.close_rounded, color: cs.onInverseSurface),
         onPressed: () => Navigator.pop(context),
       ),
       title: widget.fileName != null
           ? Text(
               widget.fileName!,
-              style: const TextStyle(
-                color: Colors.white,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: cs.onInverseSurface,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
@@ -122,19 +129,19 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
           : null,
       actions: [
         _isDownloading
-            ? const Padding(
-                padding: EdgeInsets.all(14),
+            ? Padding(
+                padding: const EdgeInsets.all(14),
                 child: SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: cs.onInverseSurface,
                   ),
                 ),
               )
             : IconButton(
-                icon: const Icon(Icons.download_rounded, color: Colors.white),
+                icon: Icon(Icons.download_rounded, color: cs.onInverseSurface),
                 tooltip: 'Download',
                 onPressed: _download,
               ),

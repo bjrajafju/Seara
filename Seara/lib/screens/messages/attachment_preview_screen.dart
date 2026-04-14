@@ -147,19 +147,20 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: cs.inverseSurface,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: cs.inverseSurface,
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: Colors.white),
+          icon: Icon(Icons.close_rounded, color: cs.onInverseSurface),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           if (widget.preview.type == PreviewType.image && !kIsWeb)
             IconButton(
-              icon: const Icon(Icons.crop_rounded, color: Colors.white),
+              icon: Icon(Icons.crop_rounded, color: cs.onInverseSurface),
               tooltip: "Cortar imagem",
               onPressed: _cropImage,
             ),
@@ -175,6 +176,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   }
 
   Widget _buildPreviewContent(ThemeData theme) {
+    final cs = theme.colorScheme;
     switch (widget.preview.type) {
       case PreviewType.image:
         return Center(
@@ -191,18 +193,27 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.videocam_rounded, color: Colors.white, size: 64),
+              Icon(
+                Icons.videocam_rounded,
+                color: cs.onInverseSurface,
+                size: 64,
+              ),
               const SizedBox(height: 16),
               Text(
                 widget.preview.fileName,
-                style: const TextStyle(color: Colors.white),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onInverseSurface,
+                ),
                 textAlign: TextAlign.center,
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   "Preview de video nao disponivel antes do envio.",
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onInverseSurface.withAlpha(160),
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -216,23 +227,25 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.audio_file_rounded,
-                  color: Colors.white,
+                  color: cs.onInverseSurface,
                   size: 64,
                 ),
                 const SizedBox(height: 24),
                 Text(
                   widget.preview.fileName,
-                  style: const TextStyle(color: Colors.white),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: cs.onInverseSurface,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: Colors.white,
-                    inactiveTrackColor: Colors.white24,
-                    thumbColor: Colors.white,
+                    activeTrackColor: cs.primary,
+                    inactiveTrackColor: cs.onInverseSurface.withAlpha(70),
+                    thumbColor: cs.primary,
                   ),
                   child: Slider(
                     value: _audioDuration.inMilliseconds > 0
@@ -254,25 +267,29 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
                   children: [
                     Text(
                       _formatDuration(_audioPosition),
-                      style: const TextStyle(color: Colors.white54),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onInverseSurface.withAlpha(160),
+                      ),
                     ),
                     Text(
                       _formatDuration(_audioDuration),
-                      style: const TextStyle(color: Colors.white54),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onInverseSurface.withAlpha(160),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 // Mostrar loading enquanto o player nao esta pronto
                 _audioPlayer == null
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? CircularProgressIndicator(color: cs.onInverseSurface)
                     : IconButton(
                         iconSize: 56,
                         icon: Icon(
                           _isPlaying
                               ? Icons.pause_circle_filled_rounded
                               : Icons.play_circle_filled_rounded,
-                          color: Colors.white,
+                          color: cs.onInverseSurface,
                         ),
                         onPressed: _toggleAudio,
                       ),
@@ -286,16 +303,16 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.insert_drive_file_rounded,
-                color: Colors.white,
+                color: cs.onInverseSurface,
                 size: 64,
               ),
               const SizedBox(height: 16),
               Text(
                 widget.preview.fileName,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onInverseSurface,
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
@@ -303,7 +320,9 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
               const SizedBox(height: 8),
               Text(
                 "${(widget.preview.bytes.length / 1024).toStringAsFixed(1)} KB",
-                style: const TextStyle(color: Colors.white54),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onInverseSurface.withAlpha(160),
+                ),
               ),
             ],
           ),
@@ -312,8 +331,9 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   }
 
   Widget _buildCaptionAndSend(ThemeData theme) {
+    final cs = theme.colorScheme;
     return Container(
-      color: Colors.black87,
+      color: cs.inverseSurface.withAlpha(240),
       padding: EdgeInsets.only(
         left: 16,
         right: 8,
@@ -325,12 +345,16 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
           Expanded(
             child: TextField(
               controller: _captionController,
-              style: const TextStyle(color: Colors.white),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onInverseSurface,
+              ),
               decoration: InputDecoration(
                 hintText: "Adicionar legenda...",
-                hintStyle: const TextStyle(color: Colors.white54),
+                hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onInverseSurface.withAlpha(160),
+                ),
                 filled: true,
-                fillColor: Colors.white12,
+                fillColor: cs.surface.withAlpha(40),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,

@@ -124,6 +124,7 @@ class MessagesService {
     String? attachmentType,
     String? attachmentName,
     bool isForwarded = false,
+    int? replyToMessageId,
   }) async {
     final response = await ApiClient.post(
       Uri.parse("$baseUrl/messages/conversations/$conversationId/messages"),
@@ -135,6 +136,7 @@ class MessagesService {
         "attachment_type": attachmentType,
         "attachment_name": attachmentName,
         "is_forwarded": isForwarded,
+        "reply_to_message_id": replyToMessageId,
       }),
     );
 
@@ -143,6 +145,29 @@ class MessagesService {
     } else {
       final errBody = jsonDecode(response.body);
       throw Exception(errBody['error'] ?? "Erro ao enviar mensagem");
+    }
+  }
+
+  Future<bool> toggleReaction({
+    required int messageId,
+    required int userId,
+    required String reaction,
+  }) async {
+    final response = await ApiClient.post(
+      Uri.parse("$baseUrl/messages/$messageId/reactions"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "userId": userId,
+        "reaction": reaction,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['added'] == true;
+    } else {
+      final errBody = jsonDecode(response.body);
+      throw Exception(errBody['error'] ?? "Erro ao alternar reação");
     }
   }
 

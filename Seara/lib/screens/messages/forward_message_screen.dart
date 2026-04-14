@@ -180,7 +180,14 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
           ? FloatingActionButton.extended(
               onPressed: _isSending ? null : _handleForward,
               icon: _isSending
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Icon(Icons.send_rounded),
               label: Text("Reencaminhar (${_selectedIds.length})"),
               backgroundColor: theme.colorScheme.primary,

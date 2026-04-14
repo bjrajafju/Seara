@@ -1,10 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/message_model.dart';
 import '../services/messages_service.dart';
 import '../services/upload_service.dart';
 
 class MessagesProvider extends ChangeNotifier {
+  static const List<String> defaultQuickReactions = [
+    '👍',
+    '❤️',
+    '😂',
+    '😮',
+    '😢',
+  ];
   final MessagesService _service = MessagesService();
 
   List<Message> _messages = [];
@@ -17,6 +25,11 @@ class MessagesProvider extends ChangeNotifier {
   String? _sendError;
   DateTime? _lastReadAt;
   RealtimeChannel? _channel;
+  RealtimeChannel? _reactionsChannel;
+  final Set<String> _pendingReactionToggles = {};
+  ReplyPreview? _replyingTo;
+  int? _myUserId;
+  List<String> _quickReactions = defaultQuickReactions;
 
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
@@ -27,6 +40,8 @@ class MessagesProvider extends ChangeNotifier {
   String? get sendError => _sendError;
   DateTime? get lastReadAt => _lastReadAt;
   List<Message> get pinnedMessages => _pinnedMessages;
+  ReplyPreview? get replyingTo => _replyingTo;
+  List<String> get quickReactions => List.unmodifiable(_quickReactions);
 
   void _upsertMessages(Iterable<Message> incoming) {
     if (incoming.isEmpty) return;
@@ -39,8 +54,40 @@ class MessagesProvider extends ChangeNotifier {
     _messages = merged;
   }
 
+  Message? getMessageById(int messageId) {
+    try {
+      return _messages.firstWhere((m) => m.id == messageId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void startReply(Message target) {
+    _replyingTo =
+        target.replyTo ??
+        ReplyPreview(
+          id: target.id,
+          userId: target.userId,
+          senderUsername: target.senderUsername,
+          body: target.body,
+          attachmentType: target.attachment != null
+              ? target.attachmentType.name
+              : null,
+          attachmentName: target.attachmentName,
+        );
+    notifyListeners();
+  }
+
+  void cancelReply() {
+    if (_replyingTo == null) return;
+    _replyingTo = null;
+    notifyListeners();
+  }
+
   /// Load initial page of messages.
   Future<void> loadMessages(int conversationId, {int? userId}) async {
+    _myUserId = userId;
+    await _loadQuickReactions(userId);
     _isLoading = true;
     _loadError = null;
     notifyListeners();
@@ -114,8 +161,30 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
+  Future<int?> ensureMessageLoadedSafe(
+    int conversationId,
+    int messageId, {
+    int? userId,
+    int retries = 3,
+  }) async {
+    int attempt = 0;
+    while (attempt <= retries) {
+      final idx = await ensureMessageLoaded(
+        conversationId,
+        messageId,
+        userId: userId,
+      );
+      if (idx != null && idx >= 0) return idx;
+      if (attempt == retries) break;
+      await Future.delayed(Duration(milliseconds: 200 * (attempt + 1)));
+      attempt += 1;
+    }
+    return null;
+  }
+
   /// Load older messages (scroll up).
   Future<void> loadMore(int conversationId, {int? userId}) async {
+    _myUserId ??= userId;
     if (_isLoadingMore || !_hasMore || _messages.isEmpty) return;
 
     _isLoadingMore = true;
@@ -138,11 +207,55 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadQuickReactions(int? userId) async {
+    if (userId == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'quick_reactions_$userId';
+      final stored = prefs.getStringList(key);
+      if (stored != null &&
+          stored.length == 5 &&
+          stored.every((e) => e.trim().isNotEmpty)) {
+        _quickReactions = stored;
+      } else {
+        _quickReactions = defaultQuickReactions;
+      }
+    } catch (_) {
+      _quickReactions = defaultQuickReactions;
+    }
+  }
+
+  Future<void> setQuickReactionSlot({
+    required int slotIndex,
+    required String emoji,
+  }) async {
+    if (_myUserId == null) return;
+    if (slotIndex < 0 || slotIndex >= 5) return;
+    if (emoji.trim().isEmpty) return;
+
+    final next = List<String>.from(_quickReactions);
+    next[slotIndex] = emoji;
+    _quickReactions = next;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        'quick_reactions_${_myUserId!}',
+        _quickReactions,
+      );
+    } catch (_) {
+      // ignore persistence failures; UI state remains
+    }
+  }
+
   // Task 4: Real-time subscription via Supabase Realtime
   void subscribeToConversation(int conversationId) {
     unsubscribe();
+    _myUserId = null;
     final client = Supabase.instance.client;
     _channel = client.channel('messages:$conversationId');
+    _reactionsChannel = client.channel('reactions:$conversationId');
     _channel!
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
@@ -161,12 +274,39 @@ class MessagesProvider extends ChangeNotifier {
             if (msgId != null && _messages.any((m) => m.id == msgId)) return;
             try {
               final message = Message.fromJson(newMsg);
-              _messages.add(message);
+              _upsertMessages([message]);
               notifyListeners();
             } catch (_) {
               // Ignore parse errors from partial data
             }
           },
+        )
+        .subscribe();
+
+    _reactionsChannel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'message_reactions_with_conversation',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (payload) =>
+              _applyRealtimeReaction(payload.newRecord, true),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'message_reactions_with_conversation',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (payload) =>
+              _applyRealtimeReaction(payload.oldRecord, false),
         )
         .subscribe();
   }
@@ -176,6 +316,62 @@ class MessagesProvider extends ChangeNotifier {
       Supabase.instance.client.removeChannel(_channel!);
       _channel = null;
     }
+    if (_reactionsChannel != null) {
+      Supabase.instance.client.removeChannel(_reactionsChannel!);
+      _reactionsChannel = null;
+    }
+  }
+
+  void _applyRealtimeReaction(Map<String, dynamic> row, bool added) {
+    final messageId = (row['message_id'] as num?)?.toInt();
+    final reaction = row['reaction']?.toString();
+    final userId = (row['user_id'] as num?)?.toInt();
+    if (messageId == null || reaction == null) return;
+
+    final token = '$messageId|$reaction|$userId';
+    if (_pendingReactionToggles.remove(token)) return;
+
+    final idx = _messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1) return;
+    final old = _messages[idx];
+    _messages[idx] = old.copyWith(
+      reactions: _toggleReactionInList(
+        old.reactions,
+        reaction,
+        added,
+        reactedByMe: _myUserId != null && userId == _myUserId,
+      ),
+    );
+    notifyListeners();
+  }
+
+  List<ReactionAggregate> _toggleReactionInList(
+    List<ReactionAggregate> current,
+    String reaction,
+    bool added, {
+    required bool reactedByMe,
+  }) {
+    final map = {for (final r in current) r.reaction: r};
+    final existing = map[reaction];
+    if (existing == null && added) {
+      map[reaction] = ReactionAggregate(
+        reaction: reaction,
+        count: 1,
+        reactedByMe: reactedByMe,
+      );
+    } else if (existing != null) {
+      final nextCount = added ? existing.count + 1 : existing.count - 1;
+      if (nextCount <= 0) {
+        map.remove(reaction);
+      } else {
+        map[reaction] = ReactionAggregate(
+          reaction: reaction,
+          count: nextCount,
+          reactedByMe: reactedByMe ? added : existing.reactedByMe,
+        );
+      }
+    }
+    return map.values.toList();
   }
 
   Future<bool> sendMessage({
@@ -186,6 +382,7 @@ class MessagesProvider extends ChangeNotifier {
     String? attachmentType,
     String? attachmentName,
     bool isForwarded = false,
+    int? replyToMessageId,
   }) async {
     _isSending = true;
     _sendError = null;
@@ -200,12 +397,14 @@ class MessagesProvider extends ChangeNotifier {
         attachmentType: attachmentType,
         attachmentName: attachmentName,
         isForwarded: isForwarded,
+        replyToMessageId: replyToMessageId,
       );
       // Fix #2: Dedup — only add if not already present from realtime
       if (!_messages.any((m) => m.id == message.id)) {
         _messages.add(message);
       }
       _isSending = false;
+      _replyingTo = null;
       notifyListeners();
       return true;
     } catch (e) {
@@ -216,6 +415,47 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> toggleReaction({
+    required int messageId,
+    required int userId,
+    required String reaction,
+  }) async {
+    _myUserId = userId;
+    final idx = _messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1) return;
+
+    final old = _messages[idx];
+    final mine = old.reactions.firstWhere(
+      (r) => r.reaction == reaction,
+      orElse: () =>
+          const ReactionAggregate(reaction: '', count: 0, reactedByMe: false),
+    );
+    final willAdd = !(mine.reaction == reaction && mine.reactedByMe);
+    _messages[idx] = old.copyWith(
+      reactions: _toggleReactionInList(
+        old.reactions,
+        reaction,
+        willAdd,
+        reactedByMe: true,
+      ),
+    );
+    notifyListeners();
+
+    final token = '$messageId|$reaction|$userId';
+    _pendingReactionToggles.add(token);
+    try {
+      await _service.toggleReaction(
+        messageId: messageId,
+        userId: userId,
+        reaction: reaction,
+      );
+    } catch (_) {
+      _pendingReactionToggles.remove(token);
+      _messages[idx] = old;
+      notifyListeners();
+    }
+  }
+
   Future<bool> sendFileMessage({
     required int conversationId,
     required int userId,
@@ -223,6 +463,7 @@ class MessagesProvider extends ChangeNotifier {
     required String fileName,
     required String mimeType,
     String body = "",
+    int? replyToMessageId,
   }) async {
     _isSending = true;
     _sendError = null;
@@ -243,6 +484,7 @@ class MessagesProvider extends ChangeNotifier {
         attachment: result.url,
         attachmentType: result.contentType,
         attachmentName: result.fileName,
+        replyToMessageId: replyToMessageId,
       );
 
       // Fix #2: Dedup — only add if not already present from realtime
@@ -250,6 +492,7 @@ class MessagesProvider extends ChangeNotifier {
         _messages.add(message);
       }
       _isSending = false;
+      _replyingTo = null;
       notifyListeners();
       return true;
     } catch (e) {
@@ -286,7 +529,22 @@ class MessagesProvider extends ChangeNotifier {
       );
       final index = _messages.indexWhere((m) => m.id == messageId);
       if (index != -1) {
-        _messages[index] = updatedMessage;
+        final old = _messages[index];
+        // The edit endpoint may return a "thin" message without reply metadata.
+        // Preserve local reply preview so the quotation box doesn't disappear until reload.
+        _messages[index] = old.copyWith(
+          body: updatedMessage.body,
+          updatedAt: updatedMessage.updatedAt,
+          editedAt: updatedMessage.editedAt,
+          // keep reply info if backend doesn't send it back on edit
+          replyToMessageId:
+              updatedMessage.replyToMessageId ?? old.replyToMessageId,
+          replyTo: updatedMessage.replyTo ?? old.replyTo,
+          // keep reactions if missing in edit response
+          reactions: updatedMessage.reactions.isNotEmpty
+              ? updatedMessage.reactions
+              : old.reactions,
+        );
         notifyListeners();
       }
       return true;

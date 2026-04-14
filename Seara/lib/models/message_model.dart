@@ -1,5 +1,59 @@
 enum AttachmentType { image, video, audio, file, none }
 
+class ReactionAggregate {
+  final String reaction;
+  final int count;
+  final bool reactedByMe;
+
+  const ReactionAggregate({
+    required this.reaction,
+    required this.count,
+    required this.reactedByMe,
+  });
+
+  factory ReactionAggregate.fromJson(Map<String, dynamic> json) {
+    return ReactionAggregate(
+      reaction: (json['reaction'] ?? '').toString(),
+      count: (json['count'] as num?)?.toInt() ?? 0,
+      reactedByMe: json['reacted_by_me'] == true,
+    );
+  }
+}
+
+class ReplyPreview {
+  final int id;
+  final int userId;
+  final String? senderUsername;
+  final String? body;
+  final String? attachmentType;
+  final String? attachmentName;
+  final DateTime? deletedAt;
+
+  const ReplyPreview({
+    required this.id,
+    required this.userId,
+    this.senderUsername,
+    this.body,
+    this.attachmentType,
+    this.attachmentName,
+    this.deletedAt,
+  });
+
+  bool get isUnavailable => deletedAt != null;
+
+  factory ReplyPreview.fromJson(Map<String, dynamic> json) {
+    return ReplyPreview(
+      id: (json['id'] as num).toInt(),
+      userId: (json['user_id'] as num).toInt(),
+      senderUsername: json['sender_username']?.toString(),
+      body: json['body']?.toString(),
+      attachmentType: json['attachment_type']?.toString(),
+      attachmentName: json['attachment_name']?.toString(),
+      deletedAt: json['deleted_at'] != null ? DateTime.tryParse(json['deleted_at'].toString()) : null,
+    );
+  }
+}
+
 class Message {
   final int id;
   final int conversationId;
@@ -18,6 +72,9 @@ class Message {
   final DateTime updatedAt;
   final DateTime? editedAt;
   final bool isForwarded;
+  final int? replyToMessageId;
+  final ReplyPreview? replyTo;
+  final List<ReactionAggregate> reactions;
 
   Message({
     required this.id,
@@ -37,6 +94,9 @@ class Message {
     required this.updatedAt,
     this.editedAt,
     this.isForwarded = false,
+    this.replyToMessageId,
+    this.replyTo,
+    this.reactions = const [],
   });
 
   /// Whether this message has been delivered to at least one recipient.
@@ -110,6 +170,57 @@ class Message {
       updatedAt: DateTime.parse(json['updated_at']),
       editedAt: json['edited_at'] != null ? DateTime.tryParse(json['edited_at']) : null,
       isForwarded: json['is_forwarded'] == true,
+      replyToMessageId: (json['reply_to_message_id'] as num?)?.toInt(),
+      replyTo: json['reply_to'] is Map<String, dynamic>
+          ? ReplyPreview.fromJson(json['reply_to'] as Map<String, dynamic>)
+          : null,
+      reactions: ((json['reactions'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((r) => ReactionAggregate.fromJson(Map<String, dynamic>.from(r)))
+          .toList(),
+    );
+  }
+
+  Message copyWith({
+    String? body,
+    String? attachment,
+    AttachmentType? attachmentType,
+    String? attachmentName,
+    String? senderUsername,
+    String? senderAvatar,
+    int? status,
+    DateTime? deliveredAt,
+    DateTime? expiresAt,
+    bool? isSystemMessage,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? editedAt,
+    bool? isForwarded,
+    int? replyToMessageId,
+    ReplyPreview? replyTo,
+    List<ReactionAggregate>? reactions,
+  }) {
+    return Message(
+      id: id,
+      conversationId: conversationId,
+      userId: userId,
+      body: body ?? this.body,
+      attachment: attachment ?? this.attachment,
+      attachmentType: attachmentType ?? this.attachmentType,
+      attachmentName: attachmentName ?? this.attachmentName,
+      senderUsername: senderUsername ?? this.senderUsername,
+      senderAvatar: senderAvatar ?? this.senderAvatar,
+      status: status ?? this.status,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      isSystemMessage: isSystemMessage ?? this.isSystemMessage,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      editedAt: editedAt ?? this.editedAt,
+      isForwarded: isForwarded ?? this.isForwarded,
+      replyToMessageId: replyToMessageId ?? this.replyToMessageId,
+      replyTo: replyTo ?? this.replyTo,
+      reactions: reactions ?? this.reactions,
     );
   }
 }

@@ -173,13 +173,13 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withAlpha(120),
+                            color: theme.colorScheme.scrim.withAlpha(140),
                             shape: BoxShape.circle,
                           ),
-                          child: const Center(
+                          child: Center(
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: theme.colorScheme.onInverseSurface,
                             ),
                           ),
                         ),
