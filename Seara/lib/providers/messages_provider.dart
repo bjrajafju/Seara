@@ -12,6 +12,7 @@ class MessagesProvider extends ChangeNotifier {
   bool _isLoadingMore = false;
   bool _isSending = false;
   bool _hasMore = false;
+  List<Message> _pinnedMessages = [];
   String? _loadError;
   String? _sendError;
   DateTime? _lastReadAt;
@@ -25,6 +26,18 @@ class MessagesProvider extends ChangeNotifier {
   String? get error => _loadError;
   String? get sendError => _sendError;
   DateTime? get lastReadAt => _lastReadAt;
+  List<Message> get pinnedMessages => _pinnedMessages;
+
+  void _upsertMessages(Iterable<Message> incoming) {
+    if (incoming.isEmpty) return;
+    final byId = <int, Message>{for (final m in _messages) m.id: m};
+    for (final m in incoming) {
+      byId[m.id] = m;
+    }
+    final merged = byId.values.toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    _messages = merged;
+  }
 
   /// Load initial page of messages.
   Future<void> loadMessages(int conversationId, {int? userId}) async {
@@ -43,18 +56,43 @@ class MessagesProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+
+    // Non-blocking fetch of pinned messages
+    fetchPinnedMessages(conversationId);
   }
 
-  /// Load messages around a specific message (for jump-to-message feature).
-  /// Returns the index of the target message in the loaded messages.
-  Future<int?> loadMessagesAround(
+  Future<void> fetchPinnedMessages(int conversationId) async {
+    try {
+      _pinnedMessages = await _service.getPinnedMessages(conversationId);
+      notifyListeners();
+    } catch (e) {
+      print("Warning: failed to load pinned messages: $e");
+    }
+  }
+
+  Future<bool> togglePinMessage(int conversationId, Message msg) async {
+    try {
+      await _service.toggleMessagePin(conversationId, msg.id);
+      // Source of truth is backend; refresh pinned list to avoid stale/duplicate state.
+      await fetchPinnedMessages(conversationId);
+      return true;
+    } catch (e) {
+      print("Error toggling pin: $e");
+      return false;
+    }
+  }
+
+  /// Ensures a message is present in memory (fetching if needed) and returns its index.
+  ///
+  /// This **merges** results into the existing list (does not replace the page),
+  /// improving UX for "jump to message" (pinned/search navigation).
+  Future<int?> ensureMessageLoaded(
     int conversationId,
     int messageId, {
     int? userId,
   }) async {
-    _isLoading = true;
-    _loadError = null;
-    notifyListeners();
+    final existingIndex = _messages.indexWhere((m) => m.id == messageId);
+    if (existingIndex != -1) return existingIndex;
 
     try {
       final page = await _service.fetchMessages(
@@ -62,16 +100,17 @@ class MessagesProvider extends ChangeNotifier {
         around: messageId,
         userId: userId,
       );
-      _messages = page.messages;
-      _hasMore = page.hasMore;
-      _lastReadAt = page.lastReadAt;
-      return page.targetIndex;
-    } catch (e) {
-      _loadError = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
+      _upsertMessages(page.messages);
+      // Keep existing pagination flags (around endpoint is not meant to define hasMore for timeline browsing)
+      _lastReadAt ??= page.lastReadAt;
       notifyListeners();
+
+      return _messages.indexWhere((m) => m.id == messageId);
+    } catch (e) {
+      // Don't clobber the whole screen with a load error for a jump action; just surface via error state.
+      _loadError = e.toString();
+      notifyListeners();
+      return null;
     }
   }
 
@@ -146,6 +185,7 @@ class MessagesProvider extends ChangeNotifier {
     String? attachment,
     String? attachmentType,
     String? attachmentName,
+    bool isForwarded = false,
   }) async {
     _isSending = true;
     _sendError = null;
@@ -159,6 +199,7 @@ class MessagesProvider extends ChangeNotifier {
         attachment: attachment,
         attachmentType: attachmentType,
         attachmentName: attachmentName,
+        isForwarded: isForwarded,
       );
       // Fix #2: Dedup — only add if not already present from realtime
       if (!_messages.any((m) => m.id == message.id)) {
@@ -228,6 +269,53 @@ class MessagesProvider extends ChangeNotifier {
       }
     }
     return null;
+  }
+
+  Future<bool> editMessage({
+    required int conversationId,
+    required int messageId,
+    required String newBody,
+  }) async {
+    _sendError = null;
+    notifyListeners();
+    try {
+      final updatedMessage = await _service.editMessage(
+        conversationId: conversationId,
+        messageId: messageId,
+        newBody: newBody,
+      );
+      final index = _messages.indexWhere((m) => m.id == messageId);
+      if (index != -1) {
+        _messages[index] = updatedMessage;
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _sendError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteMessage({
+    required int conversationId,
+    required int messageId,
+  }) async {
+    _sendError = null;
+    notifyListeners();
+    try {
+      await _service.deleteMessage(
+        conversationId: conversationId,
+        messageId: messageId,
+      );
+      _messages.removeWhere((m) => m.id == messageId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _sendError = e.toString();
+      notifyListeners();
+      return false;
+    }
   }
 
   void clear() {

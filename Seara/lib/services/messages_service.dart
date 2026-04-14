@@ -123,6 +123,7 @@ class MessagesService {
     String? attachment,
     String? attachmentType,
     String? attachmentName,
+    bool isForwarded = false,
   }) async {
     final response = await ApiClient.post(
       Uri.parse("$baseUrl/messages/conversations/$conversationId/messages"),
@@ -133,6 +134,7 @@ class MessagesService {
         "attachment": attachment,
         "attachment_type": attachmentType,
         "attachment_name": attachmentName,
+        "is_forwarded": isForwarded,
       }),
     );
 
@@ -144,5 +146,66 @@ class MessagesService {
     }
   }
 
-  // Removed searchConversations as logic was unified into fetchConversations
+  Future<Message> editMessage({
+    required int conversationId,
+    required int messageId,
+    required String newBody,
+  }) async {
+    final response = await ApiClient.put(
+      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages/$messageId"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "body": newBody,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return Message.fromJson(jsonDecode(response.body));
+    } else {
+      final errBody = jsonDecode(response.body);
+      throw Exception(errBody['error'] ?? "Erro ao editar mensagem");
+    }
+  }
+
+  Future<void> deleteMessage({
+    required int conversationId,
+    required int messageId,
+  }) async {
+    final response = await ApiClient.delete(
+      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages/$messageId"),
+      headers: {"Content-Type": "application/json"},
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception("Erro ao eliminar mensagem");
+    }
+  }
+
+  Future<List<Message>> getPinnedMessages(int conversationId) async {
+    final response = await ApiClient.get(
+      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages/pinned"),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => Message.fromJson(json)).toList();
+    } else {
+      final errBody = jsonDecode(response.body);
+      throw Exception(errBody['error'] ?? "Erro ao carregar mensagens fixadas");
+    }
+  }
+
+  Future<bool> toggleMessagePin(int conversationId, int messageId) async {
+    final response = await ApiClient.put(
+      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages/$messageId/pin"),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['status'] == 'pinned';
+    } else {
+      final errBody = jsonDecode(response.body);
+      throw Exception(errBody['error'] ?? "Erro ao alternar fixação da mensagem");
+    }
+  }
 }

@@ -22,10 +22,12 @@ import 'package:seara/screens/messages/widgets/audio_message_widget.dart';
 import 'package:seara/services/auth_service.dart';
 import 'package:seara/services/conversation_settings_service.dart';
 import 'package:seara/screens/messages/conversation_details_screen.dart';
+import 'package:seara/screens/messages/forward_message_screen.dart';
 import 'package:seara/utils/conversation_theme_helper.dart';
 import 'package:seara/models/link_preview_model.dart';
 import 'package:seara/services/link_preview_service.dart';
 import 'widgets/link_preview_card.dart';
+import 'widgets/message_bubble_wrapper.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 
 // Import condicional: usa web em browser, stub em mobile
@@ -61,10 +63,19 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _isRecording = false;
   bool _hasText = false;
   int? _highlightMessageId;
+  int _currentPinnedIndex = 0;
   int _convThemeId = 0;
   bool _isUserNearBottom = true; // Track if user is near bottom
   bool _isJumpingToMessage = false; // Track if we're jumping to a message
-  final GlobalKey _targetMessageKey = GlobalKey();
+  final Map<int, GlobalKey> _messageKeys = {};
+
+  GlobalKey _keyForMessage(int messageId) {
+    return _messageKeys.putIfAbsent(messageId, () => GlobalKey());
+  }
+
+  // Action state
+  int? _editingMessageId;
+  final TextEditingController _editMessageController = TextEditingController();
 
   @override
   void initState() {
@@ -196,6 +207,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _scrollController.removeListener(_onScroll);
     _messagesProvider.removeListener(_onNewMessage);
     _messageController.dispose();
+    _editMessageController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
     _recorder.dispose();
@@ -669,7 +681,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 ? null
                 : convTheme.backgroundDecoration,
             child: Column(
-              children: [_buildMessagesList(theme), _buildInputArea(theme)],
+              children: [
+                _buildPinnedMessageBar(theme),
+                _buildMessagesList(theme), 
+                _buildInputArea(theme)
+              ],
             ),
           ),
         ),
@@ -750,8 +766,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     setState(() => _highlightMessageId = messageId);
 
     try {
-      // Load messages around the target with context
-      final targetIndex = await _messagesProvider.loadMessagesAround(
+      final targetIndex = await _messagesProvider.ensureMessageLoaded(
         widget.conversation.id,
         messageId,
         userId: _myId,
@@ -762,7 +777,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
         return;
       }
 
-      // If target was loaded successfully, scroll to it
       if (targetIndex != null) {
         void attemptScroll(int attempts) {
           if (!mounted) {
@@ -772,39 +786,64 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
           if (!_scrollController.hasClients) {
             if (attempts < 10) {
-              Future.delayed(const Duration(milliseconds: 50), () => attemptScroll(attempts + 1));
+              Future.delayed(
+                const Duration(milliseconds: 50),
+                () => attemptScroll(attempts + 1),
+              );
             } else {
               _isJumpingToMessage = false;
             }
             return;
           }
 
-          double scrollOffset = 12.0;
-          if (_messagesProvider.isLoadingMore) scrollOffset += 44;
-          for (int i = 0; i < targetIndex; i++) scrollOffset += 90;
+          final targetKey = _keyForMessage(messageId);
+
+          // If it's already built, just smoothly ensure visible.
+          if (targetKey.currentContext != null) {
+            Scrollable.ensureVisible(
+              targetKey.currentContext!,
+              alignment: 0.35,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOut,
+            ).whenComplete(() => _isJumpingToMessage = false);
+            return;
+          }
+
+          // Otherwise, animate roughly near its index to get it built, then ensureVisible.
           final unreadIdx = _messagesProvider.unreadDividerIndex;
-          if (unreadIdx != null && unreadIdx < targetIndex) scrollOffset += 56;
+          final extraBefore = _messagesProvider.isLoadingMore ? 1 : 0;
+          final extraUnread = unreadIdx != null ? 1 : 0;
+          final approxItemIndex = targetIndex + extraBefore + extraUnread;
 
-          scrollOffset = (scrollOffset - 60).clamp(0.0, _scrollController.position.maxScrollExtent) as double;
+          // Approximate height per row to get close without "reloading" the screen.
+          final approxOffset = (approxItemIndex * 88.0 - 120.0)
+              .clamp(0.0, _scrollController.position.maxScrollExtent);
 
-          // Jump roughly to the area to trigger rendering
-          _scrollController.jumpTo(scrollOffset);
-
-          // Wait for render frame, then precisely scroll to the key
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_targetMessageKey.currentContext != null && mounted) {
-              Scrollable.ensureVisible(
-                _targetMessageKey.currentContext!,
-                alignment: 0.5,
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeInOut,
-              );
-              _isJumpingToMessage = false;
-            } else if (attempts < 10) {
-              Future.delayed(const Duration(milliseconds: 50), () => attemptScroll(attempts + 1));
-            } else {
-              _isJumpingToMessage = false; // Give up
-            }
+          _scrollController
+              .animateTo(
+                approxOffset,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              )
+              .whenComplete(() {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              if (targetKey.currentContext != null) {
+                Scrollable.ensureVisible(
+                  targetKey.currentContext!,
+                  alignment: 0.35,
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeInOut,
+                ).whenComplete(() => _isJumpingToMessage = false);
+              } else if (attempts < 10) {
+                Future.delayed(
+                  const Duration(milliseconds: 60),
+                  () => attemptScroll(attempts + 1),
+                );
+              } else {
+                _isJumpingToMessage = false;
+              }
+            });
           });
         }
 
@@ -821,6 +860,75 @@ class _ConversationScreenState extends State<ConversationScreen> {
       if (mounted) setState(() => _highlightMessageId = null);
       _isJumpingToMessage = false;
     }
+  }
+
+
+  Widget _buildPinnedMessageBar(ThemeData theme) {
+    return Consumer<MessagesProvider>(
+      builder: (context, provider, _) {
+        final pinned = provider.pinnedMessages;
+        if (pinned.isEmpty) return const SizedBox.shrink();
+
+        if (_currentPinnedIndex >= pinned.length) {
+          _currentPinnedIndex = 0;
+        }
+
+        final currentPin = pinned[_currentPinnedIndex];
+        
+        return GestureDetector(
+          onTap: () {
+            _scrollToMessage(currentPin.id);
+            if (pinned.length > 1) {
+              setState(() {
+                _currentPinnedIndex = (_currentPinnedIndex + 1) % pinned.length;
+              });
+            }
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withAlpha(200),
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.colorScheme.outlineVariant,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.push_pin, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        pinned.length > 1 ? "Mensagem Fixada (${_currentPinnedIndex + 1}/${pinned.length})" : "Mensagem Fixada",
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        currentPin.body.isNotEmpty ? currentPin.body.replaceAll('\n', ' ') : 'Anexo',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildMessagesList(ThemeData theme) {
@@ -919,13 +1027,23 @@ class _ConversationScreenState extends State<ConversationScreen> {
               final isLast = _isLastInGroup(messages, msgIndex);
               final isHighlighted = message.id == _highlightMessageId;
 
-              Widget msgWidget = isMe
-                  ? _buildMyMessage(theme, message, isFirst, isLast)
-                  : _buildOtherMessage(theme, message, isFirst, isLast);
+              Widget msgWidget;
+              if (_editingMessageId == message.id) {
+                msgWidget = _buildEditMessageBubble(theme, message);
+              } else {
+                msgWidget = isMe
+                    ? _buildMyMessage(theme, message, isFirst, isLast)
+                    : _buildOtherMessage(theme, message, isFirst, isLast);
+              }
+
+              // Apply alignment relative to whoever sent the message
+              msgWidget = Align(
+                alignment: message.userId == _myId ? Alignment.centerRight : Alignment.centerLeft,
+                child: msgWidget,
+              );
 
               if (isHighlighted) {
                 msgWidget = AnimatedContainer(
-                  key: _targetMessageKey,
                   duration: const Duration(milliseconds: 500),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withAlpha(30),
@@ -934,6 +1052,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
                   child: msgWidget,
                 );
               }
+
+              msgWidget = KeyedSubtree(
+                key: _keyForMessage(message.id),
+                child: msgWidget,
+              );
 
               return Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1224,14 +1347,19 @@ class _ConversationScreenState extends State<ConversationScreen> {
         message.senderAvatar ??
         "https://ui-avatars.com/api/?name=${message.senderUsername ?? 'U'}";
 
+    final currentBgColor = ConversationThemeHelper.getTheme(_convThemeId).backgroundColors.first;
+    final isLightBg = ThemeData.estimateBrightnessForColor(currentBgColor) == Brightness.light;
+    final editadaColor = isLightBg ? Colors.grey[700]! : theme.colorScheme.onSurfaceVariant;
+
     return Padding(
       // Mais espaco antes do primeiro de um grupo, menos entre mensagens do mesmo grupo
       padding: EdgeInsets.only(top: isFirst ? 8 : 2, bottom: isLast ? 4 : 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min, // Fix row expanding full width
         children: [
-          // Avatar so aparece na ultima mensagem do grupo (visualmente a mais baixa)
-          SizedBox(
+            // Avatar so aparece na ultima mensagem do grupo (visualmente a mais baixa)
+            SizedBox(
             width: 52,
             child: isLast
                 ? Padding(
@@ -1243,7 +1371,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                   )
                 : null,
           ),
-          Expanded(
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1260,53 +1388,89 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     ),
                   ),
                 Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.33,
-                  ),
                   margin: const EdgeInsets.only(right: 48),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        ConversationThemeHelper.getTheme(
-                          _convThemeId,
-                        ).otherBubbleColor ??
-                        theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(isFirst ? 16 : 4),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isLast ? 16 : 4),
-                      bottomRight: const Radius.circular(16),
+                  child: MessageBubbleWrapper(
+                    message: message,
+                    isMe: false,
+                    themeId: _convThemeId,
+                    onEdit: _handleEditMessage,
+                    onDelete: _handleDeleteMessage,
+                    onCopy: _handleCopyMessage,
+                    onPin: _handlePinMessage,
+                    onForward: _handleForwardMessage,
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.33,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            ConversationThemeHelper.getTheme(
+                              _convThemeId,
+                            ).otherBubbleColor ??
+                            theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(isFirst ? 16 : 4),
+                          topRight: const Radius.circular(16),
+                          bottomLeft: Radius.circular(isLast ? 16 : 4),
+                          bottomRight: const Radius.circular(16),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (message.isForwarded)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.forward_rounded, size: 12, color: ConversationThemeHelper.getTheme(_convThemeId).otherTextColor?.withAlpha(150) ?? theme.colorScheme.onSurface.withAlpha(150)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "Reencaminhada",
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: ConversationThemeHelper.getTheme(_convThemeId).otherTextColor?.withAlpha(150) ?? theme.colorScheme.onSurface.withAlpha(150),
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (message.body.isNotEmpty) ...[
+                            _buildRichMessageText(
+                              theme,
+                              message.body,
+                              textColor: ConversationThemeHelper.getTheme(
+                                _convThemeId,
+                              ).otherTextColor,
+                            ),
+                            _buildLinkPreview(message.body),
+                          ],
+                          if (message.attachment != null) ...[
+                            if (message.body.isNotEmpty) const SizedBox(height: 6),
+                            _buildAttachmentContent(theme, message),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (message.body.isNotEmpty) ...[
-                        _buildRichMessageText(
-                          theme,
-                          message.body,
-                          textColor: ConversationThemeHelper.getTheme(
-                            _convThemeId,
-                          ).otherTextColor,
-                        ),
-                        _buildLinkPreview(message.body),
-                      ],
-                      if (message.attachment != null) ...[
-                        if (message.body.isNotEmpty) const SizedBox(height: 6),
-                        _buildAttachmentContent(theme, message),
-                      ],
-                    ],
-                  ),
                 ),
+                if (message.isEdited)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, left: 4),
+                    child: Text('editada', style: theme.textTheme.labelSmall?.copyWith(color: editadaColor)),
+                  ),
               ],
             ),
           ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
   }
 
   Widget _buildMyMessage(
@@ -1315,6 +1479,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
     bool isFirst,
     bool isLast,
   ) {
+    final currentBgColor = ConversationThemeHelper.getTheme(_convThemeId).backgroundColors.first;
+    final isLightBg = ThemeData.estimateBrightnessForColor(currentBgColor) == Brightness.light;
+    final editadaColor = isLightBg ? Colors.grey[700]! : theme.colorScheme.onSurfaceVariant;
+
     return Padding(
       // Mais espaço antes do 1.º de um grupo, reduzido entre mensagens do grupo
       padding: EdgeInsets.only(
@@ -1326,49 +1494,88 @@ class _ConversationScreenState extends State<ConversationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.33,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color:
-                  ConversationThemeHelper.getTheme(
-                    _convThemeId,
-                  ).myBubbleColor ??
-                  theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: Radius.circular(isFirst ? 16 : 4),
-                bottomLeft: const Radius.circular(16),
-                bottomRight: Radius.circular(isLast ? 16 : 4),
+          MessageBubbleWrapper(
+            message: message,
+            isMe: true,
+            themeId: _convThemeId,
+            onEdit: _handleEditMessage,
+            onDelete: _handleDeleteMessage,
+            onCopy: _handleCopyMessage,
+            onPin: _handlePinMessage,
+            onForward: _handleForwardMessage,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.33,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color:
+                    ConversationThemeHelper.getTheme(
+                      _convThemeId,
+                    ).myBubbleColor ??
+                    theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: Radius.circular(isFirst ? 16 : 4),
+                  bottomLeft: const Radius.circular(16),
+                  bottomRight: Radius.circular(isLast ? 16 : 4),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (message.isForwarded)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.forward_rounded, size: 12, color: ConversationThemeHelper.getTheme(_convThemeId).myTextColor?.withAlpha(150) ?? theme.colorScheme.onPrimary.withAlpha(150)),
+                          const SizedBox(width: 4),
+                          Text(
+                            "Reencaminhada",
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: ConversationThemeHelper.getTheme(_convThemeId).myTextColor?.withAlpha(150) ?? theme.colorScheme.onPrimary.withAlpha(150),
+                              fontStyle: FontStyle.italic,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (message.body.isNotEmpty) ...[
+                    _buildRichMessageText(
+                      theme,
+                      message.body,
+                      textColor: ConversationThemeHelper.getTheme(
+                        _convThemeId,
+                      ).myTextColor,
+                    ),
+                    _buildLinkPreview(message.body),
+                  ],
+                  if (message.attachment != null) ...[
+                    if (message.body.isNotEmpty) const SizedBox(height: 6),
+                    _buildAttachmentContent(theme, message),
+                  ],
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (message.body.isNotEmpty) ...[
-                  _buildRichMessageText(
-                    theme,
-                    message.body,
-                    textColor: ConversationThemeHelper.getTheme(
-                      _convThemeId,
-                    ).myTextColor,
-                  ),
-                  _buildLinkPreview(message.body),
-                ],
-                if (message.attachment != null) ...[
-                  if (message.body.isNotEmpty) const SizedBox(height: 6),
-                  _buildAttachmentContent(theme, message),
-                ],
-              ],
-            ),
           ),
-          // Read receipt status
-          if (isLast)
+          // Footer with "editada" and read receipts
+          if (isLast || message.isEdited)
             Padding(
               padding: const EdgeInsets.only(top: 2, right: 4),
-              child: _buildStatusIcon(theme, message),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (message.isEdited)
+                    Padding(
+                      padding: EdgeInsets.only(right: isLast ? 4 : 0),
+                      child: Text('editada', style: theme.textTheme.labelSmall?.copyWith(color: editadaColor)),
+                    ),
+                  if (isLast) _buildStatusIcon(theme, message),
+                ],
+              ),
             ),
         ],
       ),
@@ -1476,6 +1683,168 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return Tooltip(
       message: tooltip,
       child: Icon(icon, size: 16, color: color),
+    );
+  }
+
+  void _handleEditMessage(Message message) {
+    setState(() {
+      _editingMessageId = message.id;
+      _editMessageController.text = message.body;
+    });
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _editingMessageId = null;
+      _editMessageController.clear();
+    });
+  }
+
+  Future<void> _saveEditedMessage(Message message) async {
+    final newText = _editMessageController.text.trim();
+    if (newText.isEmpty) return; 
+
+    // Optimistic UI updates are handled partially by the provider (if it was synchronous), but we know it awaits network.
+    // So we close the edit modal immediately so user doesn't wait:
+    _cancelEdit();
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mensagem editada'), duration: Duration(seconds: 1)));
+
+    // Call provider edit
+    final success = await context.read<MessagesProvider>().editMessage(
+      conversationId: message.conversationId,
+      messageId: message.id,
+      newBody: newText,
+    );
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao editar mensagem. As alterações não foram guardadas.')),
+      );
+      // Wait for provider reload to restore original state or let realtime fix it
+    }
+  }
+
+  Future<void> _handleDeleteMessage(Message message) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar mensagem?'),
+        content: const Text('Tem a certeza que pretende eliminar esta mensagem?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mensagem eliminada'), duration: Duration(seconds: 1)));
+      
+      final success = await context.read<MessagesProvider>().deleteMessage(
+        conversationId: message.conversationId,
+        messageId: message.id,
+      );
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao eliminar mensagem')),
+        );
+        // Provider reload can restore it if needed
+      }
+    }
+  }
+
+  void _handleCopyMessage(Message message) {
+    Clipboard.setData(ClipboardData(text: message.body));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Mensagem copiada')),
+    );
+  }
+
+
+  Widget _buildEditMessageBubble(ThemeData theme, Message message) {
+    final isMe = message.userId == _myId;
+    return Padding(
+      padding: EdgeInsets.only(
+        top: 8,
+        bottom: 8,
+        right: isMe ? 12 : 48,
+        left: isMe ? 48 : 12,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.colorScheme.primary.withAlpha(50)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            TextField(
+              controller: _editMessageController,
+              maxLines: null,
+              style: theme.textTheme.bodyMedium,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton(
+                  onPressed: _cancelEdit,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: Size.zero,
+                  ),
+                  child: const Text('Cancelar', style: TextStyle(fontSize: 13)),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => _saveEditedMessage(message),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: Size.zero,
+                  ),
+                  child: const Text('Guardar', style: TextStyle(fontSize: 13)),
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handlePinMessage(Message message) async {
+    final success = await context.read<MessagesProvider>().togglePinMessage(widget.conversation.id, message);
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao modificar o estado de fixacao.')),
+      );
+    }
+  }
+
+  void _handleForwardMessage(Message message) {
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ForwardMessageScreen(
+          message: message,
+          myId: _myId ?? 0,
+        ),
+      ),
     );
   }
 

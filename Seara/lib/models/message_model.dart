@@ -16,6 +16,8 @@ class Message {
   final bool isSystemMessage;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? editedAt;
+  final bool isForwarded;
 
   Message({
     required this.id,
@@ -33,6 +35,8 @@ class Message {
     this.isSystemMessage = false,
     required this.createdAt,
     required this.updatedAt,
+    this.editedAt,
+    this.isForwarded = false,
   });
 
   /// Whether this message has been delivered to at least one recipient.
@@ -40,6 +44,9 @@ class Message {
 
   /// Whether this message has been read by at least one recipient.
   bool get isRead => status >= 2;
+
+  /// Whether this message has been edited
+  bool get isEdited => editedAt != null || updatedAt.difference(createdAt).inSeconds > 2;
 
   factory Message.fromJson(Map<String, dynamic> json) {
     final attachmentUrl = json['attachment'] as String?;
@@ -101,6 +108,8 @@ class Message {
       isSystemMessage: json['is_system'] == true || json['user_id'] == 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
+      editedAt: json['edited_at'] != null ? DateTime.tryParse(json['edited_at']) : null,
+      isForwarded: json['is_forwarded'] == true,
     );
   }
 }

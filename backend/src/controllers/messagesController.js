@@ -98,6 +98,7 @@ export const listConversations = async (req, res) => {
                 .from("messages")
                 .select("id", { count: "exact", head: true })
                 .eq("conversation_id", uc.conversation_id)
+                .is("deleted_at", null)
                 .neq("user_id", userId)
                 .gt("created_at", uc.last_read_at || "1970-01-01T00:00:00Z");
             unreadCounts[uc.conversation_id] = count || 0;
@@ -142,8 +143,8 @@ export const listConversations = async (req, res) => {
 
             // Message querying
             let msgQuery = supabase.from("messages").select(`
-                id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at
-            `).eq("conversation_id", conv.id).order('created_at', { ascending: false });
+                id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at, is_forwarded
+            `).eq("conversation_id", conv.id).is("deleted_at", null).order('created_at', { ascending: false });
 
             let requiresSpecializedQuery = false;
 
@@ -182,8 +183,8 @@ export const listConversations = async (req, res) => {
             // If we didn't require a specialized query or we got a match on metadata but still need a preview message fallback:
             if (!previewMsg) {
                 const { data: latestRaw } = await supabase.from("messages").select(`
-                    id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at
-                `).eq("conversation_id", conv.id).order('created_at', { ascending: false }).limit(1);
+                    id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at
+                `).eq("conversation_id", conv.id).is("deleted_at", null).order('created_at', { ascending: false }).limit(1);
                 previewMsg = latestRaw && latestRaw.length > 0 ? latestRaw[0] : null;
             }
 
@@ -446,6 +447,8 @@ export const getMessages = async (req, res) => {
                     is_system,
                     created_at,
                     updated_at,
+                    edited_at,
+                    is_forwarded,
                     users (
                         id,
                         username,
@@ -454,6 +457,7 @@ export const getMessages = async (req, res) => {
                 `
                 )
                 .eq("conversation_id", conversationId)
+                .is("deleted_at", null)
                 .or(`expires_at.is.null,expires_at.gt.${now}`)
                 .lt("created_at", targetMsg.created_at)
                 .order("created_at", { ascending: false })
@@ -476,6 +480,8 @@ export const getMessages = async (req, res) => {
                     is_system,
                     created_at,
                     updated_at,
+                    edited_at,
+                    is_forwarded,
                     users (
                         id,
                         username,
@@ -503,6 +509,8 @@ export const getMessages = async (req, res) => {
                     is_system,
                     created_at,
                     updated_at,
+                    edited_at,
+                    is_forwarded,
                     users (
                         id,
                         username,
@@ -511,6 +519,7 @@ export const getMessages = async (req, res) => {
                 `
                 )
                 .eq("conversation_id", conversationId)
+                .is("deleted_at", null)
                 .or(`expires_at.is.null,expires_at.gt.${now}`)
                 .gt("created_at", targetMsg.created_at)
                 .order("created_at", { ascending: true })
@@ -557,8 +566,10 @@ export const getMessages = async (req, res) => {
                     delivered_at: msg.delivered_at,
                     is_system: msg.is_system || false,
                     status,
+                    is_forwarded: msg.is_forwarded || false,
                     created_at: msg.created_at,
                     updated_at: msg.updated_at,
+                    edited_at: msg.edited_at,
                     sender_username: msg.users?.username ?? null,
                     sender_avatar: msg.users?.avatar ?? null,
                 };
@@ -604,6 +615,8 @@ export const getMessages = async (req, res) => {
                 is_system,
                 created_at,
                 updated_at,
+                edited_at,
+                is_forwarded,
                 users (
                     id,
                     username,
@@ -612,6 +625,7 @@ export const getMessages = async (req, res) => {
             `,
             )
             .eq("conversation_id", conversationId)
+            .is("deleted_at", null)
             .or(`expires_at.is.null,expires_at.gt.${now}`)
             .order("created_at", { ascending: false })
             .limit(limit + 1);
@@ -678,6 +692,7 @@ export const getMessages = async (req, res) => {
                     delivered_at: msg.delivered_at,
                     is_system: msg.is_system || false,
                     status,
+                    is_forwarded: msg.is_forwarded || false,
                     created_at: msg.created_at,
                     updated_at: msg.updated_at,
                     sender_username: msg.users?.username ?? null,
@@ -713,10 +728,10 @@ export const getMessages = async (req, res) => {
 // POST /conversations/:conversationId/messages — Send message
 export const sendMessage = async (req, res) => {
     const { conversationId } = req.params;
-    const { userId, body, attachment, attachment_type, attachment_name } =
+    const { userId, body, attachment, attachment_type, attachment_name, is_forwarded } =
         req.body;
 
-    if (!conversationId || !userId || (!body && !attachment)) {
+    if (!conversationId || !userId) {
         return res.status(400).json({ error: "Dados inválidos." });
     }
 
@@ -764,6 +779,7 @@ export const sendMessage = async (req, res) => {
                 attachment_type: attachment_type ?? null,
                 attachment_name: attachment_name ?? null,
                 expires_at: expiresAt,
+                is_forwarded: is_forwarded || false,
             })
             .select(
                 `
@@ -778,6 +794,7 @@ export const sendMessage = async (req, res) => {
                 expires_at,
                 created_at,
                 updated_at,
+                is_forwarded,
                 users (
                     id,
                     username,
@@ -805,6 +822,7 @@ export const sendMessage = async (req, res) => {
             attachment_name: message.attachment_name,
             delivered_at: message.delivered_at,
             status: 0, // just sent
+            is_forwarded: message.is_forwarded || false,
             created_at: message.created_at,
             updated_at: message.updated_at,
             sender_username: message.users?.username ?? null,
@@ -817,6 +835,119 @@ export const sendMessage = async (req, res) => {
 };
 
 // Removed searchMessages (Logic unified into listConversations)
+
+// PUT /conversations/:conversationId/messages/:messageId — Edit message
+export const editMessage = async (req, res) => {
+    const { conversationId, messageId } = req.params;
+    const { body } = req.body;
+
+    if (!messageId || !body) {
+        return res.status(400).json({ error: "Dados inválidos." });
+    }
+
+    try {
+        const { data: targetMsg, error: fetchErr } = await supabase
+            .from("messages")
+            .select("created_at")
+            .eq("id", messageId)
+            .single();
+
+        if (fetchErr || !targetMsg) return res.status(404).json({ error: "Mensagem não encontrada." });
+
+        const ageHours = (Date.now() - new Date(targetMsg.created_at).getTime()) / (1000 * 60 * 60);
+        if (ageHours >= 24) {
+            return res.status(403).json({ error: "Apenas pode editar mensagens enviadas nas últimas 24 horas." });
+        }
+
+        const { data: message, error } = await supabase
+            .from("messages")
+            .update({ body, updated_at: new Date().toISOString(), edited_at: new Date().toISOString() })
+            .eq("id", messageId)
+            .eq("conversation_id", conversationId)
+            .select(`
+                id,
+                conversation_id,
+                user_id,
+                body,
+                attachment,
+                attachment_type,
+                attachment_name,
+                delivered_at,
+                expires_at,
+                created_at,
+                updated_at,
+                edited_at,
+                deleted_at,
+                users (
+                    id,
+                    username,
+                    avatar
+                )
+            `)
+            .single();
+
+        if (error) throw error;
+        
+        res.json({
+            id: message.id,
+            conversation_id: message.conversation_id,
+            user_id: message.user_id,
+            body: message.body,
+            attachment: message.attachment,
+            attachment_type: message.attachment_type,
+            attachment_name: message.attachment_name,
+            delivered_at: message.delivered_at,
+            status: 0, 
+            is_forwarded: message.is_forwarded || false,
+            created_at: message.created_at,
+            updated_at: message.updated_at,
+            edited_at: message.edited_at,
+            sender_username: message.users?.username ?? null,
+            sender_avatar: message.users?.avatar ?? null,
+        });
+    } catch (err) {
+        console.error("editMessage:", err);
+        res.status(500).json({ error: "Erro ao editar mensagem." });
+    }
+};
+
+// DELETE /conversations/:conversationId/messages/:messageId — Delete message
+export const deleteMessage = async (req, res) => {
+    const { conversationId, messageId } = req.params;
+
+    if (!messageId) {
+        return res.status(400).json({ error: "Dados inválidos." });
+    }
+
+    try {
+        const { data: targetMsg, error: fetchErr } = await supabase
+            .from("messages")
+            .select("created_at")
+            .eq("id", messageId)
+            .single();
+
+        if (fetchErr || !targetMsg) return res.status(404).json({ error: "Mensagem não encontrada." });
+
+        const ageHours = (Date.now() - new Date(targetMsg.created_at).getTime()) / (1000 * 60 * 60);
+        if (ageHours >= 24) {
+            return res.status(403).json({ error: "Apenas pode eliminar mensagens enviadas nas últimas 24 horas." });
+        }
+
+        // Soft delete 
+        const { error } = await supabase
+            .from("messages")
+            .update({ deleted_at: new Date().toISOString() })
+            .eq("id", messageId)
+            .eq("conversation_id", conversationId);
+
+        if (error) throw error;
+
+        res.status(204).send();
+    } catch (err) {
+        console.error("deleteMessage:", err);
+        res.status(500).json({ error: "Erro ao eliminar mensagem." });
+    }
+};
 
 // GET /messages/link-preview — Link preview
 export const getLinkPreview = async (req, res) => {
@@ -872,5 +1003,128 @@ export const getLinkPreview = async (req, res) => {
         console.error("getLinkPreview error:", err.message);
         // Silent error handling: return null if we can't scrape
         return res.json(null);
+    }
+};
+
+// GET /conversations/:conversationId/messages/pinned
+export const getPinnedMessages = async (req, res) => {
+    const { conversationId } = req.params;
+
+    if (!conversationId) {
+        return res.status(400).json({ error: "Conversation ID obrigatório." });
+    }
+
+    try {
+        const { data: pins, error } = await supabase
+            .from("pinned_messages")
+            .select(`
+                id,
+                message_id,
+                messages (
+                    id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, delivered_at, expires_at, created_at, updated_at, edited_at, is_forwarded,
+                    users ( id, username, avatar )
+                )
+            `)
+            .eq("conversation_id", conversationId)
+            .order("created_at", { ascending: true });
+
+        if (error) throw error;
+
+        const formatted = pins.map((pin) => {
+            const msg = pin.messages;
+            if (!msg) return null;
+            return {
+                id: msg.id,
+                conversation_id: msg.conversation_id,
+                user_id: msg.user_id,
+                body: msg.body,
+                attachment: msg.attachment,
+                attachment_type: msg.attachment_type,
+                attachment_name: msg.attachment_name,
+                delivered_at: msg.delivered_at,
+                is_forwarded: msg.is_forwarded || false,
+                created_at: msg.created_at,
+                updated_at: msg.updated_at,
+                edited_at: msg.edited_at,
+                sender_username: msg.users?.username ?? null,
+                sender_avatar: msg.users?.avatar ?? null,
+                pinned_id: pin.id
+            };
+        }).filter(m => m !== null);
+
+        res.json(formatted);
+    } catch (err) {
+        console.error("getPinnedMessages error:", err);
+        res.status(500).json({ error: "Erro ao buscar mensagens fixadas." });
+    }
+};
+
+// PUT /conversations/:conversationId/messages/:messageId/pin
+export const toggleMessagePin = async (req, res) => {
+    const { conversationId, messageId } = req.params;
+    const authId = req.user.id; // From authMiddleware (UUID)
+
+    if (!conversationId || !messageId) {
+        return res.status(400).json({ error: "Dados inválidos." });
+    }
+
+    try {
+        // Find internal user ID
+        const { data: userRecord } = await supabase
+            .from("users")
+            .select("id")
+            .eq("auth_id", authId)
+            .single();
+
+        if (!userRecord) {
+            return res.status(401).json({ error: "Utilizador interno não encontrado." });
+        }
+        const userId = userRecord.id;
+
+        // Check if message belongs to conversation
+        const { data: msg } = await supabase
+            .from("messages")
+            .select("id")
+            .eq("id", messageId)
+            .eq("conversation_id", conversationId)
+            .single();
+
+        if (!msg) {
+            return res.status(404).json({ error: "Mensagem não encontrada." });
+        }
+
+        // Check if already pinned
+        const { data: existingPin } = await supabase
+            .from("pinned_messages")
+            .select("id")
+            .eq("conversation_id", conversationId)
+            .eq("message_id", messageId)
+            .single();
+
+        if (existingPin) {
+            // Unpin
+            const { error: deleteErr } = await supabase
+                .from("pinned_messages")
+                .delete()
+                .eq("id", existingPin.id);
+
+            if (deleteErr) throw deleteErr;
+            return res.status(200).json({ status: "unpinned", message_id: messageId });
+        } else {
+            // Pin
+            const { error: insertErr } = await supabase
+                .from("pinned_messages")
+                .insert({
+                    conversation_id: conversationId,
+                    message_id: messageId,
+                    pinned_by: userId
+                });
+
+            if (insertErr) throw insertErr;
+            return res.status(200).json({ status: "pinned", message_id: messageId });
+        }
+    } catch (err) {
+        console.error("toggleMessagePin error:", err);
+        res.status(500).json({ error: "Erro ao alternar fixação da mensagem." });
     }
 };
