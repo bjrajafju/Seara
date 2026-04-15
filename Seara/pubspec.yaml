@@ -33,7 +33,7 @@ dependencies:
     http: ^1.1.0
     image_picker: ^1.1.2
     file_picker: ^8.1.2
-    record: ^5.1.2
+    record: ^6.1.2
     audioplayers: ^6.1.0
     image_cropper: ^11.0.0
     video_player: ^2.9.2

@@ -105,15 +105,12 @@ class _EmojiPickerCustomViewState extends State<_EmojiPickerCustomView> {
                     SizedBox(width: (textUnit * 0.4).clamp(4.0, 10.0)),
                 itemBuilder: (context, i) {
                   final selected = i == safeCategoryIndex;
-                  final isHistory = i == 0;
-                  final Widget iconWidget = isHistory
-                      ? const Icon(Icons.history, size: 18)
-                      : Text(
-                          categories[i].emoji.isNotEmpty
-                              ? categories[i].emoji.first.emoji
-                              : '🙂',
-                          style: const TextStyle(fontSize: 16),
-                        );
+                  final Widget iconWidget = Text(
+                    categories[i].emoji.isNotEmpty
+                        ? categories[i].emoji.first.emoji
+                        : '🙂',
+                    style: const TextStyle(fontSize: 16),
+                  );
                   return InkWell(
                     onTap: () => setState(() => _categoryIndex = i),
                     borderRadius: BorderRadius.circular(10),
@@ -287,12 +284,12 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
         PopupMenuItem<String>(
           value: 'pin',
           onTap: () => widget.onPin(widget.message),
-          child: const Text('Fixar (trigger)'),
+          child: const Text('Fixar'),
         ),
         PopupMenuItem<String>(
           value: 'forward',
           onTap: () => widget.onForward(widget.message),
-          child: const Text('Reencaminhar (trigger)'),
+          child: const Text('Reencaminhar'),
         ),
         if (canModify)
           PopupMenuItem<String>(
