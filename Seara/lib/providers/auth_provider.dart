@@ -9,10 +9,14 @@ class AuthProvider extends ChangeNotifier {
   bool get isChecking => _isChecking;
 
   Future<void> checkSession() async {
-    final token = await AuthService.getToken();
-    if (token != null && token.isNotEmpty) {
-      _isLoggedIn = true;
+    _isChecking = true;
+    notifyListeners();
+
+    final isValid = await AuthService.validateSession();
+    if (!isValid) {
+      await AuthService.logout();
     }
+    _isLoggedIn = isValid;
     _isChecking = false;
     notifyListeners();
   }
@@ -20,7 +24,12 @@ class AuthProvider extends ChangeNotifier {
   Future<String?> login(String email, String password) async {
     final error = await AuthService.login(email, password);
     if (error == null) {
-      _isLoggedIn = true;
+      final isValid = await AuthService.validateSession();
+      _isLoggedIn = isValid;
+      if (!isValid) {
+        await AuthService.logout();
+        return 'Sessao invalida. Tente novamente.';
+      }
       notifyListeners();
     }
     return error;
@@ -34,6 +43,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await AuthService.logout();
     _isLoggedIn = false;
+    _isChecking = false;
     notifyListeners();
   }
 }

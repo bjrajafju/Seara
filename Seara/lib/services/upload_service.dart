@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:seara/config/api_config.dart';
 import 'package:seara/services/api_client.dart';
 
 class UploadResult {
@@ -16,7 +17,7 @@ class UploadResult {
 }
 
 class UploadService {
-  static const String baseUrl = "http://localhost:3000";
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static Future<UploadResult> uploadFile({
     required String bucket,

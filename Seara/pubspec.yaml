@@ -34,7 +34,9 @@ dependencies:
     image_picker: ^1.1.2
     file_picker: ^8.1.2
     record: ^6.1.2
-    audioplayers: ^6.1.0
+    just_audio: ^0.9.36
+    just_audio_windows: ^0.2.1
+    audio_session: ^0.1.16
     image_cropper: ^11.0.0
     video_player: ^2.9.2
     path_provider: ^2.1.4
@@ -50,6 +52,9 @@ dependencies:
     url_launcher: ^6.3.2
     desktop_drop: ^0.7.0
     emoji_picker_flutter: ^4.4.0
+    just_audio_media_kit: ^2.1.0
+    media_kit_libs_windows_audio: ^1.0.9
+    media_kit_native_event_loop: ^1.0.9
 
 dev_dependencies:
     flutter_test:

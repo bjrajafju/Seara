@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'package:seara/config/api_config.dart';
 import 'package:seara/services/api_client.dart';
 import '../models/conversation_settings_model.dart';
 import '../models/message_model.dart';
 
 class ConversationSettingsService {
-  static const String baseUrl = "http://localhost:3000/messages";
+  static String get baseUrl => "${ApiConfig.baseUrl}/messages";
 
   /// Fetch full conversation details.
   static Future<ConversationDetails> getDetails(
@@ -164,10 +165,7 @@ class ConversationSettingsService {
   }
 
   /// Leave conversation (group=remove, 1:1=archive).
-  static Future<void> leaveConversation(
-    int conversationId,
-    int userId,
-  ) async {
+  static Future<void> leaveConversation(int conversationId, int userId) async {
     final response = await ApiClient.post(
       Uri.parse("$baseUrl/conversations/$conversationId/leave"),
       headers: {"Content-Type": "application/json"},

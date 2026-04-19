@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:seara/config/api_config.dart';
+import 'api_client.dart';
 
 class AuthService {
-  static const String baseUrl =
-      'http://localhost:3000/auth'; // mudar dependendo do disposivito
+  static String get baseUrl => '${ApiConfig.baseUrl}/auth';
 
   static const _storage = FlutterSecureStorage(
      aOptions: AndroidOptions(encryptedSharedPreferences: true)
@@ -38,6 +39,38 @@ class AuthService {
   // Logout
   static Future<void> logout() async {
     await _storage.deleteAll();
+  }
+
+  // Session validation: authenticated only when backend confirms it.
+  static Future<bool> validateSession() async {
+    try {
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        return false;
+      }
+
+      final userId = await getUserId();
+      if (userId == null) {
+        return false;
+      }
+
+      final response = await ApiClient.get(
+        Uri.parse('${ApiConfig.baseUrl}/profile/$userId'),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return false;
+      }
+
+      return false;
+    } catch (_) {
+      // Treat storage/network/parsing issues as invalid session.
+      return false;
+    }
   }
 
   // REGISTER

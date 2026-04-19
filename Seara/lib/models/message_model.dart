@@ -49,7 +49,9 @@ class ReplyPreview {
       body: json['body']?.toString(),
       attachmentType: json['attachment_type']?.toString(),
       attachmentName: json['attachment_name']?.toString(),
-      deletedAt: json['deleted_at'] != null ? DateTime.tryParse(json['deleted_at'].toString()) : null,
+      deletedAt: json['deleted_at'] != null
+          ? DateTime.tryParse(json['deleted_at'].toString())
+          : null,
     );
   }
 }
@@ -106,7 +108,8 @@ class Message {
   bool get isRead => status >= 2;
 
   /// Whether this message has been edited
-  bool get isEdited => editedAt != null || updatedAt.difference(createdAt).inSeconds > 2;
+  bool get isEdited =>
+      editedAt != null || updatedAt.difference(createdAt).inSeconds > 2;
 
   factory Message.fromJson(Map<String, dynamic> json) {
     final attachmentUrl = json['attachment'] as String?;
@@ -135,7 +138,8 @@ class Message {
           lower.contains('.m4a') ||
           lower.contains('.wav') ||
           lower.contains('.ogg') ||
-          lower.contains('.aac')) {
+          lower.contains('.aac') ||
+          lower.contains('.webm')) {
         type = AttachmentType.audio;
       } else if (lower.contains('.jpg') ||
           lower.contains('.jpeg') ||
@@ -168,7 +172,9 @@ class Message {
       isSystemMessage: json['is_system'] == true || json['user_id'] == 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
-      editedAt: json['edited_at'] != null ? DateTime.tryParse(json['edited_at']) : null,
+      editedAt: json['edited_at'] != null
+          ? DateTime.tryParse(json['edited_at'])
+          : null,
       isForwarded: json['is_forwarded'] == true,
       replyToMessageId: (json['reply_to_message_id'] as num?)?.toInt(),
       replyTo: json['reply_to'] is Map<String, dynamic>

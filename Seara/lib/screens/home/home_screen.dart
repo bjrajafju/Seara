@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:seara/providers/auth_provider.dart';
+import 'package:seara/providers/messages_provider.dart';
 import '../../services/auth_service.dart';
+import '../auth/login_screen.dart';
 import '../messages/messages_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/user_list_screen.dart';
@@ -16,6 +20,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  static const int _logoutNavIndex = 6;
 
   final List<Widget> _pages = [
     FeedScreen(),
@@ -34,6 +39,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _loadToken() async {
     await AuthService.getToken();
+  }
+
+  Future<void> _logout() async {
+    final authProvider = context.read<AuthProvider>();
+    final messagesProvider = context.read<MessagesProvider>();
+
+    messagesProvider.clear();
+    await authProvider.logout();
+
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   @override
@@ -56,8 +76,15 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Definições'),
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Perfil'),
           BottomNavigationBarItem(icon: Icon(Icons.people_rounded), label: 'Listar'),
+          BottomNavigationBarItem(icon: Icon(Icons.logout_rounded), label: 'Logout'),
         ],
-        onTap: (int index) => setState(() => _selectedIndex = index),
+        onTap: (int index) async {
+          if (index == _logoutNavIndex) {
+            await _logout();
+            return;
+          }
+          setState(() => _selectedIndex = index);
+        },
       ),
     );
   }

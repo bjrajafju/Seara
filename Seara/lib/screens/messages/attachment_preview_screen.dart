@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:seara/services/global_audio_manager.dart';
 
 enum PreviewType { image, video, audio, file }
 
@@ -33,11 +35,10 @@ class AttachmentPreviewScreen extends StatefulWidget {
 class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   final TextEditingController _captionController = TextEditingController();
 
-  // AudioPlayer so e criado se o tipo for audio
-  AudioPlayer? _audioPlayer;
-  bool _isPlaying = false;
-  Duration _audioDuration = Duration.zero;
-  Duration _audioPosition = Duration.zero;
+  final GlobalAudioManager _audio = GlobalAudioManager.instance;
+
+  bool _audioPrepared = false;
+  String? _windowsTempAudioPath;
 
   Uint8List? _croppedBytes;
 
@@ -45,88 +46,88 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   void initState() {
     super.initState();
     if (widget.preview.type == PreviewType.audio) {
-      _initAudio();
+      unawaited(_prepareAudio());
     }
+  }
+
+  void _safeDeleteWindowsTempAudio() {
+    final p = _windowsTempAudioPath;
+    if (p == null) return;
+    try {
+      final f = File(p);
+      if (f.existsSync()) f.deleteSync();
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _captionController.dispose();
-    _audioPlayer?.dispose();
+    if (widget.preview.type == PreviewType.audio) {
+      if (_audio.currentMessageId == kAttachmentPreviewMessageId) {
+        unawaited(_audio.stop());
+      }
+      // Do not delete temp file on track completion while preview is open — the
+      // player may still hold the path. Always delete when leaving the screen.
+      _safeDeleteWindowsTempAudio();
+    }
     super.dispose();
   }
 
-  Future<void> _initAudio() async {
-    final player = AudioPlayer();
-
-    player.onDurationChanged.listen((d) {
-      if (mounted) setState(() => _audioDuration = d);
-    });
-    player.onPositionChanged.listen((p) {
-      if (mounted) setState(() => _audioPosition = p);
-    });
-    player.onPlayerComplete.listen((_) {
-      if (mounted) setState(() => _isPlaying = false);
-    });
-
+  Future<void> _prepareAudio() async {
     try {
-      await player.setSourceBytes(widget.preview.bytes);
-    } catch (e) {
-      // Se o browser nao suportar setSourceBytes, ignora silenciosamente
-    }
-
-    if (mounted) setState(() => _audioPlayer = player);
-  }
-
-  Future<void> _cropImage() async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Crop nao disponivel no browser.")),
-      );
-      return;
-    }
-
-    try {
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File(
-        '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}_${widget.preview.fileName}',
-      );
-      await tempFile.writeAsBytes(widget.preview.bytes);
-
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: tempFile.path,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: "Cortar imagem",
-            lockAspectRatio: false,
-          ),
-          IOSUiSettings(title: "Cortar imagem"),
-        ],
-      );
-
-      if (cropped == null) return;
-
-      final croppedBytes = await cropped.readAsBytes();
-      if (mounted) setState(() => _croppedBytes = croppedBytes);
-    } catch (e) {
+      if (!kIsWeb && Platform.isWindows) {
+        final tempDir = await getTemporaryDirectory();
+        final tempPath =
+            '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}_${widget.preview.fileName}';
+        final tempFile = File(tempPath);
+        await tempFile.writeAsBytes(widget.preview.bytes, flush: true);
+        _windowsTempAudioPath = tempPath;
+        await _audio.prepareFromFile(
+          kAttachmentPreviewMessageId,
+          tempPath,
+        );
+      } else {
+        await _audio.prepareFromBytes(
+          kAttachmentPreviewMessageId,
+          widget.preview.bytes,
+          mimeType: widget.preview.mimeType,
+        );
+      }
+      if (mounted) setState(() => _audioPrepared = true);
+    } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Erro ao cortar imagem.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Erro ao carregar audio para preview.")),
+        );
       }
     }
   }
 
-  Future<void> _toggleAudio() async {
-    final player = _audioPlayer;
-    if (player == null) return;
+  Future<void> _togglePreviewAudio() async {
+    if (!_audioPrepared) return;
 
-    if (_isPlaying) {
-      await player.pause();
-    } else {
-      await player.resume();
+    if (_audio.isPlaying(kAttachmentPreviewMessageId)) {
+      await _audio.pause();
+      return;
     }
-    setState(() => _isPlaying = !_isPlaying);
+    if (_audio.currentMessageId == kAttachmentPreviewMessageId) {
+      await _audio.resume();
+      return;
+    }
+
+    if (!kIsWeb && Platform.isWindows && _windowsTempAudioPath != null) {
+      await _audio.prepareFromFile(
+        kAttachmentPreviewMessageId,
+        _windowsTempAudioPath!,
+      );
+    } else {
+      await _audio.prepareFromBytes(
+        kAttachmentPreviewMessageId,
+        widget.preview.bytes,
+        mimeType: widget.preview.mimeType,
+      );
+    }
+    await _audio.resume();
   }
 
   String _formatDuration(Duration d) {
@@ -173,6 +174,45 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _cropImage() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Crop nao disponivel no browser.")),
+      );
+      return;
+    }
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File(
+        '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}_${widget.preview.fileName}',
+      );
+      await tempFile.writeAsBytes(widget.preview.bytes);
+
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: tempFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: "Cortar imagem",
+            lockAspectRatio: false,
+          ),
+          IOSUiSettings(title: "Cortar imagem"),
+        ],
+      );
+
+      if (cropped == null) return;
+
+      final croppedBytes = await cropped.readAsBytes();
+      if (mounted) setState(() => _croppedBytes = croppedBytes);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Erro ao cortar imagem.")));
+      }
+    }
   }
 
   Widget _buildPreviewContent(ThemeData theme) {
@@ -223,78 +263,120 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
       case PreviewType.audio:
         return Center(
           child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.audio_file_rounded,
-                  color: cs.onInverseSurface,
-                  size: 64,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  widget.preview.fileName,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: cs.onInverseSurface,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: cs.primary,
-                    inactiveTrackColor: cs.onInverseSurface.withAlpha(70),
-                    thumbColor: cs.primary,
-                  ),
-                  child: Slider(
-                    value: _audioDuration.inMilliseconds > 0
-                        ? (_audioPosition.inMilliseconds /
-                                  _audioDuration.inMilliseconds)
-                              .clamp(0.0, 1.0)
-                        : 0.0,
-                    onChanged: (value) async {
-                      final position = Duration(
-                        milliseconds: (value * _audioDuration.inMilliseconds)
-                            .round(),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: !_audioPrepared
+                ? CircularProgressIndicator(color: cs.onInverseSurface)
+                : StreamBuilder<String?>(
+                    stream: _audio.activeMessageIdStream,
+                    initialData: _audio.lastActiveMessageId,
+                    builder: (context, activeSnap) {
+                      final isPreview =
+                          activeSnap.data == kAttachmentPreviewMessageId;
+
+                      return StreamBuilder<PlayerState>(
+                        stream: _audio.playerStateStream,
+                        initialData: _audio.lastPlayerState,
+                        builder: (context, stateSnap) {
+                          final st = stateSnap.data!;
+                          final playing = isPreview &&
+                              st.playing &&
+                              st.processingState !=
+                                  ProcessingState.completed;
+
+                          return StreamBuilder<Duration>(
+                            stream: _audio.positionStream,
+                            initialData: isPreview
+                                ? _audio.lastPosition
+                                : Duration.zero,
+                            builder: (context, posSnap) {
+                              final pos = isPreview
+                                  ? (posSnap.data ?? Duration.zero)
+                                  : Duration.zero;
+
+                              return StreamBuilder<Duration?>(
+                                stream: _audio.durationStream,
+                                initialData:
+                                    isPreview ? _audio.lastDuration : null,
+                                builder: (context, durSnap) {
+                                  final dur = isPreview
+                                      ? (durSnap.data ?? Duration.zero)
+                                      : Duration.zero;
+
+                                  return Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        iconSize: 56,
+                                        icon: Icon(
+                                          playing
+                                              ? Icons.pause_circle_filled_rounded
+                                              : Icons.play_circle_filled_rounded,
+                                          color: cs.onInverseSurface,
+                                        ),
+                                        onPressed: _togglePreviewAudio,
+                                      ),
+                                      const SizedBox(height: 20),
+                                      SliderTheme(
+                                        data: SliderTheme.of(context).copyWith(
+                                          activeTrackColor: cs.primary,
+                                          inactiveTrackColor: cs
+                                              .onInverseSurface
+                                              .withAlpha(70),
+                                          thumbColor: cs.primary,
+                                        ),
+                                        child: Slider(
+                                          value: dur.inMilliseconds > 0
+                                              ? (pos.inMilliseconds /
+                                                        dur.inMilliseconds)
+                                                    .clamp(0.0, 1.0)
+                                              : 0.0,
+                                          onChanged: (value) async {
+                                            if (!isPreview ||
+                                                dur == Duration.zero) {
+                                              return;
+                                            }
+                                            final position = Duration(
+                                              milliseconds: (value *
+                                                      dur.inMilliseconds)
+                                                  .round(),
+                                            );
+                                            await _audio.seek(position);
+                                          },
+                                        ),
+                                      ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            _formatDuration(pos),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: cs.onInverseSurface
+                                                  .withAlpha(160),
+                                            ),
+                                          ),
+                                          Text(
+                                            _formatDuration(dur),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: cs.onInverseSurface
+                                                  .withAlpha(160),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
                       );
-                      await _audioPlayer?.seek(position);
                     },
                   ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatDuration(_audioPosition),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onInverseSurface.withAlpha(160),
-                      ),
-                    ),
-                    Text(
-                      _formatDuration(_audioDuration),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onInverseSurface.withAlpha(160),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Mostrar loading enquanto o player nao esta pronto
-                _audioPlayer == null
-                    ? CircularProgressIndicator(color: cs.onInverseSurface)
-                    : IconButton(
-                        iconSize: 56,
-                        icon: Icon(
-                          _isPlaying
-                              ? Icons.pause_circle_filled_rounded
-                              : Icons.play_circle_filled_rounded,
-                          color: cs.onInverseSurface,
-                        ),
-                        onPressed: _toggleAudio,
-                      ),
-              ],
-            ),
           ),
         );
 

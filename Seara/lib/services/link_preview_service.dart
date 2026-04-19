@@ -1,9 +1,10 @@
 import 'dart:convert';
+import 'package:seara/config/api_config.dart';
 import 'package:seara/services/api_client.dart';
 import '../models/link_preview_model.dart';
 
 class LinkPreviewService {
-  static const String baseUrl = "http://localhost:3000/messages";
+  static String get baseUrl => "${ApiConfig.baseUrl}/messages";
 
   // Simple in-memory cache to avoid duplicate requests for the same URL
   static final Map<String, LinkPreview?> _cache = {};
@@ -14,9 +15,9 @@ class LinkPreviewService {
     }
 
     try {
-      final uri = Uri.parse("$baseUrl/link-preview").replace(
-        queryParameters: {'url': url},
-      );
+      final uri = Uri.parse(
+        "$baseUrl/link-preview",
+      ).replace(queryParameters: {'url': url});
 
       final response = await ApiClient.get(uri);
 

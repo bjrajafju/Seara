@@ -482,7 +482,10 @@ class MessagesProvider extends ChangeNotifier {
         userId: userId,
         body: body,
         attachment: result.url,
-        attachmentType: result.contentType,
+        attachmentType: _resolveAttachmentType(
+          originalMimeType: mimeType,
+          uploadedContentType: result.contentType,
+        ),
         attachmentName: result.fileName,
         replyToMessageId: replyToMessageId,
       );
@@ -501,6 +504,26 @@ class MessagesProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  String _resolveAttachmentType({
+    required String originalMimeType,
+    required String uploadedContentType,
+  }) {
+    final normalizedOriginal = originalMimeType.toLowerCase();
+    final normalizedUploaded = uploadedContentType.toLowerCase();
+
+    // Keep audio explicit even if storage responds with a generic type.
+    if (normalizedOriginal.startsWith('audio/')) {
+      return normalizedOriginal;
+    }
+
+    if (normalizedUploaded.isNotEmpty &&
+        normalizedUploaded != 'application/octet-stream') {
+      return normalizedUploaded;
+    }
+
+    return normalizedOriginal;
   }
 
   // Find the index of the "unread divider" based on lastReadAt.

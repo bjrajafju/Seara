@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show Listenable, kIsWeb;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 
 import 'package:seara/models/message_model.dart';
@@ -222,9 +222,14 @@ class MessageBubbleWrapper extends StatefulWidget {
 }
 
 class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
-  bool _isHovered = false;
-  bool _isMenuOpen = false;
+  final ValueNotifier<bool> _hovered = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _menuOpen = ValueNotifier<bool>(false);
   final LayerLink _layerLink = LayerLink();
+
+  late final Listenable _hoverListenable = Listenable.merge([
+    _hovered,
+    _menuOpen,
+  ]);
 
   bool get _shouldEnableHover {
     if (kIsWeb) return true;
@@ -233,13 +238,13 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
   }
 
   void _onEnter() {
-    setState(() => _isHovered = true);
+    _hovered.value = true;
   }
 
   void _onExit() {
     Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted && !_isMenuOpen) {
-        setState(() => _isHovered = false);
+      if (mounted && !_menuOpen.value) {
+        _hovered.value = false;
       }
     });
   }
@@ -255,7 +260,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
         Navigator.of(context).overlay?.context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
 
-    setState(() => _isMenuOpen = true);
+    _menuOpen.value = true;
 
     showMenu<String>(
       context: context,
@@ -300,10 +305,8 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
       ],
     ).then((_) {
       if (mounted) {
-        setState(() {
-          _isMenuOpen = false;
-          _isHovered = false;
-        });
+        _menuOpen.value = false;
+        _hovered.value = false;
       }
     });
   }
@@ -629,6 +632,13 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
   }
 
   @override
+  void dispose() {
+    _hovered.dispose();
+    _menuOpen.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (widget.message.isSystemMessage) {
       return widget.child;
@@ -648,81 +658,110 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Container(
-                foregroundDecoration: _isHovered
-                    ? BoxDecoration(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.04,
+              Container(child: widget.child),
+              AnimatedBuilder(
+                animation: _hoverListenable,
+                builder: (context, _) {
+                  final showHover = _hovered.value || _menuOpen.value;
+                  if (!showHover) return const SizedBox.shrink();
+                  return Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.04,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                      )
-                    : null,
-                child: widget.child,
+                      ),
+                    ),
+                  );
+                },
               ),
               if (_shouldEnableHover)
-                Positioned(
-                  top: 4,
-                  right: 28,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 150),
-                    opacity: _isHovered || _isMenuOpen ? 1.0 : 0.0,
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: _openReactionBubble,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface.withValues(
-                              alpha: 0.85,
+                AnimatedBuilder(
+                  animation: _hoverListenable,
+                  builder: (context, _) {
+                    final show = _hovered.value || _menuOpen.value;
+                    return Positioned(
+                      top: 4,
+                      right: 28,
+                      child: IgnorePointer(
+                        ignoring: !show,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 150),
+                          opacity: show ? 1.0 : 0.0,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: _openReactionBubble,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.emoji_emotions_outlined,
+                                  size: 16,
+                                ),
+                              ),
                             ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.emoji_emotions_outlined,
-                            size: 16,
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               if (_shouldEnableHover)
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 150),
-                    opacity: _isHovered || _isMenuOpen ? 1.0 : 0.0,
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTapDown: (details) =>
-                            _showContextMenu(details.globalPosition),
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface.withValues(
-                              alpha: 0.85,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.shadow.withAlpha(30),
-                                blurRadius: 2,
-                                offset: Offset(0, 1),
+                AnimatedBuilder(
+                  animation: _hoverListenable,
+                  builder: (context, _) {
+                    final show = _hovered.value || _menuOpen.value;
+                    return Positioned(
+                      top: 4,
+                      right: 4,
+                      child: IgnorePointer(
+                        ignoring: !show,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 150),
+                          opacity: show ? 1.0 : 0.0,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTapDown: (details) =>
+                                  _showContextMenu(details.globalPosition),
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: theme.colorScheme.shadow.withAlpha(
+                                        30,
+                                      ),
+                                      blurRadius: 2,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: theme.colorScheme.onSurface,
+                                  size: 18,
+                                ),
                               ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: theme.colorScheme.onSurface,
-                            size: 18,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
             ],
           ),

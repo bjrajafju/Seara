@@ -43,8 +43,9 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
 
   Future<void> _loadUsers() async {
     try {
-      final users =
-          await ProfileService.getUsersWithRelationship(widget.userId);
+      final users = await ProfileService.getUsersWithRelationship(
+        widget.userId,
+      );
       // Filter out existing members and system user (id=0)
       final available = users
           .where((u) => u.id != 0 && !widget.existingMemberIds.contains(u.id))
@@ -91,9 +92,9 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isAdding = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
     }
   }
 
@@ -128,8 +129,10 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
                           color: theme.colorScheme.onPrimary,
                         ),
                       )
-                    : Icon(Icons.check_rounded,
-                        color: theme.colorScheme.onPrimary),
+                    : Icon(
+                        Icons.check_rounded,
+                        color: theme.colorScheme.onPrimary,
+                      ),
                 label: Text(
                   'Adicionar (${_selectedUsers.length})',
                   style: TextStyle(color: theme.colorScheme.onPrimary),
@@ -168,98 +171,95 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _filteredUsers.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Nenhum utilizador disponível.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurface.withAlpha(120),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _filteredUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = _filteredUsers[index];
-                            final selected =
-                                _selectedUsers.contains(user.id);
+                  ? Center(
+                      child: Text(
+                        'Nenhum utilizador disponível.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(120),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _filteredUsers.length,
+                      itemBuilder: (context, index) {
+                        final user = _filteredUsers[index];
+                        final selected = _selectedUsers.contains(user.id);
 
-                            return InkWell(
-                              onTap: () {
-                                setState(() {
-                                  if (selected) {
-                                    _selectedUsers.remove(user.id);
-                                  } else {
-                                    _selectedUsers.add(user.id);
-                                  }
-                                });
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                child: Row(
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              if (selected) {
+                                _selectedUsers.remove(user.id);
+                              } else {
+                                _selectedUsers.add(user.id);
+                              }
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              children: [
+                                Stack(
                                   children: [
-                                    Stack(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 24,
-                                          backgroundImage:
-                                              NetworkImage(user.avatarUrl),
-                                        ),
-                                        if (selected)
-                                          Positioned.fill(
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: theme
-                                                    .colorScheme.primary
-                                                    .withAlpha(180),
-                                              ),
-                                              child: Icon(
-                                                Icons.check_rounded,
-                                                color: theme
-                                                    .colorScheme.onPrimary,
-                                                size: 24,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
+                                    CircleAvatar(
+                                      radius: 24,
+                                      backgroundImage: NetworkImage(
+                                        user.avatarUrl,
+                                      ),
                                     ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            user.username,
-                                            style: theme
-                                                .textTheme.bodyLarge
-                                                ?.copyWith(
+                                    if (selected)
+                                      Positioned.fill(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: theme.colorScheme.primary
+                                                .withAlpha(180),
+                                          ),
+                                          child: Icon(
+                                            Icons.check_rounded,
+                                            color: theme.colorScheme.onPrimary,
+                                            size: 24,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        user.username,
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(
                                               fontWeight: FontWeight.w600,
                                             ),
-                                          ),
-                                          if (user.name.isNotEmpty)
-                                            Text(
-                                              user.name,
-                                              style: theme
-                                                  .textTheme.bodySmall
-                                                  ?.copyWith(
-                                                color: theme.colorScheme
+                                      ),
+                                      if (user.name.isNotEmpty)
+                                        Text(
+                                          user.name,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: theme
+                                                    .colorScheme
                                                     .onSurface
                                                     .withAlpha(120),
                                               ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                        ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

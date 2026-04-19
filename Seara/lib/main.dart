@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/profile/user_list_screen.dart';
 import 'providers/auth_provider.dart';
@@ -16,6 +17,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  JustAudioMediaKit.ensureInitialized();
 
   await Supabase.initialize(
     url: 'https://nzxmjazsegtsmsdqnisq.supabase.co',
@@ -38,7 +40,11 @@ void main() async {
 }
 
 class SearaApp extends StatelessWidget {
-  const SearaApp({super.key, required this.themeProvider, required this.authProvider});
+  const SearaApp({
+    super.key,
+    required this.themeProvider,
+    required this.authProvider,
+  });
 
   final ThemeProvider themeProvider;
   final AuthProvider authProvider;
@@ -62,7 +68,13 @@ class SearaApp extends StatelessWidget {
             // enables unlimited custom themes with no API constraint.
             themeMode: ThemeMode.light,
             theme: theme.currentTheme,
-            home: auth.isLoggedIn ? HomeScreen() : LoginScreen(),
+            home: auth.isChecking
+                ? const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  )
+                : auth.isLoggedIn
+                ? const HomeScreen()
+                : const LoginScreen(),
             routes: {
               '/home': (ctx) => const HomeScreen(),
               '/profile': (ctx) => const ProfileScreen(),

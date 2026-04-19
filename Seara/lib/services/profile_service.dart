@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'package:seara/config/api_config.dart';
 import 'package:seara/services/api_client.dart';
 import 'package:seara/models/profile_model.dart';
 import 'package:seara/models/auxiliar/user_with_relationship_model.dart';
 
 class ProfileService {
-  static const String baseUrl = 'http://localhost:3000';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static Future<Profile> getProfile(int userId) async {
     final url = Uri.parse('$baseUrl/profile/$userId');

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/gestures.dart';
+import 'package:seara/services/global_audio_manager.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -11,7 +12,6 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:record/record.dart';
 import 'package:seara/models/conversation_model.dart';
 import 'package:seara/models/message_model.dart';
 import 'package:seara/providers/messages_provider.dart';
@@ -20,6 +20,7 @@ import 'package:seara/screens/messages/image_lightbox_screen.dart';
 import 'package:seara/screens/messages/video_lightbox_screen.dart';
 import 'package:seara/screens/messages/widgets/audio_message_widget.dart';
 import 'package:seara/services/auth_service.dart';
+import 'package:seara/services/audio_service.dart';
 import 'package:seara/services/conversation_settings_service.dart';
 import 'package:seara/screens/messages/conversation_details_screen.dart';
 import 'package:seara/screens/messages/forward_message_screen.dart';
@@ -56,7 +57,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
-  final AudioRecorder _recorder = AudioRecorder();
+  final AudioService _audioService = createAudioService();
 
   int? _myId;
   late MessagesProvider _messagesProvider;
@@ -213,8 +214,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _editMessageController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
-    _recorder.dispose();
+    _audioService.dispose();
     _messagesProvider.clear();
+    final audio = GlobalAudioManager.instance;
+    if (audio.currentMessageId != null) {
+      audio.stop();
+    }
     super.dispose();
   }
 
@@ -225,8 +230,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (!_scrollController.hasClients) {
       if (attempts < 10) {
         Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted)
+          if (mounted) {
             _scrollToBottom(animate: animate, attempts: attempts + 1);
+          }
         });
       }
       return;
@@ -416,7 +422,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     } else if (['mp4', 'mov', 'avi'].contains(ext)) {
       type = PreviewType.video;
       mimeType = "video/$ext";
-    } else if (['mp3', 'm4a', 'wav', 'ogg', 'aac'].contains(ext)) {
+    } else if (['mp3', 'm4a', 'wav', 'ogg', 'aac', 'webm'].contains(ext)) {
       type = PreviewType.audio;
       mimeType = "audio/$ext";
     }
@@ -470,18 +476,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   Future<void> _startRecording() async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Gravacao de audio nao disponivel no browser. Use a app mobile.",
-          ),
-        ),
-      );
-      return;
-    }
-
-    final hasPermission = await _recorder.hasPermission();
+    final hasPermission = await _audioService.checkPermissions();
     if (!hasPermission) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -491,43 +486,53 @@ class _ConversationScreenState extends State<ConversationScreen> {
       return;
     }
 
-    final tempDir = await getTemporaryDirectory();
-    final path =
-        '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _recorder.start(
-      const RecordConfig(encoder: AudioEncoder.aacLc),
-      path: path,
-    );
-
-    setState(() => _isRecording = true);
+    try {
+      await _audioService.startRecording();
+      if (mounted) setState(() => _isRecording = true);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Nao foi possivel iniciar a gravacao. Verifique o microfone.",
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _stopAndSendRecording() async {
-    if (!_isRecording || kIsWeb) return;
+    if (!_isRecording) return;
 
-    final path = await _recorder.stop();
-    setState(() => _isRecording = false);
+    AudioRecordingResult? recording;
+    try {
+      recording = await _audioService.stopRecording();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Erro ao finalizar gravacao.")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRecording = false);
+    }
 
-    if (path == null || _myId == null) return;
-
-    final file = File(path);
-    final bytes = await file.readAsBytes();
-    final fileName = "audio_${DateTime.now().millisecondsSinceEpoch}.m4a";
-
+    if (recording == null || _myId == null) return;
     if (!mounted) return;
 
     await _openPreviewAndSend(
-      bytes: bytes,
-      fileName: fileName,
-      mimeType: "audio/mp4",
+      bytes: Uint8List.fromList(recording.bytes),
+      fileName: recording.fileName,
+      mimeType: recording.mimeType,
       type: PreviewType.audio,
     );
   }
 
   Future<void> _discardRecording() async {
     if (!_isRecording) return;
-    await _recorder.cancel();
-    setState(() => _isRecording = false);
+    await _audioService.cancelRecording();
+    if (mounted) setState(() => _isRecording = false);
   }
 
   // Determina se uma mensagem e a primeira do seu grupo
@@ -599,7 +604,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         } else if (['mp4', 'mov', 'avi'].contains(ext)) {
           type = PreviewType.video;
           mimeType = "video/$ext";
-        } else if (['mp3', 'm4a', 'wav', 'ogg', 'aac'].contains(ext)) {
+        } else if (['mp3', 'm4a', 'wav', 'ogg', 'aac', 'webm'].contains(ext)) {
           type = PreviewType.audio;
           mimeType = "audio/$ext";
         }
@@ -1224,7 +1229,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
       // Áudio
       case AttachmentType.audio:
-        return AudioMessageWidget(url: message.attachment!);
+        return AudioMessageWidget(
+          messageId: message.id.toString(),
+          url: message.attachment!,
+        );
 
       // Ficheiro genérico
       case AttachmentType.file:
@@ -2168,32 +2176,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 onPressed: _sendMessage,
               );
             }
-            if (kIsWeb) {
-              return Tooltip(
-                message: "Gravacao disponivel apenas na app mobile",
-                child: IconButton(
-                  icon: const Icon(Icons.mic_off_rounded),
-                  color: theme.colorScheme.onSurface.withAlpha(80),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Gravacao de audio nao disponivel no browser.",
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            }
-            return GestureDetector(
-              onLongPressStart: (_) => _startRecording(),
-              onLongPressEnd: (_) => _stopAndSendRecording(),
-              child: IconButton(
-                icon: const Icon(Icons.mic_rounded),
-                color: theme.colorScheme.primary,
-                onPressed: null,
-              ),
+            return IconButton(
+              icon: const Icon(Icons.mic_rounded),
+              color: theme.colorScheme.primary,
+              tooltip: "Gravar audio",
+              onPressed: _startRecording,
             );
           },
         ),
@@ -2231,13 +2218,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ],
           ),
         ),
-        if (kIsWeb)
-          IconButton(
-            icon: const Icon(Icons.stop_rounded),
-            color: theme.colorScheme.primary,
-            onPressed: _stopAndSendRecording,
-            tooltip: "Parar e enviar",
-          ),
+        IconButton(
+          icon: const Icon(Icons.stop_rounded),
+          color: theme.colorScheme.primary,
+          onPressed: _stopAndSendRecording,
+          tooltip: "Parar e enviar",
+        ),
       ],
     );
   }

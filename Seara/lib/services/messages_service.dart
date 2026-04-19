@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:seara/config/api_config.dart';
 import 'package:seara/services/api_client.dart';
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
@@ -21,7 +22,7 @@ class MessagesPage {
 }
 
 class MessagesService {
-  static const String baseUrl = "http://localhost:3000";
+  static String get baseUrl => ApiConfig.baseUrl;
 
   Future<List<Conversation>> fetchConversations(
     int userId, {
@@ -156,10 +157,7 @@ class MessagesService {
     final response = await ApiClient.post(
       Uri.parse("$baseUrl/messages/$messageId/reactions"),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "userId": userId,
-        "reaction": reaction,
-      }),
+      body: jsonEncode({"userId": userId, "reaction": reaction}),
     );
 
     if (response.statusCode == 200) {
@@ -177,11 +175,11 @@ class MessagesService {
     required String newBody,
   }) async {
     final response = await ApiClient.put(
-      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages/$messageId"),
+      Uri.parse(
+        "$baseUrl/messages/conversations/$conversationId/messages/$messageId",
+      ),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "body": newBody,
-      }),
+      body: jsonEncode({"body": newBody}),
     );
 
     if (response.statusCode == 200) {
@@ -197,7 +195,9 @@ class MessagesService {
     required int messageId,
   }) async {
     final response = await ApiClient.delete(
-      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages/$messageId"),
+      Uri.parse(
+        "$baseUrl/messages/conversations/$conversationId/messages/$messageId",
+      ),
       headers: {"Content-Type": "application/json"},
     );
 
@@ -208,7 +208,9 @@ class MessagesService {
 
   Future<List<Message>> getPinnedMessages(int conversationId) async {
     final response = await ApiClient.get(
-      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages/pinned"),
+      Uri.parse(
+        "$baseUrl/messages/conversations/$conversationId/messages/pinned",
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -222,7 +224,9 @@ class MessagesService {
 
   Future<bool> toggleMessagePin(int conversationId, int messageId) async {
     final response = await ApiClient.put(
-      Uri.parse("$baseUrl/messages/conversations/$conversationId/messages/$messageId/pin"),
+      Uri.parse(
+        "$baseUrl/messages/conversations/$conversationId/messages/$messageId/pin",
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -230,7 +234,9 @@ class MessagesService {
       return data['status'] == 'pinned';
     } else {
       final errBody = jsonDecode(response.body);
-      throw Exception(errBody['error'] ?? "Erro ao alternar fixação da mensagem");
+      throw Exception(
+        errBody['error'] ?? "Erro ao alternar fixação da mensagem",
+      );
     }
   }
 }
