@@ -28,6 +28,7 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
   bool _isAdding = false;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _loadUsers();
@@ -35,18 +36,19 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _searchController.removeListener(_onSearch);
     _searchController.dispose();
     super.dispose();
   }
 
+  // Loads users
   Future<void> _loadUsers() async {
     try {
       final users = await ProfileService.getUsersWithRelationship(
         widget.userId,
       );
-      // Filter out existing members and system user (id=0)
       final available = users
           .where((u) => u.id != 0 && !widget.existingMemberIds.contains(u.id))
           .toList();
@@ -63,6 +65,7 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
     }
   }
 
+  // Handles search
   void _onSearch() {
     final q = _searchController.text.trim().toLowerCase();
     if (q.isEmpty) {
@@ -77,6 +80,7 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
     });
   }
 
+  // Add selected
   Future<void> _addSelected() async {
     if (_selectedUsers.isEmpty || _isAdding) return;
     setState(() => _isAdding = true);
@@ -99,6 +103,7 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -141,7 +146,6 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
             : null,
         body: Column(
           children: [
-            // Search
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
@@ -166,7 +170,6 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
                 ),
               ),
             ),
-            // List
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())

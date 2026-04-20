@@ -25,17 +25,17 @@ class _ThemeScreenState extends State<ThemeScreen> {
   bool _isSaving = false;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _selectedTheme = widget.currentTheme;
   }
 
+  // Save
   Future<void> _save(int theme) async {
     if (!widget.isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Apenas admins podem alterar o tema.'),
-        ),
+        const SnackBar(content: Text('Apenas admins podem alterar o tema.')),
       );
       return;
     }
@@ -55,20 +55,23 @@ class _ThemeScreenState extends State<ThemeScreen> {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Tema alterado para ${ConversationThemeHelper.getTheme(theme).name}'),
+          content: Text(
+            'Tema alterado para ${ConversationThemeHelper.getTheme(theme).name}',
+          ),
           duration: const Duration(seconds: 1),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
     }
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -120,8 +123,7 @@ class _ThemeScreenState extends State<ThemeScreen> {
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color:
-                                    theme.colorScheme.primary.withAlpha(60),
+                                color: theme.colorScheme.primary.withAlpha(60),
                                 blurRadius: 12,
                                 spreadRadius: 1,
                               ),
@@ -130,7 +132,6 @@ class _ThemeScreenState extends State<ThemeScreen> {
                     ),
                     child: Stack(
                       children: [
-                        // Chat preview bubbles
                         Positioned(
                           left: 12,
                           top: 16,
@@ -174,13 +175,13 @@ class _ThemeScreenState extends State<ThemeScreen> {
                               'Tudo bem? 😊',
                               style: TextStyle(
                                 color:
-                                    t.myTextColor ?? cs.onSurface.withAlpha(200),
+                                    t.myTextColor ??
+                                    cs.onSurface.withAlpha(200),
                                 fontSize: 11,
                               ),
                             ),
                           ),
                         ),
-                        // Theme name
                         Positioned(
                           left: 12,
                           bottom: 12,
@@ -193,7 +194,6 @@ class _ThemeScreenState extends State<ThemeScreen> {
                             ),
                           ),
                         ),
-                        // Checkmark
                         if (isSelected)
                           Positioned(
                             right: 8,

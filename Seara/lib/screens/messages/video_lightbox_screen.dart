@@ -30,6 +30,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   bool _isFullscreen = false;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
 
@@ -48,7 +49,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
               setState(() => _initialized = true);
               _controller.play();
               _autoHideControls();
-              // Pedir foco assim que o video carrega para capturar teclas
               _focusNode.requestFocus();
             }
           })
@@ -62,6 +62,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _focusNode.dispose();
     _controlsFade.dispose();
@@ -73,8 +74,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     super.dispose();
   }
 
-  // Controlos de UI
-
+  // Shows controls temporarily
   void _showControlsTemporarily() {
     if (!_showControls) {
       setState(() => _showControls = true);
@@ -83,6 +83,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _autoHideControls();
   }
 
+  // Toggles controls
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
     if (_showControls) {
@@ -93,6 +94,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     }
   }
 
+  // Auto hide controls
   void _autoHideControls() {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted && _showControls && !_isSeeking) {
@@ -102,8 +104,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     });
   }
 
-  // Teclado
-
+  // Handles key event
   void _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return;
 
@@ -133,8 +134,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     }
   }
 
-  // Playback
-
+  // Toggles play
   void _togglePlay() {
     setState(() {
       _controller.value.isPlaying ? _controller.pause() : _controller.play();
@@ -142,6 +142,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _showControlsTemporarily();
   }
 
+  // Seek
   Future<void> _seek(double value) async {
     final target = Duration(
       milliseconds: (value * _controller.value.duration.inMilliseconds).round(),
@@ -149,6 +150,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     await _controller.seekTo(target);
   }
 
+  // Toggles mute
   void _toggleMute() {
     setState(() {
       _isMuted = !_isMuted;
@@ -157,8 +159,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _showControlsTemporarily();
   }
 
-  // Fullscreen
-
+  // Toggles fullscreen
   void _toggleFullscreen() {
     if (kIsWeb) return;
     setState(() => _isFullscreen = !_isFullscreen);
@@ -192,7 +193,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     }
   }
 
-  // Formatação de tempo
+  // Formats a duration for display
   String _fmt(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -200,8 +201,8 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 
-  // Build
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -212,7 +213,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
         child: MouseRegion(
-          // Mostrar controlos sempre que o rato se move
           onHover: (_) => _showControlsTemporarily(),
           child: GestureDetector(
             onTap: _toggleControls,
@@ -233,6 +233,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     );
   }
 
+  // Builds video content
   Widget _buildVideoContent() {
     if (!_initialized) {
       return CircularProgressIndicator(
@@ -246,6 +247,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     );
   }
 
+  // Builds controls overlay
   Widget _buildControlsOverlay() {
     final cs = Theme.of(context).colorScheme;
     return Column(
@@ -277,6 +279,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     );
   }
 
+  // Builds top bar
   Widget _buildTopBar() {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -319,11 +322,13 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                     ),
                   )
                 : IconButton(
-                    icon: Icon(Icons.download_rounded, color: cs.onInverseSurface),
+                    icon: Icon(
+                      Icons.download_rounded,
+                      color: cs.onInverseSurface,
+                    ),
                     tooltip: 'Download',
                     onPressed: _download,
                   ),
-            // Indicacao de atalhos de teclado no browser
             if (kIsWeb)
               Tooltip(
                 message: 'Espaco: play/pause | Esc: fechar | ← →: 10s',
@@ -342,6 +347,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     );
   }
 
+  // Builds bottom bar
   Widget _buildBottomBar() {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;

@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Theme colors for conversation backgrounds and bubbles
-// Maps to integer IDs stored in DB (conversation_settings.theme)
-
 class ConversationThemeHelper {
   static const List<ConversationThemeData> themes = [
     ConversationThemeData(
@@ -232,6 +229,7 @@ class ConversationThemeHelper {
     ),
   ];
 
+  // Returns the theme data for the selected conversation style
   static ConversationThemeData getTheme(int id) {
     try {
       return themes.firstWhere((t) => t.id == id);

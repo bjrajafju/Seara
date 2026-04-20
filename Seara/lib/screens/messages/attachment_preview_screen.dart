@@ -28,6 +28,7 @@ class AttachmentPreviewScreen extends StatefulWidget {
   final AttachmentPreview preview;
 
   @override
+  // Creates the state object for this screen
   State<AttachmentPreviewScreen> createState() =>
       _AttachmentPreviewScreenState();
 }
@@ -43,6 +44,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   Uint8List? _croppedBytes;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     if (widget.preview.type == PreviewType.audio) {
@@ -50,6 +52,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
+  // Safe delete windows temp audio
   void _safeDeleteWindowsTempAudio() {
     final p = _windowsTempAudioPath;
     if (p == null) return;
@@ -60,19 +63,19 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _captionController.dispose();
     if (widget.preview.type == PreviewType.audio) {
       if (_audio.currentMessageId == kAttachmentPreviewMessageId) {
         unawaited(_audio.stop());
       }
-      // Do not delete temp file on track completion while preview is open — the
-      // player may still hold the path. Always delete when leaving the screen.
       _safeDeleteWindowsTempAudio();
     }
     super.dispose();
   }
 
+  // Prepare audio
   Future<void> _prepareAudio() async {
     try {
       if (!kIsWeb && Platform.isWindows) {
@@ -82,10 +85,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
         final tempFile = File(tempPath);
         await tempFile.writeAsBytes(widget.preview.bytes, flush: true);
         _windowsTempAudioPath = tempPath;
-        await _audio.prepareFromFile(
-          kAttachmentPreviewMessageId,
-          tempPath,
-        );
+        await _audio.prepareFromFile(kAttachmentPreviewMessageId, tempPath);
       } else {
         await _audio.prepareFromBytes(
           kAttachmentPreviewMessageId,
@@ -103,6 +103,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
+  // Toggles preview audio
   Future<void> _togglePreviewAudio() async {
     if (!_audioPrepared) return;
 
@@ -130,12 +131,14 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     await _audio.resume();
   }
 
+  // Formats duration
   String _formatDuration(Duration d) {
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return "$minutes:$seconds";
   }
 
+  // Confirm
   void _confirm() {
     Navigator.pop(context, {
       'bytes': _croppedBytes ?? widget.preview.bytes,
@@ -146,6 +149,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -176,6 +180,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     );
   }
 
+  // Crop image
   Future<void> _cropImage() async {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -215,6 +220,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
+  // Builds preview content
   Widget _buildPreviewContent(ThemeData theme) {
     final cs = theme.colorScheme;
     switch (widget.preview.type) {
@@ -278,10 +284,10 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
                         initialData: _audio.lastPlayerState,
                         builder: (context, stateSnap) {
                           final st = stateSnap.data!;
-                          final playing = isPreview &&
+                          final playing =
+                              isPreview &&
                               st.playing &&
-                              st.processingState !=
-                                  ProcessingState.completed;
+                              st.processingState != ProcessingState.completed;
 
                           return StreamBuilder<Duration>(
                             stream: _audio.positionStream,
@@ -295,8 +301,9 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
 
                               return StreamBuilder<Duration?>(
                                 stream: _audio.durationStream,
-                                initialData:
-                                    isPreview ? _audio.lastDuration : null,
+                                initialData: isPreview
+                                    ? _audio.lastDuration
+                                    : null,
                                 builder: (context, durSnap) {
                                   final dur = isPreview
                                       ? (durSnap.data ?? Duration.zero)
@@ -310,8 +317,10 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
                                         iconSize: 56,
                                         icon: Icon(
                                           playing
-                                              ? Icons.pause_circle_filled_rounded
-                                              : Icons.play_circle_filled_rounded,
+                                              ? Icons
+                                                    .pause_circle_filled_rounded
+                                              : Icons
+                                                    .play_circle_filled_rounded,
                                           color: cs.onInverseSurface,
                                         ),
                                         onPressed: _togglePreviewAudio,
@@ -337,9 +346,9 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
                                               return;
                                             }
                                             final position = Duration(
-                                              milliseconds: (value *
-                                                      dur.inMilliseconds)
-                                                  .round(),
+                                              milliseconds:
+                                                  (value * dur.inMilliseconds)
+                                                      .round(),
                                             );
                                             await _audio.seek(position);
                                           },
@@ -353,17 +362,17 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
                                             _formatDuration(pos),
                                             style: theme.textTheme.bodySmall
                                                 ?.copyWith(
-                                              color: cs.onInverseSurface
-                                                  .withAlpha(160),
-                                            ),
+                                                  color: cs.onInverseSurface
+                                                      .withAlpha(160),
+                                                ),
                                           ),
                                           Text(
                                             _formatDuration(dur),
                                             style: theme.textTheme.bodySmall
                                                 ?.copyWith(
-                                              color: cs.onInverseSurface
-                                                  .withAlpha(160),
-                                            ),
+                                                  color: cs.onInverseSurface
+                                                      .withAlpha(160),
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -412,6 +421,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
+  // Builds caption and send
   Widget _buildCaptionAndSend(ThemeData theme) {
     final cs = theme.colorScheme;
     return Container(

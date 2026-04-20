@@ -1,10 +1,9 @@
-/// Represents a conversation member with role information.
 class ConversationMember {
   final int id;
   final String username;
   final String name;
   final String avatar;
-  final int role; // 0=member, 1=admin
+  final int role;
   final bool isCreator;
 
   ConversationMember({
@@ -34,14 +33,13 @@ class ConversationMember {
   }
 }
 
-/// Configurable permissions for a conversation.
 class ConversationSettings {
-  final int whoCanManageMembers; // 0=all, 1=admins
-  final int whoCanEditInfo; // 0=all, 1=admins
-  final int whoCanSendMessages; // 0=all, 1=admins
-  final int whoCanEditBio; // 0=all, 1=admins
-  final int ephemeralDuration; // 0=off, 1=24h, 2=7d, 3=30d
-  final int theme; // 0=default, 1=ocean, 2=sunset, 3=forest, 4=midnight
+  final int whoCanManageMembers;
+  final int whoCanEditInfo;
+  final int whoCanSendMessages;
+  final int whoCanEditBio;
+  final int ephemeralDuration;
+  final int theme;
 
   ConversationSettings({
     this.whoCanManageMembers = 0,
@@ -63,7 +61,6 @@ class ConversationSettings {
     );
   }
 
-  /// Human-readable label for ephemeral duration.
   String get ephemeralLabel {
     switch (ephemeralDuration) {
       case 1:
@@ -77,7 +74,6 @@ class ConversationSettings {
     }
   }
 
-  /// Human-readable label for theme.
   String get themeLabel {
     switch (theme) {
       case 1:
@@ -94,7 +90,6 @@ class ConversationSettings {
   }
 }
 
-/// Per-user notification preferences for a conversation.
 class ConversationNotification {
   final bool isMuted;
   final DateTime? mutedUntil;
@@ -110,14 +105,12 @@ class ConversationNotification {
     );
   }
 
-  /// Whether mute is currently effective (not expired).
   bool get isEffectivelyMuted {
     if (!isMuted) return false;
-    if (mutedUntil == null) return true; // indefinite
+    if (mutedUntil == null) return true;
     return DateTime.now().isBefore(mutedUntil!);
   }
 
-  /// Human-readable mute status.
   String get muteLabel {
     if (!isEffectivelyMuted) return 'Ativadas';
     if (mutedUntil == null) return 'Silenciado';
@@ -125,7 +118,6 @@ class ConversationNotification {
   }
 }
 
-/// Full conversation details including members, settings and notification state.
 class ConversationDetails {
   final int id;
   final String? name;
@@ -134,7 +126,7 @@ class ConversationDetails {
   final String? description;
   final List<ConversationMember> members;
   final ConversationSettings? settings;
-  final int myRole; // 0=member, 1=admin
+  final int myRole;
   final bool isCreator;
   final bool isPinned;
   final ConversationNotification notification;

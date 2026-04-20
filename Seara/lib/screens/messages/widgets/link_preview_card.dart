@@ -12,6 +12,7 @@ class LinkPreviewCard extends StatelessWidget {
         preview.url.contains('youtu.be');
   }
 
+  // Launch url
   Future<void> _launchUrl() async {
     final uri = Uri.parse(preview.url);
     if (await canLaunchUrl(uri)) {
@@ -20,6 +21,7 @@ class LinkPreviewCard extends StatelessWidget {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -29,7 +31,9 @@ class LinkPreviewCard extends StatelessWidget {
         margin: const EdgeInsets.only(top: 8),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.5,
+          ),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: theme.colorScheme.outline.withValues(alpha: 0.2),
@@ -85,7 +89,9 @@ class LinkPreviewCard extends StatelessWidget {
                       Text(
                         preview.description!,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.7,
+                          ),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

@@ -43,6 +43,7 @@ class MessagesProvider extends ChangeNotifier {
   ReplyPreview? get replyingTo => _replyingTo;
   List<String> get quickReactions => List.unmodifiable(_quickReactions);
 
+  // Merges incoming messages into local state
   void _upsertMessages(Iterable<Message> incoming) {
     if (incoming.isEmpty) return;
     final byId = <int, Message>{for (final m in _messages) m.id: m};
@@ -54,6 +55,7 @@ class MessagesProvider extends ChangeNotifier {
     _messages = merged;
   }
 
+  // Finds a message by id in local caches
   Message? getMessageById(int messageId) {
     try {
       return _messages.firstWhere((m) => m.id == messageId);
@@ -62,6 +64,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
+  // Stores the selected message as active reply target
   void startReply(Message target) {
     _replyingTo =
         target.replyTo ??
@@ -78,13 +81,14 @@ class MessagesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Clears the active reply target
   void cancelReply() {
     if (_replyingTo == null) return;
     _replyingTo = null;
     notifyListeners();
   }
 
-  /// Load initial page of messages.
+  // Loads messages for the current conversation
   Future<void> loadMessages(int conversationId, {int? userId}) async {
     _myUserId = userId;
     await _loadQuickReactions(userId);
@@ -104,10 +108,10 @@ class MessagesProvider extends ChangeNotifier {
       notifyListeners();
     }
 
-    // Non-blocking fetch of pinned messages
     fetchPinnedMessages(conversationId);
   }
 
+  // Loads pinned messages for this conversation
   Future<void> fetchPinnedMessages(int conversationId) async {
     try {
       _pinnedMessages = await _service.getPinnedMessages(conversationId);
@@ -117,10 +121,10 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
+  // Pins or unpins the selected message
   Future<bool> togglePinMessage(int conversationId, Message msg) async {
     try {
       await _service.toggleMessagePin(conversationId, msg.id);
-      // Source of truth is backend; refresh pinned list to avoid stale/duplicate state.
       await fetchPinnedMessages(conversationId);
       return true;
     } catch (e) {
@@ -129,10 +133,6 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
-  /// Ensures a message is present in memory (fetching if needed) and returns its index.
-  ///
-  /// This **merges** results into the existing list (does not replace the page),
-  /// improving UX for "jump to message" (pinned/search navigation).
   Future<int?> ensureMessageLoaded(
     int conversationId,
     int messageId, {
@@ -148,13 +148,11 @@ class MessagesProvider extends ChangeNotifier {
         userId: userId,
       );
       _upsertMessages(page.messages);
-      // Keep existing pagination flags (around endpoint is not meant to define hasMore for timeline browsing)
       _lastReadAt ??= page.lastReadAt;
       notifyListeners();
 
       return _messages.indexWhere((m) => m.id == messageId);
     } catch (e) {
-      // Don't clobber the whole screen with a load error for a jump action; just surface via error state.
       _loadError = e.toString();
       notifyListeners();
       return null;
@@ -182,7 +180,7 @@ class MessagesProvider extends ChangeNotifier {
     return null;
   }
 
-  /// Load older messages (scroll up).
+  // Loads older messages for pagination
   Future<void> loadMore(int conversationId, {int? userId}) async {
     _myUserId ??= userId;
     if (_isLoadingMore || !_hasMore || _messages.isEmpty) return;
@@ -200,13 +198,13 @@ class MessagesProvider extends ChangeNotifier {
       _messages = [...page.messages, ..._messages];
       _hasMore = page.hasMore;
     } catch (e) {
-      // Silently fail on load more
     } finally {
       _isLoadingMore = false;
       notifyListeners();
     }
   }
 
+  // Loads quick reactions
   Future<void> _loadQuickReactions(int? userId) async {
     if (userId == null) return;
     try {
@@ -244,12 +242,10 @@ class MessagesProvider extends ChangeNotifier {
         'quick_reactions_${_myUserId!}',
         _quickReactions,
       );
-    } catch (_) {
-      // ignore persistence failures; UI state remains
-    }
+    } catch (_) {}
   }
 
-  // Task 4: Real-time subscription via Supabase Realtime
+  // Subscribe to conversation
   void subscribeToConversation(int conversationId) {
     unsubscribe();
     _myUserId = null;
@@ -269,16 +265,13 @@ class MessagesProvider extends ChangeNotifier {
           callback: (payload) {
             final newMsg = payload.newRecord;
             if (newMsg.isEmpty) return;
-            // Don't duplicate messages we already sent locally
             final msgId = newMsg['id'] as int?;
             if (msgId != null && _messages.any((m) => m.id == msgId)) return;
             try {
               final message = Message.fromJson(newMsg);
               _upsertMessages([message]);
               notifyListeners();
-            } catch (_) {
-              // Ignore parse errors from partial data
-            }
+            } catch (_) {}
           },
         )
         .subscribe();
@@ -311,6 +304,7 @@ class MessagesProvider extends ChangeNotifier {
         .subscribe();
   }
 
+  // Removes active realtime listeners
   void unsubscribe() {
     if (_channel != null) {
       Supabase.instance.client.removeChannel(_channel!);
@@ -322,6 +316,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
+  // Apply realtime reaction
   void _applyRealtimeReaction(Map<String, dynamic> row, bool added) {
     final messageId = (row['message_id'] as num?)?.toInt();
     final reaction = row['reaction']?.toString();
@@ -399,7 +394,6 @@ class MessagesProvider extends ChangeNotifier {
         isForwarded: isForwarded,
         replyToMessageId: replyToMessageId,
       );
-      // Fix #2: Dedup — only add if not already present from realtime
       if (!_messages.any((m) => m.id == message.id)) {
         _messages.add(message);
       }
@@ -490,7 +484,6 @@ class MessagesProvider extends ChangeNotifier {
         replyToMessageId: replyToMessageId,
       );
 
-      // Fix #2: Dedup — only add if not already present from realtime
       if (!_messages.any((m) => m.id == message.id)) {
         _messages.add(message);
       }
@@ -513,7 +506,6 @@ class MessagesProvider extends ChangeNotifier {
     final normalizedOriginal = originalMimeType.toLowerCase();
     final normalizedUploaded = uploadedContentType.toLowerCase();
 
-    // Keep audio explicit even if storage responds with a generic type.
     if (normalizedOriginal.startsWith('audio/')) {
       return normalizedOriginal;
     }
@@ -526,7 +518,6 @@ class MessagesProvider extends ChangeNotifier {
     return normalizedOriginal;
   }
 
-  // Find the index of the "unread divider" based on lastReadAt.
   int? get unreadDividerIndex {
     if (_lastReadAt == null) return null;
     for (int i = 0; i < _messages.length; i++) {
@@ -553,17 +544,13 @@ class MessagesProvider extends ChangeNotifier {
       final index = _messages.indexWhere((m) => m.id == messageId);
       if (index != -1) {
         final old = _messages[index];
-        // The edit endpoint may return a "thin" message without reply metadata.
-        // Preserve local reply preview so the quotation box doesn't disappear until reload.
         _messages[index] = old.copyWith(
           body: updatedMessage.body,
           updatedAt: updatedMessage.updatedAt,
           editedAt: updatedMessage.editedAt,
-          // keep reply info if backend doesn't send it back on edit
           replyToMessageId:
               updatedMessage.replyToMessageId ?? old.replyToMessageId,
           replyTo: updatedMessage.replyTo ?? old.replyTo,
-          // keep reactions if missing in edit response
           reactions: updatedMessage.reactions.isNotEmpty
               ? updatedMessage.reactions
               : old.reactions,
@@ -599,6 +586,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
+  // Clears provider state for the current conversation
   void clear() {
     unsubscribe();
     _messages = [];

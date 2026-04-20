@@ -29,6 +29,7 @@ class _CallScreenState extends State<CallScreen>
   late Animation<double> _pulseAnimation;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _pulseController = AnimationController(
@@ -39,7 +40,6 @@ class _CallScreenState extends State<CallScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Simulate connection after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
       setState(() => _isConnecting = false);
@@ -47,6 +47,7 @@ class _CallScreenState extends State<CallScreen>
     });
   }
 
+  // Starts timer
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -58,6 +59,7 @@ class _CallScreenState extends State<CallScreen>
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _timer?.cancel();
     _pulseController.dispose();
@@ -70,11 +72,13 @@ class _CallScreenState extends State<CallScreen>
     return '$min:$sec';
   }
 
+  // End call
   void _endCall() {
     Navigator.pop(context);
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
@@ -82,7 +86,6 @@ class _CallScreenState extends State<CallScreen>
         child: Column(
           children: [
             const Spacer(flex: 1),
-            // Avatar with pulse animation
             AnimatedBuilder(
               animation: _pulseController,
               builder: (context, child) {
@@ -109,7 +112,6 @@ class _CallScreenState extends State<CallScreen>
               },
             ),
             const SizedBox(height: 24),
-            // Name
             Text(
               widget.conversationName,
               style: const TextStyle(
@@ -119,33 +121,29 @@ class _CallScreenState extends State<CallScreen>
               ),
             ),
             const SizedBox(height: 8),
-            // Status
             Text(
               _isConnecting
                   ? 'A ligar...'
                   : widget.isVideo
-                      ? 'Videochamada · $_formattedTime'
-                      : 'Chamada de voz · $_formattedTime',
+                  ? 'Videochamada · $_formattedTime'
+                  : 'Chamada de voz · $_formattedTime',
               style: TextStyle(
                 color: Colors.white.withAlpha(180),
                 fontSize: 14,
               ),
             ),
             const Spacer(flex: 2),
-            // Controls
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Mute
                   _buildControlButton(
                     icon: _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
                     label: _isMuted ? 'Ativar' : 'Silenciar',
                     isActive: _isMuted,
                     onTap: () => setState(() => _isMuted = !_isMuted),
                   ),
-                  // Speaker
                   _buildControlButton(
                     icon: _isSpeaker
                         ? Icons.volume_up_rounded
@@ -154,7 +152,6 @@ class _CallScreenState extends State<CallScreen>
                     isActive: _isSpeaker,
                     onTap: () => setState(() => _isSpeaker = !_isSpeaker),
                   ),
-                  // Camera (video only)
                   if (widget.isVideo)
                     _buildControlButton(
                       icon: _isCameraOff
@@ -162,14 +159,12 @@ class _CallScreenState extends State<CallScreen>
                           : Icons.videocam_rounded,
                       label: _isCameraOff ? 'Ligar' : 'Câmara',
                       isActive: _isCameraOff,
-                      onTap: () =>
-                          setState(() => _isCameraOff = !_isCameraOff),
+                      onTap: () => setState(() => _isCameraOff = !_isCameraOff),
                     ),
                 ],
               ),
             ),
             const SizedBox(height: 40),
-            // End call button
             GestureDetector(
               onTap: _endCall,
               child: Container(
@@ -241,15 +236,10 @@ class _CallScreenState extends State<CallScreen>
           const SizedBox(height: 6),
           Text(
             label,
-            style: TextStyle(
-              color: Colors.white.withAlpha(150),
-              fontSize: 11,
-            ),
+            style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 11),
           ),
         ],
       ),
     );
   }
 }
-
-

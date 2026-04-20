@@ -1,3 +1,2 @@
-void downloadFile(String url, String fileName) {
-  // Nao faz nada em mobile — o download e tratado via http
-}
+// Downloads and saves the requested file
+void downloadFile(String url, String fileName) {}

@@ -27,7 +27,6 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
   bool _hasSearched = false;
   Timer? _debounce;
 
-  // Filters — each updates & searches independently
   String? _typeFilter;
   int? _senderFilter;
   DateTime? _dateFrom;
@@ -42,12 +41,14 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
   ];
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _searchController.addListener(_onTextChanged);
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _debounce?.cancel();
     _searchController.removeListener(_onTextChanged);
@@ -55,7 +56,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     super.dispose();
   }
 
-  /// Debounced text search — fires 300ms after user stops typing
+  // Handles text changed
   void _onTextChanged() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -63,10 +64,9 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     });
   }
 
-  /// Core search — called by every filter change
+  // Search
   Future<void> _search() async {
     final q = _searchController.text.trim();
-    // Allow searching with filters only (no text needed)
     if (q.isEmpty &&
         _typeFilter == null &&
         _senderFilter == null &&
@@ -103,25 +103,25 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSearching = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
     }
   }
 
-  /// Set type filter and immediately refresh
+  // Set type filter
   void _setTypeFilter(String? value) {
     setState(() => _typeFilter = value);
     _search();
   }
 
-  /// Set sender filter and immediately refresh
+  // Set sender filter
   void _setSenderFilter(int? value) {
     setState(() => _senderFilter = value);
     _search();
   }
 
-  /// Pick date and immediately refresh
+  // Picks date
   Future<void> _pickDate(bool isFrom) async {
     final picked = await showDatePicker(
       context: context,
@@ -137,10 +137,10 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
         _dateTo = picked;
       }
     });
-    _search(); // Immediately apply
+    _search();
   }
 
-  /// Clear both date filters
+  // Clear dates
   void _clearDates() {
     setState(() {
       _dateFrom = null;
@@ -152,6 +152,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
   bool get _hasDateFilter => _dateFrom != null || _dateTo != null;
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -171,7 +172,6 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
         ),
         body: Column(
           children: [
-            // Search bar — no Enter needed, debounced
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
@@ -192,20 +192,18 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
                           icon: const Icon(Icons.clear_rounded, size: 20),
                           onPressed: () {
                             _searchController.clear();
-                            // _onTextChanged will fire via listener
                           },
                         )
                       : _isSearching
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            )
-                          : null,
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest,
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -216,7 +214,6 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
                 ),
               ),
             ),
-            // Type filter chips
             SizedBox(
               height: 42,
               child: ListView(
@@ -231,7 +228,6 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
                       avatar: Icon(opt.icon, size: 16),
                       selected: selected,
                       onSelected: (_) {
-                        // "Todos" (null) always resets
                         _setTypeFilter(selected ? null : opt.value);
                       },
                     ),
@@ -240,23 +236,17 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            // Sender + date row
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  // Sender dropdown
                   if (widget.members.length > 1)
-                    Expanded(
-                      child: _buildSenderDropdown(theme),
-                    ),
+                    Expanded(child: _buildSenderDropdown(theme)),
                   if (widget.members.length > 1) const SizedBox(width: 8),
-                  // Date from
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(true),
-                      icon:
-                          const Icon(Icons.calendar_today_rounded, size: 14),
+                      icon: const Icon(Icons.calendar_today_rounded, size: 14),
                       label: Text(
                         _dateFrom != null
                             ? '${_dateFrom!.day}/${_dateFrom!.month}'
@@ -275,8 +265,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(false),
-                      icon:
-                          const Icon(Icons.calendar_today_rounded, size: 14),
+                      icon: const Icon(Icons.calendar_today_rounded, size: 14),
                       label: Text(
                         _dateTo != null
                             ? '${_dateTo!.day}/${_dateTo!.month}'
@@ -291,11 +280,13 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
                       ),
                     ),
                   ),
-                  // Clear dates button
                   if (_hasDateFilter)
                     IconButton(
-                      icon: Icon(Icons.close_rounded,
-                          size: 18, color: theme.colorScheme.error),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: theme.colorScheme.error,
+                      ),
                       onPressed: _clearDates,
                       tooltip: 'Limpar datas',
                       constraints: const BoxConstraints(
@@ -309,57 +300,50 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
             ),
             const SizedBox(height: 8),
             const Divider(height: 1),
-            // Results
             Expanded(
               child: _isSearching
                   ? const Center(child: CircularProgressIndicator())
                   : !_hasSearched
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.search_rounded,
-                                size: 48,
-                                color: theme.colorScheme.onSurface
-                                    .withAlpha(60),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Escreve ou usa os filtros para pesquisar',
-                                style:
-                                    theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withAlpha(120),
-                                ),
-                              ),
-                            ],
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.search_rounded,
+                            size: 48,
+                            color: theme.colorScheme.onSurface.withAlpha(60),
                           ),
-                        )
-                      : _results.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Nenhum resultado encontrado.',
-                                style:
-                                    theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withAlpha(120),
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 8),
-                              itemCount: _results.length,
-                              separatorBuilder: (_, __) => Divider(
-                                height: 1,
-                                color: theme.dividerColor.withAlpha(40),
-                              ),
-                              itemBuilder: (context, index) {
-                                final msg = _results[index];
-                                return _buildMessageResult(theme, msg);
-                              },
+                          const SizedBox(height: 12),
+                          Text(
+                            'Escreve ou usa os filtros para pesquisar',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface.withAlpha(120),
                             ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _results.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Nenhum resultado encontrado.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(120),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: _results.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        color: theme.dividerColor.withAlpha(40),
+                      ),
+                      itemBuilder: (context, index) {
+                        final msg = _results[index];
+                        return _buildMessageResult(theme, msg);
+                      },
+                    ),
             ),
           ],
         ),
@@ -367,7 +351,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     );
   }
 
-  /// Sender dropdown with proper state management
+  // Builds sender dropdown
   Widget _buildSenderDropdown(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -384,20 +368,15 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
           value: _senderFilter,
           isExpanded: true,
           isDense: true,
-          hint: Text('Utilizador',
-              style: theme.textTheme.bodySmall),
+          hint: Text('Utilizador', style: theme.textTheme.bodySmall),
           items: [
-            const DropdownMenuItem(
-              value: null,
-              child: Text('Todos'),
+            const DropdownMenuItem(value: null, child: Text('Todos')),
+            ...widget.members.map(
+              (m) => DropdownMenuItem(
+                value: m.id,
+                child: Text(m.username, overflow: TextOverflow.ellipsis),
+              ),
             ),
-            ...widget.members.map((m) => DropdownMenuItem(
-                  value: m.id,
-                  child: Text(
-                    m.username,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                )),
           ],
           onChanged: (val) => _setSenderFilter(val),
         ),
@@ -405,14 +384,13 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     );
   }
 
+  // Builds message result
   Widget _buildMessageResult(ThemeData theme, Message msg) {
     final isImage = msg.attachmentType == AttachmentType.image;
 
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       onTap: () {
-        // Navigate back with message ID to scroll to
         Navigator.pop(context, msg.id);
       },
       leading: CircleAvatar(
@@ -450,26 +428,24 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
               style: theme.textTheme.bodySmall,
             )
           : msg.attachment != null
-              ? Row(
-                  children: [
-                    Icon(
-                      isImage
-                          ? Icons.image_rounded
-                          : Icons.attach_file_rounded,
-                      size: 14,
-                      color: theme.colorScheme.onSurface.withAlpha(120),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      msg.attachmentName ?? 'Anexo',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withAlpha(120),
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                )
-              : null,
+          ? Row(
+              children: [
+                Icon(
+                  isImage ? Icons.image_rounded : Icons.attach_file_rounded,
+                  size: 14,
+                  color: theme.colorScheme.onSurface.withAlpha(120),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  msg.attachmentName ?? 'Anexo',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withAlpha(120),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            )
+          : null,
       trailing: isImage && msg.attachment != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(6),

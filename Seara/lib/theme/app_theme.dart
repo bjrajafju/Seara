@@ -1,16 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// All theme definitions for Seara.
-///
-/// To add a new theme:
-///  1. Define a static ThemeData getter here.
-///  2. Add a new value to [AppThemeId] in theme_provider.dart.
-///  3. Register it in [ThemeProvider.themes].
-
 class AppTheme {
   AppTheme._();
 
-  // ── Light ────────────────────────────────────────────────────────────────
   static ThemeData get light {
     const cs = ColorScheme(
       brightness: Brightness.light,
@@ -28,7 +20,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Dark ─────────────────────────────────────────────────────────────────
   static ThemeData get dark {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -46,7 +37,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── High Contrast ────────────────────────────────────────────────────────
   static ThemeData get highContrast {
     const cs = ColorScheme(
       brightness: Brightness.light,
@@ -64,7 +54,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── AMOLED (pure black for OLED screens) ─────────────────────────────────
   static ThemeData get amoled {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -82,7 +71,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Ocean (deep blue) ────────────────────────────────────────────────────
   static ThemeData get ocean {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -100,7 +88,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Sunset (warm orange / purple) ────────────────────────────────────────
   static ThemeData get sunset {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -118,7 +105,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Forest (earthy green) ────────────────────────────────────────────────
   static ThemeData get forest {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -136,7 +122,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Midnight (deep navy / indigo) ────────────────────────────────────────
   static ThemeData get midnight {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -154,7 +139,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Rose (pink / mauve) ──────────────────────────────────────────────────
   static ThemeData get rose {
     const cs = ColorScheme(
       brightness: Brightness.light,
@@ -172,7 +156,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Amber (warm yellow / brown) ──────────────────────────────────────────
   static ThemeData get amber {
     const cs = ColorScheme(
       brightness: Brightness.light,
@@ -190,7 +173,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Nord (nordic minimal) ────────────────────────────────────────────────
   static ThemeData get nord {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -208,7 +190,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Dracula (classic dev theme) ──────────────────────────────────────────
   static ThemeData get dracula {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -226,7 +207,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Mocha (warm coffee tones) ────────────────────────────────────────────
   static ThemeData get mocha {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -244,7 +224,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Arctic (icy white / cyan) ────────────────────────────────────────────
   static ThemeData get arctic {
     const cs = ColorScheme(
       brightness: Brightness.light,
@@ -262,7 +241,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Sakura (japanese cherry blossom) ────────────────────────────────────
   static ThemeData get sakura {
     const cs = ColorScheme(
       brightness: Brightness.light,
@@ -280,7 +258,6 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Slate (cool grey minimal) ────────────────────────────────────────────
   static ThemeData get slate {
     const cs = ColorScheme(
       brightness: Brightness.dark,
@@ -298,7 +275,7 @@ class AppTheme {
     return _buildTheme(cs);
   }
 
-  // ── Shared builder ───────────────────────────────────────────────────────
+  // Builds and returns the app theme configuration
   static ThemeData _buildTheme(ColorScheme cs) {
     return ThemeData(
       useMaterial3: true,

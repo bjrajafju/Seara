@@ -8,10 +8,9 @@ class AuthService {
   static String get baseUrl => '${ApiConfig.baseUrl}/auth';
 
   static const _storage = FlutterSecureStorage(
-     aOptions: AndroidOptions(encryptedSharedPreferences: true)
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
-  // Guarda tokens localmente
   static Future<void> saveSession(
     String accessToken,
     String refreshToken,
@@ -20,28 +19,28 @@ class AuthService {
     await _storage.write(key: 'refresh_token', value: refreshToken);
   }
 
-  // Carrega token
+  // Reads the persisted auth token
   static Future<String?> getToken() async {
     return await _storage.read(key: 'access_token');
   }
 
-  // Guarda userId localmente
+  // Persists the authenticated user id
   static Future<void> saveUserId(int userId) async {
     await _storage.write(key: 'user_id', value: userId.toString());
   }
 
-  // Lê userId
+  // Reads the persisted user id
   static Future<int?> getUserId() async {
     final val = await _storage.read(key: 'user_id');
     return val != null ? int.tryParse(val) : null;
   }
 
-  // Logout
+  // Clears persisted session data and logs out the user
   static Future<void> logout() async {
     await _storage.deleteAll();
   }
 
-  // Session validation: authenticated only when backend confirms it.
+  // Validates the current auth token with the backend
   static Future<bool> validateSession() async {
     try {
       final token = await getToken();
@@ -68,12 +67,11 @@ class AuthService {
 
       return false;
     } catch (_) {
-      // Treat storage/network/parsing issues as invalid session.
       return false;
     }
   }
 
-  // REGISTER
+  // Sends registration data and creates a new account
   static Future<String?> register(String email, String password) async {
     try {
       final response = await http.post(
@@ -84,7 +82,7 @@ class AuthService {
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        return null; // sucesso
+        return null;
       } else {
         final data = jsonDecode(response.body);
         return data['error'] ?? 'Erro desconhecido';
@@ -94,7 +92,7 @@ class AuthService {
     }
   }
 
-  // LOGIN
+  // Sends login credentials and stores the authenticated session
   static Future<String?> login(String email, String password) async {
     try {
       final response = await http.post(
@@ -111,7 +109,6 @@ class AuthService {
           data['session']['refresh_token'],
         );
 
-        // ESTE é o ID correto
         await saveUserId(data['user']['id']);
 
         return null;

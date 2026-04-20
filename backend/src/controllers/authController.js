@@ -1,6 +1,6 @@
 import supabase from "../services/supabase.js";
 
-// REGISTAR
+// Registers a new user account.
 export const register = async (req, res) => {
     let { email, password } = req.body || {};
     if (typeof email === "string") email = email.trim().toLowerCase();
@@ -12,7 +12,6 @@ export const register = async (req, res) => {
     }
 
     try {
-        // 1. Criar no Supabase Auth
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -24,7 +23,6 @@ export const register = async (req, res) => {
 
         const authUserId = data.user.id; // UUID
 
-        // 2. Criar utilizador na public.users
         const baseUsername = email.split("@")[0];
         const username = await generateUsername(baseUsername);
 
@@ -45,7 +43,6 @@ export const register = async (req, res) => {
                 .json({ error: "Erro ao criar utilizador da app" });
         }
 
-        // 3. Resposta limpa
         res.status(201).json({
             user: {
                 id: appUser.id, // BIGINT
@@ -59,7 +56,7 @@ export const register = async (req, res) => {
     }
 };
 
-// LOGIN
+// Logs in a user and returns app session data.
 export const login = async (req, res) => {
     const { email, password } = req.body;
 
@@ -70,7 +67,6 @@ export const login = async (req, res) => {
     }
 
     try {
-        // 1. Login Supabase Auth
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -82,7 +78,6 @@ export const login = async (req, res) => {
 
         const authUserId = data.user.id;
 
-        // 2. Buscar utilizador da app
         const { data: appUser, error: userError } = await supabase
             .from("users")
             .select("id")
@@ -95,7 +90,6 @@ export const login = async (req, res) => {
                 .json({ error: "Utilizador da app não encontrado" });
         }
 
-        // 3. Responder com session + app user id
         res.json({
             session: data.session,
             user: {
@@ -109,7 +103,7 @@ export const login = async (req, res) => {
     }
 };
 
-// Função auxiliar para gerar username único
+// Generates a unique username from the requested base value.
 const generateUsername = async (base) => {
     let username = base.toLowerCase().replace(/[^a-z0-9_]/g, "");
     let count = 0;

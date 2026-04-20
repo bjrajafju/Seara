@@ -1,6 +1,6 @@
 import supabase from "../services/supabase.js";
 
-// Helper: check if user is admin in conversation
+// Returns whether the user is an admin in the conversation.
 const isAdmin = async (conversationId, userId) => {
     const { data } = await supabase
         .from("conversation_user")
@@ -11,7 +11,7 @@ const isAdmin = async (conversationId, userId) => {
     return data && (data.role === 1 || data.is_creator);
 };
 
-// Helper: check if user is member
+// Returns whether the user belongs to the conversation.
 const isMember = async (conversationId, userId) => {
     const { data } = await supabase
         .from("conversation_user")
@@ -22,7 +22,7 @@ const isMember = async (conversationId, userId) => {
     return !!data;
 };
 
-// Helper: insert system message
+// Inserts a system message and updates timestamps.
 const insertSystemMessage = async (conversationId, body) => {
     await supabase.from("messages").insert({
         conversation_id: conversationId,
@@ -39,7 +39,7 @@ const insertSystemMessage = async (conversationId, body) => {
         .eq("id", conversationId);
 };
 
-// Helper: check permission level
+// Validates permission level for a settings field.
 const hasPermission = async (conversationId, userId, permissionField) => {
     const { data: settings } = await supabase
         .from("conversation_settings")
@@ -54,7 +54,7 @@ const hasPermission = async (conversationId, userId, permissionField) => {
     return isAdmin(conversationId, userId);
 };
 
-// GET /:id/details — Full conversation details
+// Returns members, settings, and metadata for a conversation.
 export const getConversationDetails = async (req, res) => {
     const { id } = req.params;
     const userId = parseInt(req.query.userId);
@@ -124,7 +124,6 @@ export const getConversationDetails = async (req, res) => {
             .eq("user_id", userId)
             .single();
 
-        // Task 3: Filter out system user (id=0) from members
         const formattedMembers = (members || [])
             .filter((m) => m.users && m.users.id !== 0)
             .map((m) => ({
@@ -167,7 +166,7 @@ export const getConversationDetails = async (req, res) => {
     }
 };
 
-// PUT /:id/name — Update conversation name
+// Updates the conversation name.
 export const updateConversationName = async (req, res) => {
     const { id } = req.params;
     const { userId, name } = req.body;
@@ -190,7 +189,6 @@ export const updateConversationName = async (req, res) => {
 
         if (error) throw error;
 
-        // FIX #11: System message
         const { data: actor } = await supabase
             .from("users")
             .select("username")
@@ -208,7 +206,7 @@ export const updateConversationName = async (req, res) => {
     }
 };
 
-// PUT /:id/image — Update conversation image
+// Updates the conversation image URL.
 export const updateConversationImage = async (req, res) => {
     const { id } = req.params;
     const { userId, image } = req.body;
@@ -231,7 +229,6 @@ export const updateConversationImage = async (req, res) => {
 
         if (error) throw error;
 
-        // FIX #11: System message
         const { data: actor } = await supabase
             .from("users")
             .select("username")
@@ -249,7 +246,7 @@ export const updateConversationImage = async (req, res) => {
     }
 };
 
-// POST /:id/members — Add members
+// Adds members to a group conversation.
 export const addMembers = async (req, res) => {
     const { id } = req.params;
     const { userId, memberIds } = req.body;
@@ -298,7 +295,6 @@ export const addMembers = async (req, res) => {
             .select("id, username, name, avatar")
             .in("id", newIds);
 
-        // FIX #11: System messages for each added member
         const { data: actor } = await supabase
             .from("users")
             .select("username")
@@ -325,7 +321,7 @@ export const addMembers = async (req, res) => {
     }
 };
 
-// DELETE /:id/members/:targetId — Remove member
+// Removes a member from a group conversation.
 export const removeMember = async (req, res) => {
     const { id, targetId } = req.params;
     const userId = parseInt(req.query.userId);
@@ -366,7 +362,6 @@ export const removeMember = async (req, res) => {
 
         if (error) throw error;
 
-        // FIX #11: System message
         const { data: actor } = await supabase
             .from("users")
             .select("username")
@@ -389,7 +384,7 @@ export const removeMember = async (req, res) => {
     }
 };
 
-// PUT /:id/members/:targetId/role — Promote/demote
+// Changes member role between admin and member.
 export const updateMemberRole = async (req, res) => {
     const { id, targetId } = req.params;
     const { userId, role } = req.body;
@@ -435,7 +430,7 @@ export const updateMemberRole = async (req, res) => {
     }
 };
 
-// PUT /:id/settings — Update conversation settings
+// Updates conversation-wide settings.
 export const updateSettings = async (req, res) => {
     const { id } = req.params;
     const { userId, ...settingsUpdate } = req.body;
@@ -469,7 +464,6 @@ export const updateSettings = async (req, res) => {
         }
         updateData.updated_at = new Date().toISOString();
 
-        // Fix #1: Enforce who_can_edit_bio permission for description edits
         if (settingsUpdate.description !== undefined) {
             const canEdit = await hasPermission(id, userId, "who_can_edit_bio");
             if (!canEdit) {
@@ -501,7 +495,6 @@ export const updateSettings = async (req, res) => {
             .single();
         const username = user?.username || "Alguém";
 
-        // Task 2: System message for theme change
         if (
             settingsUpdate.theme !== undefined &&
             currentSettings &&
@@ -521,7 +514,6 @@ export const updateSettings = async (req, res) => {
             );
         }
 
-        // Task 2: System message for ephemeral toggle
         if (
             settingsUpdate.ephemeral_duration !== undefined &&
             currentSettings &&
@@ -556,7 +548,7 @@ export const updateSettings = async (req, res) => {
     }
 };
 
-// PUT /:id/notifications — Update user notification preferences
+// Updates notification preferences for the current user.
 export const updateNotifications = async (req, res) => {
     const { id } = req.params;
     const { userId, isMuted, mutedUntil } = req.body;
@@ -587,7 +579,7 @@ export const updateNotifications = async (req, res) => {
     }
 };
 
-// POST /:id/leave — Leave conversation
+// Leaves a conversation or archives direct chats.
 export const leaveConversation = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -609,7 +601,7 @@ export const leaveConversation = async (req, res) => {
         }
 
         if (conv.is_group) {
-            // Check if user is creator — creator can't leave
+            // Prevents the group creator from leaving directly.
             const { data: membership } = await supabase
                 .from("conversation_user")
                 .select("is_creator")
@@ -632,7 +624,6 @@ export const leaveConversation = async (req, res) => {
 
             if (error) throw error;
 
-            // FIX #11: System message
             const { data: actor } = await supabase
                 .from("users")
                 .select("username")
@@ -643,7 +634,7 @@ export const leaveConversation = async (req, res) => {
                 `${actor?.username || "Alguém"} saiu do grupo`,
             );
         } else {
-            // 1:1 — archive instead of delete
+            // Archives direct conversations instead of removing membership.
             const { error } = await supabase
                 .from("conversation_user")
                 .update({ is_archived: true })
@@ -660,7 +651,7 @@ export const leaveConversation = async (req, res) => {
     }
 };
 
-// PUT /:id/pin — Toggle pin
+// Pins or unpins a conversation for the user.
 export const togglePin = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -701,7 +692,7 @@ export const togglePin = async (req, res) => {
     }
 };
 
-// POST /:id/read — Mark conversation as read
+// Marks a conversation as read for the current user.
 export const markAsRead = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -728,7 +719,7 @@ export const markAsRead = async (req, res) => {
     }
 };
 
-// GET /:id/search — Search messages with filters
+// Searches conversation messages using available filters.
 export const searchConversationMessages = async (req, res) => {
     const { id } = req.params;
     const { userId, q, type, senderId, from, to } = req.query;
@@ -833,7 +824,7 @@ export const searchConversationMessages = async (req, res) => {
     }
 };
 
-// GET /:id/media — Get shared media by type
+// Returns shared media items by requested type.
 export const getSharedMedia = async (req, res) => {
     const { id } = req.params;
     const { userId, type } = req.query;
@@ -859,7 +850,6 @@ export const getSharedMedia = async (req, res) => {
             .order("created_at", { ascending: false })
             .limit(100);
 
-        // FIX #9: 'media' type = images + videos combined
         if (type === "media") {
             query = query.or(
                 "attachment_type.ilike.image/%,attachment_type.ilike.video/%",
@@ -877,7 +867,6 @@ export const getSharedMedia = async (req, res) => {
                 .not("attachment_type", "ilike", "audio/%");
         }
 
-        // Task 10: 'link' type = messages whose body contains URLs (not storage attachments)
         if (type === "link") {
             query = supabase
                 .from("messages")

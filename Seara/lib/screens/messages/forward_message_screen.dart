@@ -29,11 +29,13 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
   bool _isLoading = true;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _loadConversations();
   }
 
+  // Loads conversations
   Future<void> _loadConversations() async {
     try {
       final convs = await _service.fetchConversations(widget.myId);
@@ -51,13 +53,18 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
   List<Conversation> get _filteredConversations {
     if (_searchQuery.isEmpty) return _conversations;
     return _conversations.where((c) {
-      final name = c.isGroup 
-          ? c.name ?? "Grupo" 
-          : c.participants.where((p) => p.id != widget.myId).firstOrNull?.username ?? "Chat";
+      final name = c.isGroup
+          ? c.name ?? "Grupo"
+          : c.participants
+                    .where((p) => p.id != widget.myId)
+                    .firstOrNull
+                    ?.username ??
+                "Chat";
       return name.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
   }
 
+  // Toggles selection
   void _toggleSelection(int convId) {
     setState(() {
       if (_selectedIds.contains(convId)) {
@@ -68,15 +75,15 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
     });
   }
 
+  // Handles forward
   Future<void> _handleForward() async {
     if (_selectedIds.isEmpty) return;
-    
+
     setState(() => _isSending = true);
-    
+
     final prov = context.read<MessagesProvider>();
     bool hasError = false;
 
-    // Send sequentially or parallel
     for (final id in _selectedIds) {
       try {
         await prov.sendMessage(
@@ -84,10 +91,15 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
           userId: widget.myId,
           body: widget.message.body,
           attachment: widget.message.attachment,
-          attachmentType: widget.message.attachmentType == AttachmentType.image ? "image/jpeg" :
-                          widget.message.attachmentType == AttachmentType.video ? "video/mp4" :
-                          widget.message.attachmentType == AttachmentType.audio ? "audio/mp4" :
-                          widget.message.attachmentType == AttachmentType.file ? "application/octet-stream" : null,
+          attachmentType: widget.message.attachmentType == AttachmentType.image
+              ? "image/jpeg"
+              : widget.message.attachmentType == AttachmentType.video
+              ? "video/mp4"
+              : widget.message.attachmentType == AttachmentType.audio
+              ? "audio/mp4"
+              : widget.message.attachmentType == AttachmentType.file
+              ? "application/octet-stream"
+              : null,
           attachmentName: widget.message.attachmentName,
           isForwarded: true,
         );
@@ -100,18 +112,21 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
       setState(() => _isSending = false);
       if (hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Algumas mensagens nao puderam ser reencaminhadas.")),
+          const SnackBar(
+            content: Text("Algumas mensagens nao puderam ser reencaminhadas."),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Mensagem reencaminhada com sucesso.")),
         );
       }
-      Navigator.pop(context); // close screen
+      Navigator.pop(context);
     }
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final convs = _filteredConversations;
@@ -150,13 +165,21 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
                     itemCount: convs.length,
                     itemBuilder: (ctx, i) {
                       final c = convs[i];
-                      final name = c.isGroup 
-                          ? c.name ?? "Grupo" 
-                          : c.participants.where((p) => p.id != widget.myId).firstOrNull?.username ?? "Chat";
+                      final name = c.isGroup
+                          ? c.name ?? "Grupo"
+                          : c.participants
+                                    .where((p) => p.id != widget.myId)
+                                    .firstOrNull
+                                    ?.username ??
+                                "Chat";
                       final avatar = c.isGroup && c.image != null
                           ? c.image!
-                          : c.participants.where((p) => p.id != widget.myId).firstOrNull?.avatarUrl ?? "https://ui-avatars.com/api/?name=$name";
-                      
+                          : c.participants
+                                    .where((p) => p.id != widget.myId)
+                                    .firstOrNull
+                                    ?.avatarUrl ??
+                                "https://ui-avatars.com/api/?name=$name";
+
                       final isSelected = _selectedIds.contains(c.id);
 
                       return ListTile(

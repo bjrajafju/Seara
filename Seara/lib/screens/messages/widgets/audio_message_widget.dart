@@ -2,13 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:seara/services/global_audio_manager.dart';
 
-/// Inline audio player for chat messages.
-///
-/// Design contract:
-/// - Owns NO [AudioPlayer]. All playback is delegated to [GlobalAudioManager].
-/// - UI state is driven entirely by manager streams — never by local booleans.
-/// - Safe to scroll in/out of view: audio continues regardless of widget lifecycle.
-/// - Only one audio can play at a time (enforced by the manager).
 class AudioMessageWidget extends StatefulWidget {
   const AudioMessageWidget({
     super.key,
@@ -16,10 +9,8 @@ class AudioMessageWidget extends StatefulWidget {
     required this.url,
   });
 
-  /// Unique ID of the message — used to tag ownership in [GlobalAudioManager].
   final String messageId;
 
-  /// Remote URL of the audio file.
   final String url;
 
   @override
@@ -29,11 +20,9 @@ class AudioMessageWidget extends StatefulWidget {
 class _AudioMessageWidgetState extends State<AudioMessageWidget> {
   final GlobalAudioManager _manager = GlobalAudioManager.instance;
 
-  // Local UI-only state (not playback state).
   bool _isSeeking = false;
-  Duration _seekPosition = Duration.zero; // shown only while dragging
+  Duration _seekPosition = Duration.zero;
 
-  // Speed cycling.
   static const List<double> _speeds = [1.0, 1.5, 2.0];
   int _speedIndex = 0;
   double _currentSpeed = 1.0;
@@ -41,30 +30,24 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
 
   String? _errorText;
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  bool get _isThisActive => _manager.currentMessageId == widget.messageId;
 
-  bool get _isThisActive =>
-      _manager.currentMessageId == widget.messageId;
-
+  // Formats a duration for display
   String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
   }
 
-  // ── Playback actions ───────────────────────────────────────────────────────
-
+  // Toggle
   Future<void> _toggle() async {
     try {
       if (_manager.isPlaying(widget.messageId)) {
         await _manager.pause();
       } else {
-        // Start / resume.
         if (_isThisActive) {
-          // Already loaded and paused — just resume.
           await _manager.resume();
         } else {
-          // New audio — manager will stop whatever was playing.
           await _manager.playUrl(widget.messageId, widget.url);
         }
       }
@@ -74,17 +57,17 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
     }
   }
 
+  // Seek
   Future<void> _seek(double ratio) async {
     if (!_isThisActive) return;
     final dur = _manager.durationFor(widget.messageId);
     if (dur == null || dur == Duration.zero) return;
-    final target = Duration(
-      milliseconds: (ratio * dur.inMilliseconds).round(),
-    );
+    final target = Duration(milliseconds: (ratio * dur.inMilliseconds).round());
     await _manager.seek(target);
     if (mounted) setState(() => _seekPosition = target);
   }
 
+  // Cycle speed
   void _cycleSpeed() {
     if (_isChangingSpeed) return;
     final next = (_speedIndex + 1) % _speeds.length;
@@ -102,15 +85,10 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
     });
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
-
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // We use two nested StreamBuilders:
-    // 1. activeMessageIdStream — tells us whether THIS message is active.
-    // 2. playerStateStream + positionStream — for play/pause icon and slider.
 
     return StreamBuilder<String?>(
       stream: _manager.activeMessageIdStream,
@@ -134,24 +112,24 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
 
             return StreamBuilder<Duration>(
               stream: _manager.positionStream,
-              initialData:
-                  isActive ? _manager.lastPosition : Duration.zero,
+              initialData: isActive ? _manager.lastPosition : Duration.zero,
               builder: (context, posSnap) {
-                final livePosition =
-                    isActive ? posSnap.data ?? Duration.zero : Duration.zero;
+                final livePosition = isActive
+                    ? posSnap.data ?? Duration.zero
+                    : Duration.zero;
 
                 return StreamBuilder<Duration>(
                   stream: _manager.durationStream,
-                  initialData:
-                      isActive ? _manager.lastDuration : Duration.zero,
+                  initialData: isActive ? _manager.lastDuration : Duration.zero,
                   builder: (context, durSnap) {
-                    final duration =
-                        isActive ? durSnap.data ?? Duration.zero : Duration.zero;
+                    final duration = isActive
+                        ? durSnap.data ?? Duration.zero
+                        : Duration.zero;
 
                     final position = _isSeeking ? _seekPosition : livePosition;
                     final progress = duration.inMilliseconds > 0
                         ? (position.inMilliseconds / duration.inMilliseconds)
-                            .clamp(0.0, 1.0)
+                              .clamp(0.0, 1.0)
                         : 0.0;
 
                     return _buildUI(
@@ -189,7 +167,6 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
       ),
       child: Row(
         children: [
-          // ── Play / Pause button ──────────────────────────────────────────
           IconButton(
             iconSize: 32,
             padding: EdgeInsets.zero,
@@ -213,7 +190,6 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
           ),
           const SizedBox(width: 2),
 
-          // ── Slider + time labels ─────────────────────────────────────────
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -228,8 +204,7 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
                       overlayRadius: 12,
                     ),
                     activeTrackColor: theme.colorScheme.primary,
-                    inactiveTrackColor:
-                        theme.colorScheme.outline.withAlpha(60),
+                    inactiveTrackColor: theme.colorScheme.outline.withAlpha(60),
                     thumbColor: theme.colorScheme.primary,
                     overlayColor: theme.colorScheme.primary.withAlpha(30),
                   ),
@@ -245,8 +220,7 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
                       if (dur == Duration.zero) return;
                       setState(() {
                         _seekPosition = Duration(
-                          milliseconds:
-                              (v * dur.inMilliseconds).round(),
+                          milliseconds: (v * dur.inMilliseconds).round(),
                         );
                       });
                     },
@@ -296,7 +270,6 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
           ),
           const SizedBox(width: 2),
 
-          // ── Speed button ─────────────────────────────────────────────────
           GestureDetector(
             onTap: _isChangingSpeed ? null : _cycleSpeed,
             child: Container(

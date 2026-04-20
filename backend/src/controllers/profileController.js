@@ -1,6 +1,6 @@
 import supabase from "../services/supabase.js";
 
-// Controller principal
+// Profile controller for profile and relationship endpoints.
 export const getProfile = async (req, res) => {
     try {
         const userId = req.params.userId;
@@ -36,7 +36,7 @@ export const updateProfile = async (req, res) => {
         const userId = req.params.userId;
         const { name, username, bio, avatar } = req.body;
 
-        // Verificar se o username já existe para outro utilizador
+        // Prevents username conflicts with other users.
         const { data: existingUser, error: checkError } = await supabase
             .from("users")
             .select("id")
@@ -48,7 +48,7 @@ export const updateProfile = async (req, res) => {
             return res.status(400).json({ error: "Username já existe" });
         }
 
-        // Atualizar utilizador
+        // Updates profile fields for the current user.
         const { data, error } = await supabase
             .from("users")
             .update({
@@ -132,7 +132,7 @@ export const unfollowUser = async (req, res) => {
     try {
         const { followerId, followingId } = req.body;
 
-        // remover follow da tabela de followers
+        // Removes follow record from followers table.
         const { error } = await supabase
             .from("followers")
             .delete()
@@ -146,7 +146,7 @@ export const unfollowUser = async (req, res) => {
     }
 };
 
-// Lista todos os utilizadores
+// Returns all users with follow relationship context.
 export const getAllUsers = async (req, res) => {
     try {
         const { data: users, error } = await supabase
@@ -170,7 +170,7 @@ export const getUsersWithRelationship = async (req, res) => {
             return res.status(400).json({ error: "User ID obrigatorio." });
         }
 
-        // Buscar todos os utilizadores exceto o proprio
+        // Loads all users except the current user.
         const { data: users, error: usersError } = await supabase
             .from("users")
             .select("id, username, name, avatar")
@@ -178,7 +178,7 @@ export const getUsersWithRelationship = async (req, res) => {
 
         if (usersError) throw usersError;
 
-        // Buscar quem eu sigo
+        // Loads users followed by the current user.
         const { data: iFollow, error: iFollowError } = await supabase
             .from("followers")
             .select("user_id")
@@ -186,7 +186,7 @@ export const getUsersWithRelationship = async (req, res) => {
 
         if (iFollowError) throw iFollowError;
 
-        // Buscar quem me segue
+        // Loads users that follow the current user.
         const { data: followsMe, error: followsMeError } = await supabase
             .from("followers")
             .select("follower_id")

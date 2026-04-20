@@ -24,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _message = '';
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -34,6 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  // Sends registration data and creates a new account
   void _register() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -44,8 +46,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // Basic email format check
-    if (!RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(email)) {
+    if (!RegExp(
+      r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
+    ).hasMatch(email)) {
       setState(() => _message = 'Formato de email inválido.');
       return;
     }
@@ -87,6 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  // Go to login
   void _goToLogin() {
     Navigator.pushReplacement(
       context,
@@ -95,6 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -133,7 +138,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     helperText: 'A password deve ter no mínimo 6 caracteres.',
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() {
@@ -143,7 +150,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   onSubmitted: (_) {
-                    FocusScope.of(context).requestFocus(_confirmPasswordFocusNode);
+                    FocusScope.of(
+                      context,
+                    ).requestFocus(_confirmPasswordFocusNode);
                   },
                 ),
                 const SizedBox(height: 12),
@@ -158,7 +167,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     labelText: 'Confirmar Password',
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() {
@@ -185,7 +196,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
                       _message,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.error,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),

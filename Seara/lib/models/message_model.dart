@@ -66,7 +66,7 @@ class Message {
   final String? attachmentName;
   final String? senderUsername;
   final String? senderAvatar;
-  final int status; // 0=sent, 1=delivered, 2=read
+  final int status;
   final DateTime? deliveredAt;
   final DateTime? expiresAt;
   final bool isSystemMessage;
@@ -101,13 +101,10 @@ class Message {
     this.reactions = const [],
   });
 
-  /// Whether this message has been delivered to at least one recipient.
   bool get isDelivered => status >= 1;
 
-  /// Whether this message has been read by at least one recipient.
   bool get isRead => status >= 2;
 
-  /// Whether this message has been edited
   bool get isEdited =>
       editedAt != null || updatedAt.difference(createdAt).inSeconds > 2;
 
@@ -128,7 +125,6 @@ class Message {
         type = AttachmentType.file;
       }
     } else if (attachmentUrl != null) {
-      // Fallback: inferir pelo URL quando nao ha mimetype
       final lower = attachmentUrl.toLowerCase();
       if (lower.contains('.mp4') ||
           lower.contains('.mov') ||

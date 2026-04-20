@@ -27,15 +27,17 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool isLoading = true;
   bool isFollowing = false;
   bool _isProcessingFollow = false;
-  bool _isCreatingMessage = false; // Track message creation state
+  bool _isCreatingMessage = false;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _tabController = TabController(vsync: this, length: postTabs.length);
     _loadProfile();
   }
 
+  // Loads profile
   Future<void> _loadProfile() async {
     try {
       bool isFollowingAsync;
@@ -65,6 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  // Follow
   Future<void> _follow() async {
     if (_isProcessingFollow) return;
 
@@ -117,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  /// Create or fetch 1:1 conversation and navigate to it
+  // Starts message
   Future<void> _startMessage() async {
     if (_isCreatingMessage) return;
 
@@ -154,13 +157,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
 
-  // ---------- Build Widgets ----------
-
+  // Builds avatar section
   Widget _buildAvatarSection(ThemeData theme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -182,6 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // Builds name username
   Widget _buildNameUsername(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,6 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // Builds stats row
   Widget _buildStatsRow(ThemeData theme) {
     return Row(
       children: [
@@ -214,6 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // Builds stat item
   Widget _buildStatItem(ThemeData theme, String value, String label) {
     return Column(
       children: [
@@ -233,6 +239,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // Builds bio section
   Widget _buildBioSection(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -240,6 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // Builds buttons row
   Widget _buildButtonsRow(ThemeData theme) {
     final isMyProfile = widget.userId == null;
 
@@ -285,6 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // Builds profile header
   Widget _buildProfileHeader(ThemeData theme) {
     return Column(
       children: [
@@ -295,6 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // Builds posts grid
   Widget _buildPostsGrid(ThemeData theme) {
     return GridView.builder(
       padding: EdgeInsets.zero,
@@ -310,9 +320,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ---------- Build Main ----------
-
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

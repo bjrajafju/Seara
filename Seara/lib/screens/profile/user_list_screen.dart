@@ -16,17 +16,18 @@ class _UserListScreenState extends State<UserListScreen> {
   int? _myId;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _loadUsers();
   }
 
+  // Loads users
   Future<void> _loadUsers() async {
     try {
       _myId = await AuthService.getUserId();
       final users = await ProfileService.getAllUsers();
       setState(() {
-        // Task 3: Filter out system user (id=0)
         _users = users.where((u) => u['id'] != 0).toList();
         _isLoading = false;
       });
@@ -37,6 +38,7 @@ class _UserListScreenState extends State<UserListScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Utilizadores")),
@@ -56,7 +58,6 @@ class _UserListScreenState extends State<UserListScreen> {
                   ),
                   title: Text(user['username']),
                   onTap: () {
-                    // Task 1: Self -> my profile, other -> their profile
                     Navigator.push(
                       context,
                       MaterialPageRoute(

@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
-
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:html' as html;
@@ -13,11 +11,13 @@ class _AudioServiceWeb implements AudioService {
   bool _isRecording = false;
 
   @override
+  // Check permissions
   Future<bool> checkPermissions() async {
     return _recorder.hasPermission();
   }
 
   @override
+  // Starts recording
   Future<void> startRecording() async {
     final path = 'audio_${DateTime.now().millisecondsSinceEpoch}.webm';
     await _recorder.start(
@@ -28,6 +28,7 @@ class _AudioServiceWeb implements AudioService {
   }
 
   @override
+  // Stops recording
   Future<AudioRecordingResult?> stopRecording() async {
     if (!_isRecording) return null;
     final path = await _recorder.stop();
@@ -44,6 +45,7 @@ class _AudioServiceWeb implements AudioService {
     );
   }
 
+  // Read bytes from path
   Future<Uint8List?> _readBytesFromPath(String path) async {
     if (path.startsWith('data:')) {
       final commaIndex = path.indexOf(',');
@@ -67,6 +69,7 @@ class _AudioServiceWeb implements AudioService {
   }
 
   @override
+  // Cancel recording
   Future<void> cancelRecording() async {
     if (_isRecording) {
       await _recorder.cancel();
@@ -75,6 +78,7 @@ class _AudioServiceWeb implements AudioService {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   Future<void> dispose() async {
     await _recorder.dispose();
   }

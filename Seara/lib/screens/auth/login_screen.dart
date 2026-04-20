@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _message = '';
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -30,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // Sends login credentials and stores the authenticated session
   void _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -66,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Go to register
   void _goToRegister() {
     Navigator.pushReplacement(
       context,
@@ -74,6 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -111,7 +115,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Password',
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() {
@@ -138,7 +144,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
                       _message,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.error,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),

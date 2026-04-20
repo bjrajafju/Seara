@@ -43,7 +43,7 @@ const cleanupExpiredMessages = async () => {
     }
 };
 
-// Interval in ms (15 minutes)
+// Cleanup interval in milliseconds.
 const CLEANUP_INTERVAL = 15 * 60 * 1000;
 
 export const startEphemeralCleanup = () => {

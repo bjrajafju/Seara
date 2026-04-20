@@ -25,6 +25,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
   int? _myId;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _loadUsers();
@@ -32,6 +33,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
@@ -39,6 +41,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     super.dispose();
   }
 
+  // Loads users
   Future<void> _loadUsers() async {
     int? myId = await AuthService.getUserId();
     if (myId == null) return;
@@ -60,6 +63,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     }
   }
 
+  // Handles search changed
   void _onSearchChanged() {
     final query = _searchController.text.trim().toLowerCase();
 
@@ -73,12 +77,12 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
           user.name.toLowerCase().contains(query);
     }).toList();
 
-    // Manter ordenacao por relacao dentro dos resultados filtrados
     filtered.sort((a, b) => a.sortWeight.compareTo(b.sortWeight));
 
     setState(() => _filteredUsers = filtered);
   }
 
+  // Create conversation
   Future<void> _createConversation() async {
     if (_selectedUsers.isEmpty || _myId == null || _isCreating) return;
 
@@ -107,6 +111,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     }
   }
 
+  // Returns relationship label
   String? _getRelationshipLabel(UserWithRelationship user) {
     if (user.isMutual) return "Mutuos";
     if (user.followsMe) return "Segue-te";
@@ -115,6 +120,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -129,6 +135,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
+  // Builds app bar
   PreferredSizeWidget _buildAppBar(ThemeData theme) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(100),
@@ -168,6 +175,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
+  // Builds floating button
   Widget _buildFloatingButton(ThemeData theme) {
     if (_selectedUsers.isEmpty) return const SizedBox.shrink();
 
@@ -193,6 +201,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
+  // Builds body
   Widget _buildBody(ThemeData theme) {
     return Column(
       children: [
@@ -204,6 +213,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
+  // Builds search field
   Widget _buildSearchField(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -238,6 +248,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
+  // Builds results header
   Widget _buildResultsHeader(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(left: 16, top: 12),
@@ -261,6 +272,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
+  // Builds users list
   Widget _buildUsersList(ThemeData theme) {
     if (_isLoading) {
       return const Expanded(child: Center(child: CircularProgressIndicator()));
@@ -301,7 +313,6 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  // Avatar com overlay de selecao
                   Stack(
                     children: [
                       CircleAvatar(
@@ -325,7 +336,6 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
                     ],
                   ),
                   const SizedBox(width: 14),
-                  // Nome e label de relacao
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,7 +356,6 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
                       ],
                     ),
                   ),
-                  // Tag de relacao
                   if (label != null)
                     Container(
                       padding: const EdgeInsets.symmetric(

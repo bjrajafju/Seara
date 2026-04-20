@@ -27,13 +27,14 @@ class _MembersScreenState extends State<MembersScreen> {
   late bool _amAdmin;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
-    // Task 3: Filter out system user (id=0) from visible members
     _members = widget.details.members.where((m) => m.id != 0).toList();
     _amAdmin = widget.details.amAdmin;
   }
 
+  // Reload
   Future<void> _reload() async {
     try {
       final details = await ConversationSettingsService.getDetails(
@@ -48,7 +49,7 @@ class _MembersScreenState extends State<MembersScreen> {
     } catch (_) {}
   }
 
-  // Task 1: Self → my profile, other → their profile
+  // Navigates to the selected user profile
   void _openProfile(ConversationMember member) {
     Navigator.push(
       context,
@@ -60,6 +61,7 @@ class _MembersScreenState extends State<MembersScreen> {
     );
   }
 
+  // Shows member options
   void _showMemberOptions(ConversationMember member) {
     if (!_amAdmin || member.id == widget.userId) return;
     if (member.isCreator) return;
@@ -76,7 +78,6 @@ class _MembersScreenState extends State<MembersScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -109,7 +110,6 @@ class _MembersScreenState extends State<MembersScreen> {
                 ),
               ),
               const Divider(height: 1),
-              // View profile
               ListTile(
                 leading: Icon(
                   Icons.person_rounded,
@@ -121,7 +121,6 @@ class _MembersScreenState extends State<MembersScreen> {
                   _openProfile(member);
                 },
               ),
-              // Promote/Demote (only if I'm admin)
               if (_amAdmin && !member.isCreator)
                 ListTile(
                   leading: Icon(
@@ -138,7 +137,6 @@ class _MembersScreenState extends State<MembersScreen> {
                     _toggleRole(member);
                   },
                 ),
-              // Remove (only if I'm admin and target isn't creator)
               if (_amAdmin && !member.isCreator)
                 ListTile(
                   leading: Icon(
@@ -161,6 +159,7 @@ class _MembersScreenState extends State<MembersScreen> {
     );
   }
 
+  // Toggles role
   Future<void> _toggleRole(ConversationMember member) async {
     final newRole = member.isAdmin ? 0 : 1;
     try {
@@ -184,12 +183,13 @@ class _MembersScreenState extends State<MembersScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
     }
   }
 
+  // Remove member
   Future<void> _removeMember(ConversationMember member) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -226,12 +226,13 @@ class _MembersScreenState extends State<MembersScreen> {
       await _reload();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
     }
   }
 
+  // Opens add members
   void _openAddMembers() async {
     await Navigator.push(
       context,
@@ -247,6 +248,7 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -276,24 +278,18 @@ class _MembersScreenState extends State<MembersScreen> {
         itemBuilder: (context, index) {
           final member = _members[index];
           final isMe = member.id == widget.userId;
-          // FIX #12: Can this user remove this member?
-          final canRemove = _amAdmin &&
-              !isMe &&
-              !member.isCreator &&
-              widget.isGroup;
+          final canRemove =
+              _amAdmin && !isMe && !member.isCreator && widget.isGroup;
 
           return InkWell(
-            // FIX #3: Tap member → open profile
             onTap: () => _openProfile(member),
-            onLongPress: widget.isGroup ? () => _showMemberOptions(member) : null,
+            onLongPress: widget.isGroup
+                ? () => _showMemberOptions(member)
+                : null,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  // Avatar
                   Stack(
                     children: [
                       CircleAvatar(
@@ -324,7 +320,6 @@ class _MembersScreenState extends State<MembersScreen> {
                     ],
                   ),
                   const SizedBox(width: 14),
-                  // Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,8 +339,9 @@ class _MembersScreenState extends State<MembersScreen> {
                               Text(
                                 ' (tu)',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withAlpha(120),
+                                  color: theme.colorScheme.onSurface.withAlpha(
+                                    120,
+                                  ),
                                 ),
                               ),
                           ],
@@ -354,14 +350,12 @@ class _MembersScreenState extends State<MembersScreen> {
                           Text(
                             member.name,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color:
-                                  theme.colorScheme.onSurface.withAlpha(120),
+                              color: theme.colorScheme.onSurface.withAlpha(120),
                             ),
                           ),
                       ],
                     ),
                   ),
-                  // Role badge
                   if (member.isAdmin)
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
@@ -387,7 +381,6 @@ class _MembersScreenState extends State<MembersScreen> {
                         ),
                       ),
                     ),
-                  // FIX #12: Remove button visible for admins
                   if (canRemove)
                     IconButton(
                       icon: Icon(

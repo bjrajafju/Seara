@@ -3,11 +3,11 @@ import 'message_model.dart';
 
 class Conversation {
   final int id;
-  final String? name; // Nome do grupo, null para 1:1
+  final String? name;
   final bool isGroup;
-  final String? image; // Group image URL
-  final List<Profile> participants; // Users na conversa
-  final List<Message> messages; // Mensagens
+  final String? image;
+  final List<Profile> participants;
+  final List<Message> messages;
   final bool isPinned;
   final bool isArchived;
   final int unreadCount;

@@ -7,7 +7,6 @@ import '../models/message_model.dart';
 class ConversationSettingsService {
   static String get baseUrl => "${ApiConfig.baseUrl}/messages";
 
-  /// Fetch full conversation details.
   static Future<ConversationDetails> getDetails(
     int conversationId,
     int userId,
@@ -25,7 +24,6 @@ class ConversationSettingsService {
     }
   }
 
-  /// Update conversation name.
   static Future<void> updateName(
     int conversationId,
     int userId,
@@ -43,7 +41,6 @@ class ConversationSettingsService {
     }
   }
 
-  /// Update conversation image.
   static Future<void> updateImage(
     int conversationId,
     int userId,
@@ -61,7 +58,6 @@ class ConversationSettingsService {
     }
   }
 
-  /// Add members to conversation.
   static Future<List<ConversationMember>> addMembers(
     int conversationId,
     int userId,
@@ -84,7 +80,6 @@ class ConversationSettingsService {
     }
   }
 
-  /// Remove a member from conversation.
   static Future<void> removeMember(
     int conversationId,
     int targetId,
@@ -102,7 +97,6 @@ class ConversationSettingsService {
     }
   }
 
-  /// Update member role (promote/demote).
   static Future<void> updateMemberRole(
     int conversationId,
     int targetId,
@@ -123,7 +117,6 @@ class ConversationSettingsService {
     }
   }
 
-  /// Update conversation settings (permissions, theme, ephemeral).
   static Future<void> updateSettings(
     int conversationId,
     int userId,
@@ -141,7 +134,6 @@ class ConversationSettingsService {
     }
   }
 
-  /// Update notification preferences for this conversation.
   static Future<void> updateNotifications(
     int conversationId,
     int userId, {
@@ -164,7 +156,7 @@ class ConversationSettingsService {
     }
   }
 
-  /// Leave conversation (group=remove, 1:1=archive).
+  // Leave conversation
   static Future<void> leaveConversation(int conversationId, int userId) async {
     final response = await ApiClient.post(
       Uri.parse("$baseUrl/conversations/$conversationId/leave"),
@@ -178,7 +170,7 @@ class ConversationSettingsService {
     }
   }
 
-  /// Toggle pin conversation.
+  // Toggles pin
   static Future<bool> togglePin(int conversationId, int userId) async {
     final response = await ApiClient.put(
       Uri.parse("$baseUrl/conversations/$conversationId/pin"),
@@ -194,7 +186,7 @@ class ConversationSettingsService {
     }
   }
 
-  /// Mark conversation as read.
+  // Mark as read
   static Future<void> markAsRead(int conversationId, int userId) async {
     final response = await ApiClient.post(
       Uri.parse("$baseUrl/conversations/$conversationId/read"),
@@ -202,12 +194,9 @@ class ConversationSettingsService {
       body: jsonEncode({"userId": userId}),
     );
 
-    if (response.statusCode != 200) {
-      // Silently fail — not critical
-    }
+    if (response.statusCode != 200) {}
   }
 
-  /// Search messages within a conversation.
   static Future<List<Message>> searchMessages(
     int conversationId,
     int userId, {
@@ -238,7 +227,6 @@ class ConversationSettingsService {
     }
   }
 
-  /// Get shared media of a specific type.
   static Future<List<Map<String, dynamic>>> getSharedMedia(
     int conversationId,
     int userId, {

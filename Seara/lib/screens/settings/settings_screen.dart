@@ -6,6 +6,7 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -15,7 +16,6 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         children: [
-          // Section header
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 12),
             child: Text(
@@ -28,7 +28,6 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
 
-          // Theme tiles
           Container(
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withAlpha(80),
@@ -66,7 +65,6 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 32),
 
-          // Future settings sections go here
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 12),
             child: Text(
@@ -106,10 +104,6 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-//
-// Individual theme option tile
-//
-
 class _ThemeTile extends StatelessWidget {
   const _ThemeTile({
     required this.id,
@@ -122,6 +116,7 @@ class _ThemeTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final label = ThemeProvider.labels[id] ?? id.name;
@@ -134,7 +129,6 @@ class _ThemeTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            // Icon in a coloured circle
             Container(
               width: 40,
               height: 40,
@@ -152,7 +146,6 @@ class _ThemeTile extends StatelessWidget {
             ),
             const SizedBox(width: 14),
 
-            // Label
             Expanded(
               child: Text(
                 label,
@@ -164,7 +157,6 @@ class _ThemeTile extends StatelessWidget {
               ),
             ),
 
-            // Radio indicator
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 22,

@@ -24,16 +24,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isSaving = false;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _isMuted = widget.notification.isEffectivelyMuted;
     _mutedUntil = widget.notification.mutedUntil;
   }
 
-  Future<void> _updateMute({
-    required bool muted,
-    DateTime? until,
-  }) async {
+  Future<void> _updateMute({required bool muted, DateTime? until}) async {
     setState(() => _isSaving = true);
     try {
       await ConversationSettingsService.updateNotifications(
@@ -50,19 +48,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(muted ? 'Conversa silenciada' : 'Notificações ativadas'),
+          content: Text(
+            muted ? 'Conversa silenciada' : 'Notificações ativadas',
+          ),
           duration: const Duration(seconds: 1),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
     }
   }
 
+  // Shows duration picker
   void _showDurationPicker() {
     final theme = Theme.of(context);
     final now = DateTime.now();
@@ -88,8 +89,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 child: Text(
                   'Silenciar durante',
                   style: theme.textTheme.titleSmall?.copyWith(
@@ -116,6 +119,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -136,7 +140,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                // Current state
                 Container(
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(20),
@@ -170,16 +173,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               Text(
                                 'Até ${_mutedUntil!.day}/${_mutedUntil!.month}/${_mutedUntil!.year} ${_mutedUntil!.hour}:${_mutedUntil!.minute.toString().padLeft(2, '0')}',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withAlpha(120),
+                                  color: theme.colorScheme.onSurface.withAlpha(
+                                    120,
+                                  ),
                                 ),
                               ),
                             if (_isMuted && _mutedUntil == null)
                               Text(
                                 'Indefinidamente',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withAlpha(120),
+                                  color: theme.colorScheme.onSurface.withAlpha(
+                                    120,
+                                  ),
                                 ),
                               ),
                           ],
@@ -189,25 +194,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-                // Actions
                 if (_isMuted)
                   ListTile(
-                    leading: Icon(Icons.notifications_active_rounded,
-                        color: theme.colorScheme.primary),
+                    leading: Icon(
+                      Icons.notifications_active_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
                     title: const Text('Ativar notificações'),
                     onTap: () => _updateMute(muted: false),
                   ),
                 if (!_isMuted)
                   ListTile(
-                    leading: Icon(Icons.notifications_off_rounded,
-                        color: theme.colorScheme.onSurface.withAlpha(150)),
+                    leading: Icon(
+                      Icons.notifications_off_rounded,
+                      color: theme.colorScheme.onSurface.withAlpha(150),
+                    ),
                     title: const Text('Silenciar conversa'),
                     onTap: _showDurationPicker,
                   ),
                 if (_isMuted)
                   ListTile(
-                    leading: Icon(Icons.timer_outlined,
-                        color: theme.colorScheme.onSurface.withAlpha(150)),
+                    leading: Icon(
+                      Icons.timer_outlined,
+                      color: theme.colorScheme.onSurface.withAlpha(150),
+                    ),
                     title: const Text('Alterar duração'),
                     onTap: _showDurationPicker,
                   ),

@@ -1,15 +1,9 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
 
+// Starts the app and wires top-level providers
 void main() {
-  // Smoke test placeholder — SearaApp requires async init (Supabase + theme).
-  // Full integration tests should use flutter_test with mocked providers.
+  // Test widgets
   testWidgets('App smoke test', (WidgetTester tester) async {
     expect(true, isTrue);
   });

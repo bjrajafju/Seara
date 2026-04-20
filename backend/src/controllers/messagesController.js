@@ -2,10 +2,10 @@ import supabase from "../services/supabase.js";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-// Constants 
+// Shared constants used by message handlers.
 const DEFAULT_PAGE_SIZE = 30;
 
-// Ephemeral duration in ms: 0=off, 1=24h, 2=7d, 3=30d
+// Maps ephemeral mode to expiration duration in milliseconds.
 const EPHEMERAL_MS = {
     0: 0,
     1: 24 * 60 * 60 * 1000,
@@ -80,7 +80,7 @@ const enrichMessagesWithReplyAndReactions = async (messages, requestingUserId) =
     }));
 };
 
-// GET /conversations/:userId — List conversations
+// Lists conversations visible to the requesting user.
 export const listConversations = async (req, res) => {
     const { userId } = req.params;
     const {
@@ -99,7 +99,6 @@ export const listConversations = async (req, res) => {
     }
 
     try {
-        // 1. Get Base Memberships
         let userConvQuery = supabase
             .from("conversation_user")
             .select("conversation_id, is_pinned, last_read_at")
@@ -123,7 +122,6 @@ export const listConversations = async (req, res) => {
             membershipMap[uc.conversation_id] = uc;
         }
 
-        // 2. Fetch Conversations Metadata
         let dbQuery = supabase
             .from("conversations")
             .select(`
@@ -158,7 +156,7 @@ export const listConversations = async (req, res) => {
         if (error) throw error;
         if (!conversations || conversations.length === 0) return res.json([]);
 
-        // Compute Unread Counts via parallel promises
+        // Computes unread counts in parallel for each conversation.
         const unreadCounts = {};
         await Promise.all(userConversations.map(async (uc) => {
             const { count } = await supabase
@@ -176,7 +174,6 @@ export const listConversations = async (req, res) => {
             if (conversations.length === 0) return res.json([]);
         }
 
-        // 3. Search Matching (Text & Files) via Parallel Evaluator
         const searchQ = (q || '').trim().toLowerCase();
         const isNameSearchOnly = only_usernames === 'true';
 
@@ -208,7 +205,7 @@ export const listConversations = async (req, res) => {
                 return; // drop
             }
 
-            // Message querying
+            // Builds message query filters for search matching.
             let msgQuery = supabase.from("messages").select(`
                 id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at, is_forwarded
             `).eq("conversation_id", conv.id).is("deleted_at", null).order('created_at', { ascending: false });
@@ -284,7 +281,7 @@ export const listConversations = async (req, res) => {
     }
 };
 
-// POST /conversations — Create conversation
+// Creates a direct or group conversation.
 export const createConversation = async (req, res) => {
     const { creatorId, participantIds, name } = req.body;
 
@@ -296,7 +293,7 @@ export const createConversation = async (req, res) => {
         const allParticipants = [...new Set([creatorId, ...participantIds])];
         const isGroup = allParticipants.length > 2;
 
-        // 1:1: check for existing (including archived)
+        // Handles direct message conversation behavior.
         if (!isGroup) {
             const { data: conversations, error } = await supabase
                 .from("conversations")
@@ -383,7 +380,7 @@ export const createConversation = async (req, res) => {
             }
         }
 
-        // Create conversation 
+        // Creates the conversation record.
         const { data: newConversation, error } = await supabase
             .from("conversations")
             .insert({
@@ -395,7 +392,7 @@ export const createConversation = async (req, res) => {
 
         if (error) throw error;
 
-        // Insert participants with roles 
+        // Inserts participants with default or admin roles.
         const inserts = allParticipants.map((uid) => ({
             conversation_id: newConversation.id,
             user_id: uid,
@@ -409,14 +406,14 @@ export const createConversation = async (req, res) => {
 
         if (insertError) throw insertError;
 
-        // Create default settings 
+        // Creates default settings for new conversations.
         const { error: settingsError } = await supabase
             .from("conversation_settings")
             .insert({ conversation_id: newConversation.id });
 
         if (settingsError) throw settingsError;
 
-        // Return formatted conversation 
+        // Returns the formatted conversation payload.
         const { data: fullConversation } = await supabase
             .from("conversations")
             .select(
@@ -452,7 +449,7 @@ export const createConversation = async (req, res) => {
     }
 };
 
-// GET /conversations/:conversationId/messages — Paginated
+// Returns paginated messages for a conversation.
 export const getMessages = async (req, res) => {
     const { conversationId } = req.params;
     const limit = parseInt(req.query.limit) || DEFAULT_PAGE_SIZE;
@@ -471,7 +468,7 @@ export const getMessages = async (req, res) => {
     try {
         const now = new Date().toISOString();
 
-        // Mark undelivered messages as delivered
+        // Marks pending incoming messages as delivered.
         if (requestingUserId) {
             await supabase
                 .from("messages")
@@ -481,7 +478,6 @@ export const getMessages = async (req, res) => {
                 .is("delivered_at", null);
         }
 
-        // ===== SPECIAL CASE: Around a specific message =====
         if (around) {
             // Get the target message
             const { data: targetMsg, error: targetErr } = await supabase
@@ -670,7 +666,6 @@ export const getMessages = async (req, res) => {
             });
         }
 
-        // ===== NORMAL PAGINATION =====
         let query = supabase
             .from("messages")
             .select(
@@ -703,7 +698,7 @@ export const getMessages = async (req, res) => {
             .order("created_at", { ascending: false })
             .limit(limit + 1);
 
-        // Cursor pagination: load messages before this ID
+        // Applies cursor pagination to load older messages.
         if (before) {
             // Get the created_at of the cursor message
             const { data: cursorMsg } = await supabase
@@ -721,7 +716,7 @@ export const getMessages = async (req, res) => {
 
         if (error) throw error;
 
-        // Check if there are more messages
+        // Checks whether additional messages are available.
         const hasMore = messages.length > limit;
         const pageMessages = hasMore ? messages.slice(0, limit) : messages;
 
@@ -737,7 +732,7 @@ export const getMessages = async (req, res) => {
             othersLastRead = otherReads || [];
         }
 
-        // Format messages
+        // Formats message rows for API response.
         const formatted = pageMessages
             .map((msg) => {
                 // Determine read status for messages sent by requesting user
@@ -800,7 +795,7 @@ export const getMessages = async (req, res) => {
     }
 };
 
-// POST /conversations/:conversationId/messages — Send message
+// Sends a message to the conversation.
 export const sendMessage = async (req, res) => {
     const { conversationId } = req.params;
     const { userId, body, attachment, attachment_type, attachment_name, is_forwarded, reply_to_message_id } =
@@ -811,7 +806,7 @@ export const sendMessage = async (req, res) => {
     }
 
     try {
-        // Check send permission 
+        // Validates sender permissions before creating the message.
         const { data: settings } = await supabase
             .from("conversation_settings")
             .select("who_can_send_messages, ephemeral_duration")
@@ -819,7 +814,7 @@ export const sendMessage = async (req, res) => {
             .single();
 
         if (settings && settings.who_can_send_messages === 1) {
-            // Admins only — check if user is admin
+            // Restricts sending to admins when announcement mode is enabled.
             const { data: membership } = await supabase
                 .from("conversation_user")
                 .select("role, is_creator")
@@ -851,7 +846,7 @@ export const sendMessage = async (req, res) => {
             safeReplyToMessageId = replyTarget.id;
         }
 
-        // Calculate expires_at if ephemeral 
+        // Calculates expiration timestamp for ephemeral messages.
         let expiresAt = null;
         if (settings && settings.ephemeral_duration > 0) {
             const durationMs = EPHEMERAL_MS[settings.ephemeral_duration] || 0;
@@ -931,7 +926,7 @@ export const sendMessage = async (req, res) => {
             }
         }
 
-        // Update conversation updated_at
+        // Touches conversation timestamp after sending a message.
         await supabase
             .from("conversations")
             .update({ updated_at: new Date().toISOString() })
@@ -962,7 +957,7 @@ export const sendMessage = async (req, res) => {
     }
 };
 
-// POST /messages/:id/reactions — Toggle reaction atomically
+// Adds or removes a reaction atomically.
 export const toggleMessageReaction = async (req, res) => {
     const messageId = Number(req.params.id);
     const { userId, reaction } = req.body || {};
@@ -1017,9 +1012,9 @@ export const toggleMessageReaction = async (req, res) => {
     }
 };
 
-// Removed searchMessages (Logic unified into listConversations)
+// Search is handled by listConversations filters.
 
-// PUT /conversations/:conversationId/messages/:messageId — Edit message
+// Updates an editable message body.
 export const editMessage = async (req, res) => {
     const { conversationId, messageId } = req.params;
     const { body } = req.body;
@@ -1094,7 +1089,7 @@ export const editMessage = async (req, res) => {
     }
 };
 
-// DELETE /conversations/:conversationId/messages/:messageId — Delete message
+// Soft-deletes a message in this conversation.
 export const deleteMessage = async (req, res) => {
     const { conversationId, messageId } = req.params;
 
@@ -1116,7 +1111,7 @@ export const deleteMessage = async (req, res) => {
             return res.status(403).json({ error: "Apenas pode eliminar mensagens enviadas nas últimas 24 horas." });
         }
 
-        // Soft delete 
+        // Marks message as deleted without removing the record.
         const { error } = await supabase
             .from("messages")
             .update({ deleted_at: new Date().toISOString() })
@@ -1132,7 +1127,7 @@ export const deleteMessage = async (req, res) => {
     }
 };
 
-// GET /messages/link-preview — Link preview
+// Fetches metadata for URL previews.
 export const getLinkPreview = async (req, res) => {
     const { url } = req.query;
 
@@ -1184,12 +1179,12 @@ export const getLinkPreview = async (req, res) => {
         });
     } catch (err) {
         console.error("getLinkPreview error:", err.message);
-        // Silent error handling: return null if we can't scrape
+        // Returns null preview data when metadata scraping fails.
         return res.json(null);
     }
 };
 
-// GET /conversations/:conversationId/messages/pinned
+// Returns pinned messages for a conversation.
 export const getPinnedMessages = async (req, res) => {
     const { conversationId } = req.params;
 
@@ -1242,7 +1237,7 @@ export const getPinnedMessages = async (req, res) => {
     }
 };
 
-// PUT /conversations/:conversationId/messages/:messageId/pin
+// Pins or unpins a message.
 export const toggleMessagePin = async (req, res) => {
     const { conversationId, messageId } = req.params;
     const authId = req.user.id; // From authMiddleware (UUID)
@@ -1252,7 +1247,7 @@ export const toggleMessagePin = async (req, res) => {
     }
 
     try {
-        // Find internal user ID
+        // Resolves internal user id from authenticated auth id.
         const { data: userRecord } = await supabase
             .from("users")
             .select("id")
@@ -1264,7 +1259,7 @@ export const toggleMessagePin = async (req, res) => {
         }
         const userId = userRecord.id;
 
-        // Check if message belongs to conversation
+        // Verifies message ownership for this conversation.
         const { data: msg } = await supabase
             .from("messages")
             .select("id")
@@ -1276,7 +1271,7 @@ export const toggleMessagePin = async (req, res) => {
             return res.status(404).json({ error: "Mensagem não encontrada." });
         }
 
-        // Check if already pinned
+        // Checks current pin state before toggling.
         const { data: existingPin } = await supabase
             .from("pinned_messages")
             .select("id")
@@ -1285,7 +1280,7 @@ export const toggleMessagePin = async (req, res) => {
             .single();
 
         if (existingPin) {
-            // Unpin
+            // Removes the message from pinned list.
             const { error: deleteErr } = await supabase
                 .from("pinned_messages")
                 .delete()
@@ -1294,7 +1289,7 @@ export const toggleMessagePin = async (req, res) => {
             if (deleteErr) throw deleteErr;
             return res.status(200).json({ status: "unpinned", message_id: messageId });
         } else {
-            // Pin
+            // Adds the message to pinned list.
             const { error: insertErr } = await supabase
                 .from("pinned_messages")
                 .insert({

@@ -19,6 +19,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _bioController;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.profile.name);
@@ -27,6 +28,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _nameController.dispose();
     _usernameController.dispose();
@@ -34,8 +36,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  // ---------- Widgets Privados ----------
-
+  // Builds avatar
   Widget _buildAvatar() {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -65,11 +66,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         color: cs.scrim.withValues(alpha: 0.45),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        Icons.edit,
-                        color: cs.onSurface,
-                        size: 28,
-                      ),
+                      child: Icon(Icons.edit, color: cs.onSurface, size: 28),
                     ),
                   ),
                 ],
@@ -79,10 +76,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 8),
           Text(
             'Change profile photo',
-            style: TextStyle(
-              color: cs.primary,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(color: cs.primary, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -111,6 +105,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  // Builds save button
   Widget _buildSaveButton() {
     return ElevatedButton(
       onPressed: _saveProfile,
@@ -125,7 +120,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // ---------- Função de salvar ----------
+  // Saves profile
   Future<void> _saveProfile() async {
     try {
       final userId = await AuthService.getUserId();
@@ -153,9 +148,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // ---------- Build Principal ----------
-
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Profile')),

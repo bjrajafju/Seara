@@ -8,6 +8,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _isLoggedIn;
   bool get isChecking => _isChecking;
 
+  // Checks whether a valid session exists
   Future<void> checkSession() async {
     _isChecking = true;
     notifyListeners();
@@ -21,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Sends login credentials and stores the authenticated session
   Future<String?> login(String email, String password) async {
     final error = await AuthService.login(email, password);
     if (error == null) {
@@ -35,11 +37,13 @@ class AuthProvider extends ChangeNotifier {
     return error;
   }
 
+  // Login success
   Future<void> loginSuccess() async {
     _isLoggedIn = true;
     notifyListeners();
   }
 
+  // Clears persisted session data and logs out the user
   Future<void> logout() async {
     await AuthService.logout();
     _isLoggedIn = false;

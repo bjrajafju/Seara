@@ -1,11 +1,8 @@
-// ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
-// ignore: avoid_web_libraries_in_flutter
 import 'dart:js' as js;
 
+// Downloads and saves the requested file
 void downloadFile(String url, String fileName) {
-  // Usar fetch para obter os bytes e criar um blob URL
-  // Isto e necessario para forcar download em vez de abrir no browser
   js.context.callMethod('eval', [
     '''
     (function() {

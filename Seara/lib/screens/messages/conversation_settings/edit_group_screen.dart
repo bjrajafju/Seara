@@ -29,6 +29,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   final ImagePicker _picker = ImagePicker();
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.currentName);
@@ -36,11 +37,13 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _nameController.dispose();
     super.dispose();
   }
 
+  // Picks image
   Future<void> _pickImage() async {
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -55,7 +58,8 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
       final bytes = await file.readAsBytes();
       final result = await UploadService.uploadFile(
         bucket: 'attachments',
-        fileName: 'group_${widget.conversationId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        fileName:
+            'group_${widget.conversationId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
         fileBytes: bytes,
         mimeType: 'image/jpeg',
       );
@@ -74,6 +78,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     }
   }
 
+  // Save
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -86,7 +91,6 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Update name if changed
       if (name != widget.currentName) {
         await ConversationSettingsService.updateName(
           widget.conversationId,
@@ -95,7 +99,6 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
         );
       }
 
-      // Update image if changed
       if (_imageUrl != widget.currentImage && _imageUrl != null) {
         await ConversationSettingsService.updateImage(
           widget.conversationId,
@@ -109,13 +112,14 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
     }
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -148,7 +152,6 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            // Avatar
             Center(
               child: GestureDetector(
                 onTap: _isUploading ? null : _pickImage,
@@ -159,8 +162,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                       backgroundImage: _imageUrl != null
                           ? NetworkImage(_imageUrl!)
                           : null,
-                      backgroundColor:
-                          theme.colorScheme.primaryContainer,
+                      backgroundColor: theme.colorScheme.primaryContainer,
                       child: _imageUrl == null
                           ? Icon(
                               Icons.group_rounded,
@@ -219,7 +221,6 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            // Name field
             Text(
               'Nome do grupo',
               style: theme.textTheme.bodySmall?.copyWith(

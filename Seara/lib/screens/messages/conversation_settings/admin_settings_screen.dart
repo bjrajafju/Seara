@@ -26,6 +26,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   bool _isSaving = false;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _whoCanManageMembers = widget.settings.whoCanManageMembers;
@@ -34,6 +35,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     _whoCanEditBio = widget.settings.whoCanEditBio;
   }
 
+  // Save
   Future<void> _save() async {
     setState(() => _isSaving = true);
     try {
@@ -65,6 +67,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -96,7 +99,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.all(16),
             child: Container(
@@ -126,7 +128,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ),
           ),
 
-          // Permission: manage members
           _buildPermissionRow(
             theme,
             icon: Icons.group_add_rounded,
@@ -137,7 +138,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
 
-          // Permission: edit info
           _buildPermissionRow(
             theme,
             icon: Icons.edit_rounded,
@@ -148,7 +148,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
 
-          // Permission: send messages
           _buildPermissionRow(
             theme,
             icon: Icons.message_rounded,
@@ -160,7 +159,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
 
-          // Permission: edit bio
           _buildPermissionRow(
             theme,
             icon: Icons.description_rounded,
@@ -182,11 +180,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.campaign_rounded,
-                      color: cs.tertiary,
-                      size: 20,
-                    ),
+                    Icon(Icons.campaign_rounded, color: cs.tertiary, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(

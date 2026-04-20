@@ -2,17 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:seara/services/api_client.dart' as http;
 
-// Import condicional: usa web em browser, stub em mobile
 import 'download_helper_stub.dart'
     if (dart.library.html) 'download_helper_web.dart';
 
-/// Lightbox para visualização de imagens recebidas no chat.
-///
-/// Funcionalidades:
-/// - Zoom in/out via pinch ou scroll (InteractiveViewer)
-/// - Animação Hero ao abrir (heroTag = imageUrl)
-/// - Fechar ao tocar na área escura fora da imagem
-/// - Download (web via helper JS; mobile via http)
 class ImageLightboxScreen extends StatefulWidget {
   const ImageLightboxScreen({super.key, required this.imageUrl, this.fileName});
 
@@ -26,6 +18,7 @@ class ImageLightboxScreen extends StatefulWidget {
 class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
   bool _isDownloading = false;
 
+  // Download
   Future<void> _download() async {
     if (_isDownloading) return;
     setState(() => _isDownloading = true);
@@ -47,6 +40,7 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
     }
   }
 
+  // Download mobile
   Future<void> _downloadMobile() async {
     final response = await http.ApiClient.get(Uri.parse(widget.imageUrl));
     if (response.statusCode != 200) throw Exception('Falha no download.');
@@ -58,6 +52,7 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -66,12 +61,10 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
       extendBodyBehindAppBar: true,
       appBar: _buildAppBar(),
       body: GestureDetector(
-        // Fechar ao tocar na área preta fora da imagem
         onTap: () => Navigator.pop(context),
         behavior: HitTestBehavior.opaque,
         child: Center(
           child: GestureDetector(
-            // Consumir o tap na própria imagem para não fechar
             onTap: () {},
             child: Hero(
               tag: widget.imageUrl,
@@ -84,7 +77,9 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
                   loadingBuilder: (context, child, progress) {
                     if (progress == null) return child;
                     return Center(
-                      child: CircularProgressIndicator(color: cs.onInverseSurface),
+                      child: CircularProgressIndicator(
+                        color: cs.onInverseSurface,
+                      ),
                     );
                   },
                   errorBuilder: (context, error, stack) {
@@ -106,6 +101,7 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
     );
   }
 
+  // Builds app bar
   PreferredSizeWidget _buildAppBar() {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;

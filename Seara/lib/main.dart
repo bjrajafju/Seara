@@ -15,6 +15,7 @@ import 'screens/messages/messages_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Starts the app and wires top-level providers
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   JustAudioMediaKit.ensureInitialized();
@@ -29,7 +30,6 @@ void main() async {
     FilePicker.platform = FilePicker.platform;
   }
 
-  // Load persisted theme before painting the first frame.
   final themeProvider = ThemeProvider();
   await themeProvider.init();
 
@@ -50,11 +50,11 @@ class SearaApp extends StatelessWidget {
   final AuthProvider authProvider;
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
-        // Reuse the already-initialised instance so there's no flicker.
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => MessagesProvider()),
       ],
@@ -63,9 +63,6 @@ class SearaApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'SEARA',
-            // ThemeMode.light is intentional: we bypass Flutter's light/dark
-            // switch and always inject the full ThemeData directly. This
-            // enables unlimited custom themes with no API constraint.
             themeMode: ThemeMode.light,
             theme: theme.currentTheme,
             home: auth.isChecking

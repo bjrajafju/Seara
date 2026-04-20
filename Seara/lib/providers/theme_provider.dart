@@ -2,13 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
-/// Identifies an available theme.
-///
-/// To add a new theme:
-///  1. Add a new value here.
-///  2. Add a matching ThemeData getter in [AppTheme].
-///  3. Register it in [ThemeProvider.themes].
-
 enum AppThemeId {
   light,
   dark,
@@ -94,6 +87,7 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeData get currentTheme => themes[_activeId] ?? AppTheme.dark;
 
+  // Initializes local dependencies and startup state
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefKey);
@@ -106,6 +100,7 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
+  // Set theme
   Future<void> setTheme(AppThemeId id) async {
     if (_activeId == id) return;
     _activeId = id;

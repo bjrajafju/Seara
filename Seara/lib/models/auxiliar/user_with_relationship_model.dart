@@ -17,7 +17,6 @@ class UserWithRelationship {
 
   bool get isMutual => iFollow && followsMe;
 
-  // Peso para ordenacao: mutuo = 0, um lado = 1, nenhum = 2
   int get sortWeight {
     if (isMutual) return 0;
     if (iFollow || followsMe) return 1;

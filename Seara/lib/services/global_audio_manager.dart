@@ -4,7 +4,6 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
-/// Message id reserved for attachment preview (before send). Not a real chat id.
 const String kAttachmentPreviewMessageId = '__seara_attachment_preview__';
 
 class _BytesAudioSource extends StreamAudioSource {
@@ -14,6 +13,7 @@ class _BytesAudioSource extends StreamAudioSource {
   final String? mimeType;
 
   @override
+  // Request
   Future<StreamAudioResponse> request([int? start, int? end]) async {
     final rangeStart = start ?? 0;
     final rangeEnd = end ?? bytes.length;
@@ -27,14 +27,6 @@ class _BytesAudioSource extends StreamAudioSource {
   }
 }
 
-/// Singleton that owns the **one** [AudioPlayer] used for app-wide inline audio.
-///
-/// Rules:
-/// - Only one audio may play at a time.
-/// - Widgets MUST NOT create or dispose players — they only call this manager.
-/// - Playback lifecycle is independent from widget lifecycle (scroll-safe).
-/// - UI must use [playerStateStream], [activeMessageIdStream], and [lastPlayerState]
-///   (broadcast streams do not replay; [last*] backs [StreamBuilder.initialData]).
 class GlobalAudioManager {
   GlobalAudioManager._();
   static final GlobalAudioManager instance = GlobalAudioManager._();
@@ -43,19 +35,15 @@ class GlobalAudioManager {
   String? _currentMessageId;
   bool _sessionConfigured = false;
 
-  /// Avoid overlapping seek+pause rewinds when [ProcessingState.completed] fires more than once.
   bool _rewindingAfterComplete = false;
 
-  /// Serializes async work so [play] / completion / [stop] never race.
   Future<void> _tail = Future<void>.value();
   int _playRequestId = 0;
   double _speed = 1.0;
 
   final List<StreamSubscription<dynamic>> _playerSubscriptions = [];
 
-  // Last values — broadcast streams don't replay to new listeners.
-  PlayerState _lastPlayerState =
-      PlayerState(false, ProcessingState.idle);
+  PlayerState _lastPlayerState = PlayerState(false, ProcessingState.idle);
   Duration _lastPosition = Duration.zero;
   Duration _lastDuration = Duration.zero;
   String? _lastActiveMessageId;
@@ -83,6 +71,7 @@ class GlobalAudioManager {
 
   String? get lastActiveMessageId => _lastActiveMessageId;
 
+  // Run
   Future<void> _run(Future<void> Function() fn) {
     final c = Completer<void>();
     _tail = _tail.then((_) async {
@@ -96,6 +85,7 @@ class GlobalAudioManager {
     return c.future;
   }
 
+  // Returns whether playing
   bool isPlaying(String messageId) {
     if (_currentMessageId != messageId) return false;
     final p = _player;
@@ -105,22 +95,25 @@ class GlobalAudioManager {
         p.processingState != ProcessingState.idle;
   }
 
+  // Position for
   Duration positionFor(String messageId) {
     if (_currentMessageId != messageId || _player == null) return Duration.zero;
     return _player!.position;
   }
 
+  // Duration for
   Duration? durationFor(String messageId) {
     if (_currentMessageId != messageId || _player == null) return null;
     return _player!.duration;
   }
 
+  // Looks like http url
   static bool _looksLikeHttpUrl(String s) {
     final t = s.trim().toLowerCase();
     return t.startsWith('http://') || t.startsWith('https://');
   }
 
-  /// Network / HTTPS URL only — do not pass file paths.
+  // Play url
   Future<void> playUrl(String messageId, String url) async {
     if (!_looksLikeHttpUrl(url)) {
       debugPrint(
@@ -128,13 +121,10 @@ class GlobalAudioManager {
       );
       return;
     }
-    await _interruptAndPlay(
-      messageId,
-      AudioSource.uri(Uri.parse(url.trim())),
-    );
+    await _interruptAndPlay(messageId, AudioSource.uri(Uri.parse(url.trim())));
   }
 
-  /// Local absolute file path (Windows desktop, etc.).
+  // Play file
   Future<void> playFile(String messageId, String filePath) async {
     if (_looksLikeHttpUrl(filePath)) {
       debugPrint(
@@ -142,13 +132,9 @@ class GlobalAudioManager {
       );
       return;
     }
-    await _interruptAndPlay(
-      messageId,
-      AudioSource.file(filePath.trim()),
-    );
+    await _interruptAndPlay(messageId, AudioSource.file(filePath.trim()));
   }
 
-  /// Load from memory (e.g. Web or in-memory preview).
   Future<void> playBytes(
     String messageId,
     Uint8List bytes, {
@@ -160,26 +146,27 @@ class GlobalAudioManager {
     );
   }
 
-  /// Prepares audio paused at the start (attachment preview before send).
-  Future<void> prepareFromFile(String messageId, String filePath) => _run(() async {
-        if (_looksLikeHttpUrl(filePath)) {
-          debugPrint(
-            '[GlobalAudioManager] prepareFromFile: expected file path, got URL-like: $filePath',
-          );
-          return;
-        }
-        await _stopAndReset();
-        await _loadPaused(
-          messageId,
-          AudioSource.file(filePath.trim()),
-        );
-      });
+  // Prepare from file
+  Future<void> prepareFromFile(
+    String messageId,
+    String filePath,
+  ) => _run(() async {
+    if (_looksLikeHttpUrl(filePath)) {
+      debugPrint(
+        '[GlobalAudioManager] prepareFromFile: expected file path, got URL-like: $filePath',
+      );
+      return;
+    }
+    await _stopAndReset();
+    await _loadPaused(messageId, AudioSource.file(filePath.trim()));
+  });
 
   Future<void> prepareFromBytes(
     String messageId,
     Uint8List bytes, {
     String? mimeType,
   }) =>
+      // Run
       _run(() async {
         await _stopAndReset();
         await _loadPaused(
@@ -188,8 +175,10 @@ class GlobalAudioManager {
         );
       });
 
+  // Pause
   Future<void> pause() {
     final p = _player;
+    // Run
     return _run(() async {
       if (p == null || !identical(_player, p)) return;
       try {
@@ -202,8 +191,10 @@ class GlobalAudioManager {
     });
   }
 
+  // Resume
   Future<void> resume() {
     final p = _player;
+    // Run
     return _run(() async {
       if (p == null || !identical(_player, p)) return;
       try {
@@ -217,14 +208,17 @@ class GlobalAudioManager {
     });
   }
 
+  // Seek
   Future<void> seek(Duration position) {
     final p = _player;
+    // Run
     return _run(() async {
       if (p == null || !identical(_player, p)) return;
       try {
         await p.seek(position);
         _lastPosition = p.position;
-        if (!_positionController.isClosed) _positionController.add(_lastPosition);
+        if (!_positionController.isClosed)
+          _positionController.add(_lastPosition);
         _lastPlayerState = p.playerState;
         if (!_stateController.isClosed) _stateController.add(_lastPlayerState);
       } catch (e) {
@@ -233,9 +227,11 @@ class GlobalAudioManager {
     });
   }
 
+  // Set speed
   Future<void> setSpeed(double speed) {
     _speed = speed;
     final p = _player;
+    // Run
     return _run(() async {
       if (p == null || !identical(_player, p)) return;
       try {
@@ -248,9 +244,9 @@ class GlobalAudioManager {
 
   Future<void> stop() => _run(_stopAndReset);
 
-  /// Clears the active message and stops playback (same as [stop]).
   Future<void> clearCurrent() => _run(_stopAndReset);
 
+  // Interrupt and play
   Future<void> _interruptAndPlay(String messageId, AudioSource source) async {
     final requestId = ++_playRequestId;
     await _disposeCurrentPlayerOnly();
@@ -294,6 +290,7 @@ class GlobalAudioManager {
     }
   }
 
+  // Loads paused
   Future<void> _loadPaused(String messageId, AudioSource source) async {
     _currentMessageId = messageId;
     _lastActiveMessageId = messageId;
@@ -313,6 +310,7 @@ class GlobalAudioManager {
     }
   }
 
+  // Attach player subscriptions
   void _attachPlayerSubscriptions(AudioPlayer player) {
     _cancelPlayerSubscriptions();
 
@@ -339,6 +337,7 @@ class GlobalAudioManager {
     );
   }
 
+  // Handles player state
   void _onPlayerState(PlayerState state) {
     _lastPlayerState = state;
     if (!_stateController.isClosed) _stateController.add(state);
@@ -349,27 +348,28 @@ class GlobalAudioManager {
     }
   }
 
-  /// Natural end of track: rewind and pause; keep [AudioPlayer] until [stop] or new source.
+  // Handles playback completed
   Future<void> _handlePlaybackCompleted() => _run(() async {
-        final p = _player;
-        if (p == null || _rewindingAfterComplete) return;
-        _rewindingAfterComplete = true;
-        try {
-          await p.seek(Duration.zero);
-          await p.pause();
-          final st = p.playerState;
-          _lastPlayerState = st;
-          if (!_stateController.isClosed) _stateController.add(st);
-          final pos = p.position;
-          _lastPosition = pos;
-          if (!_positionController.isClosed) _positionController.add(pos);
-        } catch (e) {
-          debugPrint('[GlobalAudioManager] completion rewind error: $e');
-        } finally {
-          _rewindingAfterComplete = false;
-        }
-      });
+    final p = _player;
+    if (p == null || _rewindingAfterComplete) return;
+    _rewindingAfterComplete = true;
+    try {
+      await p.seek(Duration.zero);
+      await p.pause();
+      final st = p.playerState;
+      _lastPlayerState = st;
+      if (!_stateController.isClosed) _stateController.add(st);
+      final pos = p.position;
+      _lastPosition = pos;
+      if (!_positionController.isClosed) _positionController.add(pos);
+    } catch (e) {
+      debugPrint('[GlobalAudioManager] completion rewind error: $e');
+    } finally {
+      _rewindingAfterComplete = false;
+    }
+  });
 
+  // Cancel player subscriptions
   void _cancelPlayerSubscriptions() {
     for (final s in _playerSubscriptions) {
       unawaited(s.cancel());
@@ -377,6 +377,7 @@ class GlobalAudioManager {
     _playerSubscriptions.clear();
   }
 
+  // Dispose current player only
   Future<void> _disposeCurrentPlayerOnly() async {
     _cancelPlayerSubscriptions();
     final player = _player;
@@ -389,11 +390,13 @@ class GlobalAudioManager {
     }
   }
 
+  // Stops and reset
   Future<void> _stopAndReset() async {
     await _disposeCurrentPlayerOnly();
     _publishResetState();
   }
 
+  // Publish reset state
   void _publishResetState() {
     _currentMessageId = null;
     _lastActiveMessageId = null;
@@ -409,6 +412,7 @@ class GlobalAudioManager {
     if (!_durationController.isClosed) _durationController.add(Duration.zero);
   }
 
+  // Apply speed
   Future<void> _applySpeed(AudioPlayer player) async {
     if (!identical(_player, player)) return;
     if (kIsWeb) {
@@ -425,6 +429,7 @@ class GlobalAudioManager {
     await player.setSpeed(_speed);
   }
 
+  // Configure session
   Future<void> _configureSession() async {
     if (_sessionConfigured || kIsWeb) return;
     try {
@@ -434,7 +439,9 @@ class GlobalAudioManager {
     _sessionConfigured = true;
   }
 
+  // Releases controllers and subscriptions used by this widget
   Future<void> dispose() async {
+    // Run
     await _run(() async {
       await _stopAndReset();
       await _stateController.close();

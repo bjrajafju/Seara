@@ -16,6 +16,7 @@ class EphemeralMessagesScreen extends StatefulWidget {
   final bool isAdmin;
 
   @override
+  // Creates the state object for this screen
   State<EphemeralMessagesScreen> createState() =>
       _EphemeralMessagesScreenState();
 }
@@ -25,22 +26,40 @@ class _EphemeralMessagesScreenState extends State<EphemeralMessagesScreen> {
   bool _isSaving = false;
 
   static const _options = [
-    _DurationOption(0, 'Desativado', 'Mensagens ficam permanentes',
-        Icons.chat_bubble_outline_rounded),
     _DurationOption(
-        1, '24 horas', 'Mensagens desaparecem após 1 dia', Icons.looks_one_rounded),
+      0,
+      'Desativado',
+      'Mensagens ficam permanentes',
+      Icons.chat_bubble_outline_rounded,
+    ),
     _DurationOption(
-        2, '7 dias', 'Mensagens desaparecem após 1 semana', Icons.date_range_rounded),
+      1,
+      '24 horas',
+      'Mensagens desaparecem após 1 dia',
+      Icons.looks_one_rounded,
+    ),
     _DurationOption(
-        3, '30 dias', 'Mensagens desaparecem após 1 mês', Icons.calendar_month_rounded),
+      2,
+      '7 dias',
+      'Mensagens desaparecem após 1 semana',
+      Icons.date_range_rounded,
+    ),
+    _DurationOption(
+      3,
+      '30 dias',
+      'Mensagens desaparecem após 1 mês',
+      Icons.calendar_month_rounded,
+    ),
   ];
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _selected = widget.currentDuration;
   }
 
+  // Save
   Future<void> _save(int duration) async {
     if (!widget.isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,22 +85,25 @@ class _EphemeralMessagesScreenState extends State<EphemeralMessagesScreen> {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(duration == 0
-              ? 'Mensagens temporárias desativadas'
-              : 'Mensagens temporárias ativadas'),
+          content: Text(
+            duration == 0
+                ? 'Mensagens temporárias desativadas'
+                : 'Mensagens temporárias ativadas',
+          ),
           duration: const Duration(seconds: 1),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
     }
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -102,7 +124,6 @@ class _EphemeralMessagesScreenState extends State<EphemeralMessagesScreen> {
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                // Info card
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Container(
@@ -123,8 +144,7 @@ class _EphemeralMessagesScreenState extends State<EphemeralMessagesScreen> {
                           child: Text(
                             'Quando ativadas, novas mensagens desaparecerão após o tempo selecionado. Mensagens existentes não são afetadas.',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color:
-                                  theme.colorScheme.onSurface.withAlpha(150),
+                              color: theme.colorScheme.onSurface.withAlpha(150),
                             ),
                           ),
                         ),
@@ -132,7 +152,6 @@ class _EphemeralMessagesScreenState extends State<EphemeralMessagesScreen> {
                     ),
                   ),
                 ),
-                // Options
                 ..._options.map((opt) {
                   final isSelected = _selected == opt.value;
                   return ListTile(
@@ -145,8 +164,9 @@ class _EphemeralMessagesScreenState extends State<EphemeralMessagesScreen> {
                     title: Text(
                       opt.title,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
                     subtitle: Text(

@@ -11,11 +11,13 @@ class _AudioServiceIo implements AudioService {
   String? _recordingPath;
 
   @override
+  // Check permissions
   Future<bool> checkPermissions() async {
     return _recorder.hasPermission();
   }
 
   @override
+  // Starts recording
   Future<void> startRecording() async {
     final tempDir = await getTemporaryDirectory();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -28,6 +30,7 @@ class _AudioServiceIo implements AudioService {
   }
 
   @override
+  // Stops recording
   Future<AudioRecordingResult?> stopRecording() async {
     if (!_isRecording) return null;
     final path = await _recorder.stop();
@@ -49,6 +52,7 @@ class _AudioServiceIo implements AudioService {
   }
 
   @override
+  // Cancel recording
   Future<void> cancelRecording() async {
     if (_isRecording) {
       await _recorder.cancel();
@@ -57,6 +61,7 @@ class _AudioServiceIo implements AudioService {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   Future<void> dispose() async {
     await _recorder.dispose();
   }

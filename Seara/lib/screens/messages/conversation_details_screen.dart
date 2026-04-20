@@ -29,6 +29,7 @@ class ConversationDetailsScreen extends StatefulWidget {
   final int myId;
 
   @override
+  // Creates the state object for this screen
   State<ConversationDetailsScreen> createState() =>
       _ConversationDetailsScreenState();
 }
@@ -41,6 +42,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
   String? _error;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
@@ -48,11 +50,13 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
 
+  // Loads details
   Future<void> _loadDetails() async {
     try {
       final details = await ConversationSettingsService.getDetails(
@@ -102,6 +106,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     return other.isNotEmpty ? other.first.id : null;
   }
 
+  // Toggles pin
   Future<void> _togglePin() async {
     try {
       final newState = await ConversationSettingsService.togglePin(
@@ -140,7 +145,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     }
   }
 
-  // FIX #8: Creator sees "Delete group", others see "Leave"
+  // Danger action
   Future<void> _dangerAction() async {
     final isGroup = widget.conversation.isGroup;
     final isCreator = _details?.isCreator ?? false;
@@ -206,6 +211,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -308,7 +314,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Sliver AppBar with header
+  // Builds sliver app bar
   Widget _buildSliverAppBar(ThemeData theme) {
     return SliverAppBar(
       backgroundColor: theme.colorScheme.surface,
@@ -319,7 +325,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
         icon: const Icon(Icons.arrow_back_rounded),
         onPressed: () => Navigator.pop(context),
       ),
-      // FIX #3: For 1:1, add profile icon in AppBar
       actions: [
         if (!widget.conversation.isGroup && _otherUserId != null)
           IconButton(
@@ -334,7 +339,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
             padding: const EdgeInsets.only(top: 56),
             child: Column(
               children: [
-                // Avatar
                 GestureDetector(
                   onTap:
                       widget.conversation.isGroup &&
@@ -376,7 +380,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Name
                 Text(
                   _displayName,
                   style: theme.textTheme.titleLarge?.copyWith(
@@ -384,7 +387,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
                   ),
                 ),
                 const SizedBox(height: 4),
-                // Subtitle
                 if (widget.conversation.isGroup)
                   Text(
                     '${_details?.members.length ?? widget.conversation.participants.length} membros',
@@ -392,7 +394,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
                       color: theme.colorScheme.onSurface.withAlpha(150),
                     ),
                   ),
-                // Task 12: Group description
                 if (widget.conversation.isGroup &&
                     _details?.description != null &&
                     _details!.description!.isNotEmpty)
@@ -444,8 +445,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Quick action buttons
-  // FIX #7: Removed duplicate notification — only Search + Call + Video
+  // Builds action buttons
   Widget _buildActionButtons(ThemeData theme) {
     final actions = [
       _QuickAction(
@@ -503,13 +503,11 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Settings sections
-  // FIX #3: Hide "Members" for 1:1, show "Ver perfil" that opens profile
+  // Builds settings sections
   Widget _buildSettingsSections(ThemeData theme) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Members (group) or View profile (1:1)
         if (widget.conversation.isGroup)
           _buildSettingRow(
             theme,
@@ -525,7 +523,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
             title: 'Ver perfil',
             onTap: () => _openProfile(_otherUserId!),
           ),
-        // Notifications
         _buildSettingRow(
           theme,
           icon: Icons.notifications_outlined,
@@ -533,7 +530,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
           subtitle: _details?.notification.muteLabel ?? 'Ativadas',
           onTap: () => _openNotifications(),
         ),
-        // Theme
         _buildSettingRow(
           theme,
           icon: Icons.palette_outlined,
@@ -541,7 +537,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
           subtitle: _details?.settings?.themeLabel ?? 'Padrão',
           onTap: () => _openTheme(),
         ),
-        // Ephemeral messages
         _buildSettingRow(
           theme,
           icon: Icons.timer_outlined,
@@ -549,7 +544,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
           subtitle: _details?.settings?.ephemeralLabel ?? 'Desativado',
           onTap: () => _openEphemeral(),
         ),
-        // Admin settings (only for admins in groups)
         if (widget.conversation.isGroup && (_details?.amAdmin ?? false))
           _buildSettingRow(
             theme,
@@ -558,7 +552,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
             subtitle: 'Permissões e cargos',
             onTap: () => _openAdminSettings(),
           ),
-        // Pin toggle
         _buildSettingRow(
           theme,
           icon: _details?.isPinned == true
@@ -641,7 +634,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Shared media tabs
+  // Builds tab bar
   TabBar _buildTabBar(ThemeData theme) {
     return TabBar(
       controller: _tabController,
@@ -659,7 +652,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // FIX #9: Media tab — pass video type for multimedia, handle all types
+  // Builds tab content
   Widget _buildTabContent(ThemeData theme) {
     return TabBarView(
       controller: _tabController,
@@ -667,7 +660,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
         _MediaGrid(
           conversationId: widget.conversation.id,
           userId: widget.myId,
-          type: 'media', // images + videos
+          type: 'media',
         ),
         _MediaGrid(
           conversationId: widget.conversation.id,
@@ -683,8 +676,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Danger zone (leave/delete/archive)
-  // FIX #8: Creator sees "Delete group", others see "Leave"
+  // Builds danger zone
   Widget _buildDangerZone(ThemeData theme) {
     final isGroup = widget.conversation.isGroup;
     final isCreator = _details?.isCreator ?? false;
@@ -734,9 +726,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Navigation helpers
-
-  // Task 1: Self -> my profile, other -> their profile
+  // Navigates to the selected user profile
   void _openProfile(int userId) {
     Navigator.push(
       context,
@@ -748,6 +738,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
+  // Opens edit group
   void _openEditGroup() {
     if (_details == null) return;
     Navigator.push(
@@ -763,6 +754,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
+  // Opens members
   void _openMembers() {
     if (_details == null) return;
     Navigator.push(
@@ -778,6 +770,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
+  // Opens notifications
   void _openNotifications() {
     if (_details == null) return;
     Navigator.push(
@@ -792,6 +785,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
+  // Opens search
   void _openSearch() {
     Navigator.push<int>(
       context,
@@ -803,13 +797,13 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
         ),
       ),
     ).then((messageId) {
-      // FIX #2: If search returned a message ID, pop back with it
       if (messageId != null && mounted) {
         Navigator.pop(context, messageId);
       }
     });
   }
 
+  // Opens theme
   void _openTheme() {
     if (_details == null) return;
     Navigator.push(
@@ -825,6 +819,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
+  // Opens ephemeral
   void _openEphemeral() {
     if (_details == null) return;
     Navigator.push(
@@ -840,6 +835,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
+  // Opens admin settings
   void _openAdminSettings() {
     if (_details == null) return;
     Navigator.push(
@@ -854,6 +850,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
+  // Starts call
   void _startCall({required bool isVideo}) {
     Navigator.push(
       context,
@@ -867,7 +864,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Task 12: Edit group description dialog
+  // Edit description
   void _editDescription() async {
     final controller = TextEditingController(text: _details?.description ?? '');
     final result = await showDialog<String>(
@@ -920,16 +917,14 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     }
   }
 
-  // Fix #1: Bio edit permission check
   bool get _canEditBio {
     if (_details == null) return false;
     final perm = _details!.settings?.whoCanEditBio ?? 0;
-    if (perm == 0) return true; // all can edit
-    return _details!.amAdmin; // admins only
+    if (perm == 0) return true;
+    return _details!.amAdmin;
   }
 }
 
-// Quick action data class
 class _QuickAction {
   final IconData icon;
   final String label;
@@ -942,7 +937,6 @@ class _QuickAction {
   });
 }
 
-// FIX #10: Sticky tab bar delegate
 class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   final Color color;
@@ -965,13 +959,12 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
+  // Should rebuild
   bool shouldRebuild(covariant _StickyTabBarDelegate oldDelegate) {
     return tabBar != oldDelegate.tabBar || color != oldDelegate.color;
   }
 }
 
-// Shared media grid widget
-// FIX #9: Handles 'media' (image+video), 'file', 'link' types properly
 class _MediaGrid extends StatefulWidget {
   const _MediaGrid({
     required this.conversationId,
@@ -997,11 +990,13 @@ class _MediaGridState extends State<_MediaGrid>
   bool get wantKeepAlive => true;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _load();
   }
 
+  // Load
   Future<void> _load() async {
     setState(() {
       _isLoading = true;
@@ -1028,6 +1023,7 @@ class _MediaGridState extends State<_MediaGrid>
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
@@ -1105,7 +1101,6 @@ class _MediaGridState extends State<_MediaGrid>
       );
     }
 
-    // Grid for media (images/videos)
     if (widget.type == 'media') {
       return GridView.builder(
         padding: const EdgeInsets.all(4),
@@ -1123,7 +1118,6 @@ class _MediaGridState extends State<_MediaGrid>
           final url = item['attachment'] ?? '';
           return GestureDetector(
             onTap: () {
-              // Task 11: Open image in fullscreen dialog or video player
               if (isVideo) {
                 _openVideoPlayer(context, url);
               } else {
@@ -1166,7 +1160,6 @@ class _MediaGridState extends State<_MediaGrid>
       );
     }
 
-    // Task 10: Link list — show URLs from message body with preview
     if (widget.type == 'link') {
       return ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1237,7 +1230,6 @@ class _MediaGridState extends State<_MediaGrid>
       );
     }
 
-    // Task 11: File list — tappable for download
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _items.length,
@@ -1284,12 +1276,13 @@ class _MediaGridState extends State<_MediaGrid>
     );
   }
 
+  // Formats date
   String _formatDate(DateTime? date) {
     if (date == null) return '';
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  // Task 11: Open image fullscreen
+  // Opens image viewer
   void _openImageViewer(BuildContext context, String url) {
     Navigator.push(
       context,
@@ -1303,7 +1296,7 @@ class _MediaGridState extends State<_MediaGrid>
     );
   }
 
-  // Fix #6: Open video inline via VideoLightboxScreen
+  // Opens video player
   void _openVideoPlayer(BuildContext context, String url) {
     Navigator.push(
       context,
@@ -1317,7 +1310,6 @@ class _MediaGridState extends State<_MediaGrid>
     );
   }
 
-  // Fix #7: Download confirmation dialog
   Future<void> _confirmDownload(
     BuildContext context,
     String url,

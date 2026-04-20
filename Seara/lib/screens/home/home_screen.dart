@@ -32,15 +32,18 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _loadToken();
   }
 
+  // Loads token
   void _loadToken() async {
     await AuthService.getToken();
   }
 
+  // Clears persisted session data and logs out the user
   Future<void> _logout() async {
     final authProvider = context.read<AuthProvider>();
     final messagesProvider = context.read<MessagesProvider>();
@@ -57,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
@@ -70,13 +74,34 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: cs.onSurface.withAlpha(120),
         currentIndex: _selectedIndex,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.message_rounded), label: 'Mensagens'),
-          BottomNavigationBarItem(icon: Icon(Icons.flash_on_rounded), label: 'Desafios'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Definições'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Perfil'),
-          BottomNavigationBarItem(icon: Icon(Icons.people_rounded), label: 'Listar'),
-          BottomNavigationBarItem(icon: Icon(Icons.logout_rounded), label: 'Logout'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.message_rounded),
+            label: 'Mensagens',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.flash_on_rounded),
+            label: 'Desafios',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: 'Definições',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded),
+            label: 'Perfil',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_rounded),
+            label: 'Listar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.logout_rounded),
+            label: 'Logout',
+          ),
         ],
         onTap: (int index) async {
           if (index == _logoutNavIndex) {

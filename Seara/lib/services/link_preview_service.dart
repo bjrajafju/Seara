@@ -6,9 +6,9 @@ import '../models/link_preview_model.dart';
 class LinkPreviewService {
   static String get baseUrl => "${ApiConfig.baseUrl}/messages";
 
-  // Simple in-memory cache to avoid duplicate requests for the same URL
   static final Map<String, LinkPreview?> _cache = {};
 
+  // Fetches metadata used in link previews
   static Future<LinkPreview?> fetchLinkPreview(String url) async {
     if (_cache.containsKey(url)) {
       return _cache[url];
@@ -37,9 +37,7 @@ class LinkPreviewService {
         _cache[url] = preview;
         return preview;
       }
-    } catch (_) {
-      // Ignore errors silently as requested
-    }
+    } catch (_) {}
 
     _cache[url] = null;
     return null;

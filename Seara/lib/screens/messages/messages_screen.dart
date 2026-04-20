@@ -8,6 +8,7 @@ import 'package:seara/services/auth_service.dart';
 import 'package:seara/services/messages_service.dart';
 
 enum ContentFilter { all, images, videos, audio, documents }
+
 enum TypeFilter { all, group, direct }
 
 class MessagesScreen extends StatefulWidget {
@@ -27,7 +28,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
   bool _isSearching = false;
   int? _myId;
 
-  // Filtros
   ContentFilter _contentFilter = ContentFilter.all;
   TypeFilter _typeFilter = TypeFilter.all;
   bool _filterUnread = false;
@@ -37,6 +37,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   DateTime? _filterDateTo;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
@@ -44,6 +45,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
@@ -51,6 +53,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     super.dispose();
   }
 
+  // Handles search changed
   void _onSearchChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -58,35 +61,48 @@ class _MessagesScreenState extends State<MessagesScreen> {
     });
   }
 
+  // Loads conversations
   Future<void> _loadConversations() async {
     try {
       int? myId = await AuthService.getUserId();
       if (myId == null) return;
-      
-      if (mounted) setState(() {
-        _isSearching = _searchController.text.isNotEmpty;
-        if (_conversations.isEmpty) _isLoading = true;
-      });
+
+      if (mounted)
+        setState(() {
+          _isSearching = _searchController.text.isNotEmpty;
+          if (_conversations.isEmpty) _isLoading = true;
+        });
 
       final Map<String, String> filters = {};
       final q = _searchController.text.trim();
-      
+
       if (q.isNotEmpty) filters['q'] = q;
       if (_filterOnlyUsernames) filters['only_usernames'] = 'true';
       if (_filterUnread) filters['unread'] = 'true';
       if (_filterPinned) filters['is_pinned'] = 'true';
-      if (_typeFilter == TypeFilter.group) filters['type'] = 'group';
-      else if (_typeFilter == TypeFilter.direct) filters['type'] = 'direct';
+      if (_typeFilter == TypeFilter.group)
+        filters['type'] = 'group';
+      else if (_typeFilter == TypeFilter.direct)
+        filters['type'] = 'direct';
 
-      if (_contentFilter == ContentFilter.images) filters['file_type'] = 'images';
-      else if (_contentFilter == ContentFilter.videos) filters['file_type'] = 'videos';
-      else if (_contentFilter == ContentFilter.audio) filters['file_type'] = 'audio';
-      else if (_contentFilter == ContentFilter.documents) filters['file_type'] = 'documents';
+      if (_contentFilter == ContentFilter.images)
+        filters['file_type'] = 'images';
+      else if (_contentFilter == ContentFilter.videos)
+        filters['file_type'] = 'videos';
+      else if (_contentFilter == ContentFilter.audio)
+        filters['file_type'] = 'audio';
+      else if (_contentFilter == ContentFilter.documents)
+        filters['file_type'] = 'documents';
 
-      if (_filterDateFrom != null) filters['date_from'] = _filterDateFrom!.toIso8601String();
-      if (_filterDateTo != null) filters['date_to'] = _filterDateTo!.toIso8601String();
+      if (_filterDateFrom != null)
+        filters['date_from'] = _filterDateFrom!.toIso8601String();
+      if (_filterDateTo != null)
+        filters['date_to'] = _filterDateTo!.toIso8601String();
 
-      final data = await _messagesService.fetchConversations(myId, filters: filters);
+      final data = await _messagesService.fetchConversations(
+        myId,
+        filters: filters,
+      );
 
       if (mounted) {
         setState(() {
@@ -97,13 +113,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() {
-        _isLoading = false;
-        _isSearching = false;
-      });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+          _isSearching = false;
+        });
     }
   }
 
+  // Clear filters
   void _clearFilters() {
     setState(() {
       _contentFilter = ContentFilter.all;
@@ -126,6 +144,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       _filterDateFrom != null ||
       _filterDateTo != null;
 
+  // Shows filter panel
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -158,14 +177,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // Preview da ultima mensagem
+  // Builds last message preview
   String _buildLastMessagePreview(Message message) {
     if (message.body.isNotEmpty) return message.body;
     if (message.attachment != null) return "Imagem";
     return "Sem mensagens";
   }
 
-  // SEARCH BAR
+  // Builds search bar
   Widget _buildSearchBar(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -188,7 +207,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded),
                         onPressed: () {
-                          _searchController.clear(); // Will trigger _onSearchChanged automatically
+                          _searchController.clear();
                         },
                       )
                     : _isSearching
@@ -212,7 +231,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          // Botao de filtros — fica destacado quando ha filtros ativos
           IconButton(
             onPressed: _showFilterPanel,
             icon: Icon(
@@ -230,7 +248,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // HEADER de resultados
+  // Builds results header
   Widget _buildResultsHeader(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -266,7 +284,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // ITEM de conversa
+  // Builds message item
   Widget _buildMessageItem(ThemeData theme, Conversation conversation) {
     final lastMessage = conversation.messages.isNotEmpty
         ? conversation.messages.first
@@ -301,14 +319,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
           MaterialPageRoute(
             builder: (_) => ConversationScreen(
               conversation: conversation,
-              initialScrollToMessageId: 
-                _searchController.text.isNotEmpty && conversation.messages.isNotEmpty 
-                  ? conversation.messages.first.id 
+              initialScrollToMessageId:
+                  _searchController.text.isNotEmpty &&
+                      conversation.messages.isNotEmpty
+                  ? conversation.messages.first.id
                   : null,
             ),
           ),
         );
-        // Recarregar conversas ao voltar para atualizar previews
         _loadConversations();
       },
       borderRadius: BorderRadius.circular(12),
@@ -414,6 +432,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
+  // Formats date
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -432,7 +451,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     }
   }
 
-  // LISTA de conversas
+  // Builds conversations list
   Widget _buildConversationsList(ThemeData theme) {
     if (_isLoading) {
       return const Expanded(child: Center(child: CircularProgressIndicator()));
@@ -465,6 +484,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
+  // Builds new message button
   Widget _buildNewMessageButton(ThemeData theme) {
     return FloatingActionButton(
       onPressed: () async {
@@ -484,6 +504,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
+  // Builds body
   Widget _buildBody(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,6 +518,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -520,7 +542,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 }
 
-// Painel de filtros avancados
 class _FilterPanel extends StatefulWidget {
   const _FilterPanel({
     super.key,
@@ -550,7 +571,8 @@ class _FilterPanel extends StatefulWidget {
     bool,
     DateTime?,
     DateTime?,
-  ) onApply;
+  )
+  onApply;
   final VoidCallback onClear;
 
   @override
@@ -567,6 +589,7 @@ class _FilterPanelState extends State<_FilterPanel> {
   DateTime? _dateTo;
 
   @override
+  // Initializes state used by this widget
   void initState() {
     super.initState();
     _contentFilter = widget.contentFilter;
@@ -578,6 +601,7 @@ class _FilterPanelState extends State<_FilterPanel> {
     _dateTo = widget.dateTo;
   }
 
+  // Picks date
   Future<void> _pickDate(bool isFrom) async {
     final picked = await showDatePicker(
       context: context,
@@ -601,12 +625,14 @@ class _FilterPanelState extends State<_FilterPanel> {
     });
   }
 
+  // Formats picked date
   String _formatPickedDate(DateTime? date) {
     if (date == null) return "Qualquer data";
     return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -640,16 +666,17 @@ class _FilterPanelState extends State<_FilterPanel> {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           Flexible(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Type
                   Text(
                     "Tipo de conversa",
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -659,26 +686,30 @@ class _FilterPanelState extends State<_FilterPanel> {
                       ChoiceChip(
                         label: const Text("Todas"),
                         selected: _typeFilter == TypeFilter.all,
-                        onSelected: (_) => setState(() => _typeFilter = TypeFilter.all),
+                        onSelected: (_) =>
+                            setState(() => _typeFilter = TypeFilter.all),
                       ),
                       ChoiceChip(
                         label: const Text("Individuais"),
                         selected: _typeFilter == TypeFilter.direct,
-                        onSelected: (_) => setState(() => _typeFilter = TypeFilter.direct),
+                        onSelected: (_) =>
+                            setState(() => _typeFilter = TypeFilter.direct),
                       ),
                       ChoiceChip(
                         label: const Text("Grupos"),
                         selected: _typeFilter == TypeFilter.group,
-                        onSelected: (_) => setState(() => _typeFilter = TypeFilter.group),
+                        onSelected: (_) =>
+                            setState(() => _typeFilter = TypeFilter.group),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  // Status
                   Text(
                     "Status",
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -688,21 +719,24 @@ class _FilterPanelState extends State<_FilterPanel> {
                       FilterChip(
                         label: const Text("Não Lidas"),
                         selected: _filterUnread,
-                        onSelected: (val) => setState(() => _filterUnread = val),
+                        onSelected: (val) =>
+                            setState(() => _filterUnread = val),
                       ),
                       FilterChip(
                         label: const Text("Fixadas"),
                         selected: _filterPinned,
-                        onSelected: (val) => setState(() => _filterPinned = val),
+                        onSelected: (val) =>
+                            setState(() => _filterPinned = val),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  // Content Type
                   Text(
                     "Mídia/Arquivos",
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -712,46 +746,58 @@ class _FilterPanelState extends State<_FilterPanel> {
                       ChoiceChip(
                         label: const Text("Tudo"),
                         selected: _contentFilter == ContentFilter.all,
-                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.all),
+                        onSelected: (_) =>
+                            setState(() => _contentFilter = ContentFilter.all),
                       ),
                       ChoiceChip(
                         label: const Text("Imagens"),
                         selected: _contentFilter == ContentFilter.images,
-                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.images),
+                        onSelected: (_) => setState(
+                          () => _contentFilter = ContentFilter.images,
+                        ),
                       ),
                       ChoiceChip(
                         label: const Text("Vídeos"),
                         selected: _contentFilter == ContentFilter.videos,
-                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.videos),
+                        onSelected: (_) => setState(
+                          () => _contentFilter = ContentFilter.videos,
+                        ),
                       ),
                       ChoiceChip(
                         label: const Text("Áudio"),
                         selected: _contentFilter == ContentFilter.audio,
-                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.audio),
+                        onSelected: (_) => setState(
+                          () => _contentFilter = ContentFilter.audio,
+                        ),
                       ),
                       ChoiceChip(
                         label: const Text("Documentos"),
                         selected: _contentFilter == ContentFilter.documents,
-                        onSelected: (_) => setState(() => _contentFilter = ContentFilter.documents),
+                        onSelected: (_) => setState(
+                          () => _contentFilter = ContentFilter.documents,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  // Usernames search toggle
                   SwitchListTile(
                     title: const Text("Pesquisar apenas identificadores/nomes"),
-                    subtitle: const Text("Ignorar o conteúdo das mensagens ao buscar."),
+                    subtitle: const Text(
+                      "Ignorar o conteúdo das mensagens ao buscar.",
+                    ),
                     value: _filterOnlyUsernames,
                     contentPadding: EdgeInsets.zero,
-                    onChanged: (val) => setState(() => _filterOnlyUsernames = val),
+                    onChanged: (val) =>
+                        setState(() => _filterOnlyUsernames = val),
                   ),
                   const SizedBox(height: 8),
 
-                  // Dates
                   Text(
                     "Período",
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -759,8 +805,14 @@ class _FilterPanelState extends State<_FilterPanel> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _pickDate(true),
-                          icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                          label: Text(_formatPickedDate(_dateFrom), style: theme.textTheme.bodySmall),
+                          icon: const Icon(
+                            Icons.calendar_today_rounded,
+                            size: 16,
+                          ),
+                          label: Text(
+                            _formatPickedDate(_dateFrom),
+                            style: theme.textTheme.bodySmall,
+                          ),
                         ),
                       ),
                       const Padding(
@@ -770,8 +822,14 @@ class _FilterPanelState extends State<_FilterPanel> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _pickDate(false),
-                          icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                          label: Text(_formatPickedDate(_dateTo), style: theme.textTheme.bodySmall),
+                          icon: const Icon(
+                            Icons.calendar_today_rounded,
+                            size: 16,
+                          ),
+                          label: Text(
+                            _formatPickedDate(_dateTo),
+                            style: theme.textTheme.bodySmall,
+                          ),
                         ),
                       ),
                     ],
@@ -781,7 +839,7 @@ class _FilterPanelState extends State<_FilterPanel> {
               ),
             ),
           ),
-          
+
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(

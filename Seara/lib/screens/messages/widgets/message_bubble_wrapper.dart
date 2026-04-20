@@ -23,12 +23,14 @@ class _EmojiPickerCustomViewState extends State<_EmojiPickerCustomView> {
   int _categoryIndex = 0;
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _search.dispose();
     super.dispose();
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textUnit = (theme.textTheme.bodyMedium?.fontSize ?? 14.0);
@@ -175,6 +177,7 @@ class _ReactionOverlayManager {
   static OverlayEntry? _bubble;
   static OverlayEntry? _emojiPicker;
 
+  // Close all
   static void closeAll() {
     _emojiPicker?.remove();
     _emojiPicker = null;
@@ -237,10 +240,12 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     return false;
   }
 
+  // Handles enter
   void _onEnter() {
     _hovered.value = true;
   }
 
+  // Handles exit
   void _onExit() {
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted && !_menuOpen.value) {
@@ -249,6 +254,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     });
   }
 
+  // Shows context menu
   void _showContextMenu(Offset globalPosition) {
     if (!mounted) return;
     if (widget.message.isSystemMessage) return;
@@ -311,7 +317,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     });
   }
 
-  /// Returns the global Rect of this widget in the overlay coordinate space.
+  // Returns widget rect
   Rect? _getWidgetRect() {
     final overlayBox =
         Overlay.of(context, rootOverlay: true).context.findRenderObject()
@@ -322,6 +328,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     return topLeft & box.size;
   }
 
+  // Opens reaction bubble
   void _openReactionBubble() {
     if (!mounted || widget.message.isSystemMessage) return;
     _ReactionOverlayManager.closeAll();
@@ -334,11 +341,6 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     if (overlayBox == null) return;
     final overlaySize = overlayBox.size;
 
-    // --- Sizing ---
-    // Reaction bar: snug pill, similar to WhatsApp
-    // Emoji picker: roughly 300×320, capped so it never overflows
-
-    // Barrier (tap-outside-to-close)
     _ReactionOverlayManager._barrier = OverlayEntry(
       builder: (_) => Positioned.fill(
         child: GestureDetector(
@@ -354,14 +356,11 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
         final theme = Theme.of(ctx);
         final media = MediaQuery.of(ctx);
 
-        // Keep bar away from status bar + a small gap
-        final minTop = media.padding.top + 56.0; // appBar ≈ 56
+        final minTop = media.padding.top + 56.0;
         const gap = 6.0;
 
-        // Pill height is fixed/small
         const barHeight = 52.0;
 
-        // Decide: show above or below the message bubble
         final spaceAbove = widgetRect.top - minTop;
         final spaceBelow =
             overlaySize.height - media.padding.bottom - widgetRect.bottom;
@@ -379,9 +378,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
           if (top > maxBottom) top = maxBottom;
         }
 
-        // Horizontal: center over the bubble, clamp to screen edges
         const hPadding = 12.0;
-        // We don't know bar width yet, but ~280 is a safe estimate for 6 emojis + button
         const estimatedBarW = 280.0;
         double left = widgetRect.center.dx - estimatedBarW / 2;
         left = left.clamp(
@@ -525,34 +522,26 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
         final theme = Theme.of(ctx);
         final media = MediaQuery.of(ctx);
 
-        // Fixed, WhatsApp-like picker size
         const pickerW = 300.0;
         const pickerH = 320.0;
         const gap = 6.0;
         final minTop = media.padding.top + 56.0;
         final maxBottom = overlaySize.height - media.padding.bottom;
 
-        // Place on the opposite side of the reaction bar from the message,
-        // i.e. if bar is above message → picker goes above bar; if bar is below → picker below bar.
         double top;
         if (showAbove) {
-          // bar is above message → picker above bar
           top = barTopLeft.dy - pickerH - gap;
           if (top < minTop) {
-            // Not enough room above, flip below bar instead
             top = barTopLeft.dy + barHeight + gap;
           }
         } else {
-          // bar is below message → picker below bar
           top = barTopLeft.dy + barHeight + gap;
           if (top + pickerH > maxBottom) {
-            // Not enough room below, flip above bar
             top = barTopLeft.dy - pickerH - gap;
           }
         }
         top = top.clamp(minTop, maxBottom - pickerH);
 
-        // Horizontal: try to center over bar, clamp to screen
         const hPadding = 12.0;
         double left =
             barTopLeft.dx +
@@ -632,6 +621,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
   }
 
   @override
+  // Releases controllers and subscriptions used by this widget
   void dispose() {
     _hovered.dispose();
     _menuOpen.dispose();
@@ -639,6 +629,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
   }
 
   @override
+  // Builds the widget tree for this view
   Widget build(BuildContext context) {
     if (widget.message.isSystemMessage) {
       return widget.child;

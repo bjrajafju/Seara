@@ -4,13 +4,12 @@ import 'package:seara/services/api_client.dart';
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
 
-/// Response from paginated message fetch.
 class MessagesPage {
   final List<Message> messages;
   final bool hasMore;
   final DateTime? lastReadAt;
-  final int? targetIndex; // Position of target message for jumping
-  final int? targetMessageId; // ID of the target message (for highlighting)
+  final int? targetIndex;
+  final int? targetMessageId;
 
   MessagesPage({
     required this.messages,
@@ -69,7 +68,6 @@ class MessagesService {
     }
   }
 
-  /// Fetch messages with cursor-based pagination or around a target message.
   Future<MessagesPage> fetchMessages(
     int conversationId, {
     int limit = 30,
@@ -206,6 +204,7 @@ class MessagesService {
     }
   }
 
+  // Returns pinned messages
   Future<List<Message>> getPinnedMessages(int conversationId) async {
     final response = await ApiClient.get(
       Uri.parse(
@@ -222,6 +221,7 @@ class MessagesService {
     }
   }
 
+  // Toggles message pin
   Future<bool> toggleMessagePin(int conversationId, int messageId) async {
     final response = await ApiClient.put(
       Uri.parse(
