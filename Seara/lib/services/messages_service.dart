@@ -204,7 +204,7 @@ class MessagesService {
     }
   }
 
-  // Returns pinned messages
+  /// Returns pinned messages
   Future<List<Message>> getPinnedMessages(int conversationId) async {
     final response = await ApiClient.get(
       Uri.parse(
@@ -221,7 +221,7 @@ class MessagesService {
     }
   }
 
-  // Toggles message pin
+  /// Toggles message pin
   Future<bool> toggleMessagePin(int conversationId, int messageId) async {
     final response = await ApiClient.put(
       Uri.parse(

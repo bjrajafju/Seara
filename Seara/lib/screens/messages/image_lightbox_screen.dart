@@ -18,7 +18,7 @@ class ImageLightboxScreen extends StatefulWidget {
 class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
   bool _isDownloading = false;
 
-  // Download
+  /// Download
   Future<void> _download() async {
     if (_isDownloading) return;
     setState(() => _isDownloading = true);
@@ -40,7 +40,7 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
     }
   }
 
-  // Download mobile
+  /// Download mobile
   Future<void> _downloadMobile() async {
     final response = await http.ApiClient.get(Uri.parse(widget.imageUrl));
     if (response.statusCode != 200) throw Exception('Falha no download.');
@@ -52,7 +52,7 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -101,7 +101,7 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
     );
   }
 
-  // Builds app bar
+  /// Builds app bar
   PreferredSizeWidget _buildAppBar() {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;

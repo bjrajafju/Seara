@@ -24,7 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _message = '';
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -35,7 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // Sends registration data and creates a new account
+  /// Sends registration data and creates a new account
   void _register() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -90,7 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // Go to login
+  /// Go to login
   void _goToLogin() {
     Navigator.pushReplacement(
       context,
@@ -99,7 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;

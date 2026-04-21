@@ -1,6 +1,6 @@
 import supabase from "../services/supabase.js";
 
-// Returns whether the user is an admin in the conversation.
+/// Returns whether the user is an admin in the conversation.
 const isAdmin = async (conversationId, userId) => {
     const { data } = await supabase
         .from("conversation_user")
@@ -11,7 +11,7 @@ const isAdmin = async (conversationId, userId) => {
     return data && (data.role === 1 || data.is_creator);
 };
 
-// Returns whether the user belongs to the conversation.
+/// Returns whether the user belongs to the conversation.
 const isMember = async (conversationId, userId) => {
     const { data } = await supabase
         .from("conversation_user")
@@ -22,7 +22,7 @@ const isMember = async (conversationId, userId) => {
     return !!data;
 };
 
-// Inserts a system message and updates timestamps.
+/// Inserts a system message and updates timestamps.
 const insertSystemMessage = async (conversationId, body) => {
     await supabase.from("messages").insert({
         conversation_id: conversationId,
@@ -32,14 +32,14 @@ const insertSystemMessage = async (conversationId, body) => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     });
-    // Also update conversation's updated_at
+    /// Also update conversation's updated_at
     await supabase
         .from("conversations")
         .update({ updated_at: new Date().toISOString() })
         .eq("id", conversationId);
 };
 
-// Validates permission level for a settings field.
+/// Validates permission level for a settings field.
 const hasPermission = async (conversationId, userId, permissionField) => {
     const { data: settings } = await supabase
         .from("conversation_settings")
@@ -47,14 +47,14 @@ const hasPermission = async (conversationId, userId, permissionField) => {
         .eq("conversation_id", conversationId)
         .single();
 
-    if (!settings) return true; // no settings = allow all
-    if (settings[permissionField] === 0) return true; // 0 = all
+    if (!settings) return true; /// no settings = allow all
+    if (settings[permissionField] === 0) return true; /// 0 = all
 
-    // 1 = admins only
+    /// 1 = admins only
     return isAdmin(conversationId, userId);
 };
 
-// Returns members, settings, and metadata for a conversation.
+/// Returns members, settings, and metadata for a conversation.
 export const getConversationDetails = async (req, res) => {
     const { id } = req.params;
     const userId = parseInt(req.query.userId);
@@ -64,14 +64,14 @@ export const getConversationDetails = async (req, res) => {
     }
 
     try {
-        // Check membership
+        /// Check membership
         if (!(await isMember(id, userId))) {
             return res
                 .status(403)
                 .json({ error: "Não é membro desta conversa." });
         }
 
-        // Fetch conversation
+        /// Fetch conversation
         const { data: conversation, error: convError } = await supabase
             .from("conversations")
             .select("id, name, is_group, created_at, updated_at")
@@ -80,7 +80,7 @@ export const getConversationDetails = async (req, res) => {
 
         if (convError) throw convError;
 
-        // Fetch members with roles
+        /// Fetch members with roles
         const { data: members, error: membersError } = await supabase
             .from("conversation_user")
             .select(
@@ -101,14 +101,14 @@ export const getConversationDetails = async (req, res) => {
 
         if (membersError) throw membersError;
 
-        // Fetch settings
+        /// Fetch settings
         const { data: settings } = await supabase
             .from("conversation_settings")
             .select("*")
             .eq("conversation_id", id)
             .single();
 
-        // Fetch my notification preferences
+        /// Fetch my notification preferences
         const { data: notification } = await supabase
             .from("conversation_notifications")
             .select("*")
@@ -116,7 +116,7 @@ export const getConversationDetails = async (req, res) => {
             .eq("user_id", userId)
             .maybeSingle();
 
-        // Fetch my membership info
+        /// Fetch my membership info
         const { data: myMembership } = await supabase
             .from("conversation_user")
             .select("role, is_creator, is_pinned, last_read_at")
@@ -166,7 +166,7 @@ export const getConversationDetails = async (req, res) => {
     }
 };
 
-// Updates the conversation name.
+/// Updates the conversation name.
 export const updateConversationName = async (req, res) => {
     const { id } = req.params;
     const { userId, name } = req.body;
@@ -206,7 +206,7 @@ export const updateConversationName = async (req, res) => {
     }
 };
 
-// Updates the conversation image URL.
+/// Updates the conversation image URL.
 export const updateConversationImage = async (req, res) => {
     const { id } = req.params;
     const { userId, image } = req.body;
@@ -246,7 +246,7 @@ export const updateConversationImage = async (req, res) => {
     }
 };
 
-// Adds members to a group conversation.
+/// Adds members to a group conversation.
 export const addMembers = async (req, res) => {
     const { id } = req.params;
     const { userId, memberIds } = req.body;
@@ -262,7 +262,7 @@ export const addMembers = async (req, res) => {
                 .json({ error: "Sem permissão para gerir membros." });
         }
 
-        // Filter out already-existing members
+        /// Filter out already-existing members
         const { data: existing } = await supabase
             .from("conversation_user")
             .select("user_id")
@@ -289,7 +289,7 @@ export const addMembers = async (req, res) => {
 
         if (error) throw error;
 
-        // Fetch added users info
+        /// Fetch added users info
         const { data: addedUsers } = await supabase
             .from("users")
             .select("id, username, name, avatar")
@@ -321,7 +321,7 @@ export const addMembers = async (req, res) => {
     }
 };
 
-// Removes a member from a group conversation.
+/// Removes a member from a group conversation.
 export const removeMember = async (req, res) => {
     const { id, targetId } = req.params;
     const userId = parseInt(req.query.userId);
@@ -331,7 +331,7 @@ export const removeMember = async (req, res) => {
     }
 
     try {
-        // Can't remove the creator
+        /// Can't remove the creator
         const { data: target } = await supabase
             .from("conversation_user")
             .select("is_creator")
@@ -345,7 +345,7 @@ export const removeMember = async (req, res) => {
                 .json({ error: "Não é possível remover o criador." });
         }
 
-        // Must be admin to remove others
+        /// Must be admin to remove others
         if (parseInt(targetId) !== userId) {
             if (!(await isAdmin(id, userId))) {
                 return res
@@ -384,7 +384,7 @@ export const removeMember = async (req, res) => {
     }
 };
 
-// Changes member role between admin and member.
+/// Changes member role between admin and member.
 export const updateMemberRole = async (req, res) => {
     const { id, targetId } = req.params;
     const { userId, role } = req.body;
@@ -394,14 +394,14 @@ export const updateMemberRole = async (req, res) => {
     }
 
     try {
-        // Only admins can change roles
+        /// Only admins can change roles
         if (!(await isAdmin(id, userId))) {
             return res
                 .status(403)
                 .json({ error: "Apenas admins podem alterar cargos." });
         }
 
-        // Can't change creator's role
+        /// Can't change creator's role
         const { data: target } = await supabase
             .from("conversation_user")
             .select("is_creator")
@@ -430,7 +430,7 @@ export const updateMemberRole = async (req, res) => {
     }
 };
 
-// Updates conversation-wide settings.
+/// Updates conversation-wide settings.
 export const updateSettings = async (req, res) => {
     const { id } = req.params;
     const { userId, ...settingsUpdate } = req.body;
@@ -473,7 +473,7 @@ export const updateSettings = async (req, res) => {
             }
         }
 
-        // Fetch current settings to detect changes for system messages
+        /// Fetch current settings to detect changes for system messages
         const { data: currentSettings } = await supabase
             .from("conversation_settings")
             .select("theme, ephemeral_duration")
@@ -487,7 +487,7 @@ export const updateSettings = async (req, res) => {
 
         if (error) throw error;
 
-        // Fetch username for system messages
+        /// Fetch username for system messages
         const { data: user } = await supabase
             .from("users")
             .select("username")
@@ -548,7 +548,7 @@ export const updateSettings = async (req, res) => {
     }
 };
 
-// Updates notification preferences for the current user.
+/// Updates notification preferences for the current user.
 export const updateNotifications = async (req, res) => {
     const { id } = req.params;
     const { userId, isMuted, mutedUntil } = req.body;
@@ -579,7 +579,7 @@ export const updateNotifications = async (req, res) => {
     }
 };
 
-// Leaves a conversation or archives direct chats.
+/// Leaves a conversation or archives direct chats.
 export const leaveConversation = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -589,7 +589,7 @@ export const leaveConversation = async (req, res) => {
     }
 
     try {
-        // Check if conversation is group or 1:1
+        /// Check if conversation is group or 1:1
         const { data: conv } = await supabase
             .from("conversations")
             .select("is_group")
@@ -601,7 +601,7 @@ export const leaveConversation = async (req, res) => {
         }
 
         if (conv.is_group) {
-            // Prevents the group creator from leaving directly.
+            /// Prevents the group creator from leaving directly.
             const { data: membership } = await supabase
                 .from("conversation_user")
                 .select("is_creator")
@@ -615,7 +615,7 @@ export const leaveConversation = async (req, res) => {
                 });
             }
 
-            // Remove from conversation_user
+            /// Remove from conversation_user
             const { error } = await supabase
                 .from("conversation_user")
                 .delete()
@@ -634,7 +634,7 @@ export const leaveConversation = async (req, res) => {
                 `${actor?.username || "Alguém"} saiu do grupo`,
             );
         } else {
-            // Archives direct conversations instead of removing membership.
+            /// Archives direct conversations instead of removing membership.
             const { error } = await supabase
                 .from("conversation_user")
                 .update({ is_archived: true })
@@ -651,7 +651,7 @@ export const leaveConversation = async (req, res) => {
     }
 };
 
-// Pins or unpins a conversation for the user.
+/// Pins or unpins a conversation for the user.
 export const togglePin = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -661,7 +661,7 @@ export const togglePin = async (req, res) => {
     }
 
     try {
-        // Get current state
+        /// Get current state
         const { data: current } = await supabase
             .from("conversation_user")
             .select("is_pinned")
@@ -692,7 +692,7 @@ export const togglePin = async (req, res) => {
     }
 };
 
-// Marks a conversation as read for the current user.
+/// Marks a conversation as read for the current user.
 export const markAsRead = async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
@@ -719,7 +719,7 @@ export const markAsRead = async (req, res) => {
     }
 };
 
-// Searches conversation messages using available filters.
+/// Searches conversation messages using available filters.
 export const searchConversationMessages = async (req, res) => {
     const { id } = req.params;
     const { userId, q, type, senderId, from, to } = req.query;
@@ -759,17 +759,17 @@ export const searchConversationMessages = async (req, res) => {
             .order("created_at", { ascending: false })
             .limit(50);
 
-        // Text filter
+        /// Text filter
         if (q && q.trim().length > 0) {
             query = query.ilike("body", `%${q.trim()}%`);
         }
 
-        // User filter
+        /// User filter
         if (senderId) {
             query = query.eq("user_id", parseInt(senderId));
         }
 
-        // Type filter (image, video, audio, file)
+        /// Type filter (image, video, audio, file)
         if (type) {
             if (type === "image") {
                 query = query.ilike("attachment_type", "image/%");
@@ -786,7 +786,7 @@ export const searchConversationMessages = async (req, res) => {
             }
         }
 
-        // Date range
+        /// Date range
         if (from) {
             query = query.gte("created_at", from);
         }
@@ -794,7 +794,7 @@ export const searchConversationMessages = async (req, res) => {
             query = query.lte("created_at", to);
         }
 
-        // Filter expired ephemerals
+        /// Filter expired ephemerals
         query = query.or(
             "expires_at.is.null,expires_at.gt." + new Date().toISOString(),
         );
@@ -824,7 +824,7 @@ export const searchConversationMessages = async (req, res) => {
     }
 };
 
-// Returns shared media items by requested type.
+/// Returns shared media items by requested type.
 export const getSharedMedia = async (req, res) => {
     const { id } = req.params;
     const { userId, type } = req.query;
@@ -876,7 +876,7 @@ export const getSharedMedia = async (req, res) => {
                 .order("created_at", { ascending: false })
                 .limit(100);
 
-            // Filter expired
+            /// Filter expired
             query = query.or(
                 "expires_at.is.null,expires_at.gt." + new Date().toISOString(),
             );
@@ -886,7 +886,7 @@ export const getSharedMedia = async (req, res) => {
             return res.json(data || []);
         }
 
-        // Filter expired
+        /// Filter expired
         query = query.or(
             "expires_at.is.null,expires_at.gt." + new Date().toISOString(),
         );

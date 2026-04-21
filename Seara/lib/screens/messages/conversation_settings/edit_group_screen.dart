@@ -29,7 +29,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   final ImagePicker _picker = ImagePicker();
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.currentName);
@@ -37,13 +37,13 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _nameController.dispose();
     super.dispose();
   }
 
-  // Picks image
+  /// Picks image
   Future<void> _pickImage() async {
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -78,7 +78,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     }
   }
 
-  // Save
+  /// Save
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -119,7 +119,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

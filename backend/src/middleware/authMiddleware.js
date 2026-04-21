@@ -1,9 +1,9 @@
 import supabase from "../services/supabase.js";
 
-// Middleware that protects private routes.
+/// Middleware that protects private routes.
 export const authenticate = async (req, res, next) => {
   try {
-    // Reads bearer token from Authorization header.
+    /// Reads bearer token from Authorization header.
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -16,17 +16,17 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: "Token inválido." });
     }
 
-    // Validates token against Supabase auth.
+    /// Validates token against Supabase auth.
     const { data, error } = await supabase.auth.getUser(token);
 
     if (error || !data.user) {
       return res.status(401).json({ error: "Token inválido ou expirado." });
     }
 
-    // Guarda o utilizador na request
+    /// Guarda o utilizador na request
     req.user = data.user;
 
-    // Passes control to the next middleware.
+    /// Passes control to the next middleware.
     next();
   } catch (err) {
     console.error("Erro no middleware de autenticação:", err);

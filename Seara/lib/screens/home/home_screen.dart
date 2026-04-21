@@ -32,18 +32,18 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _loadToken();
   }
 
-  // Loads token
+  /// Loads token
   void _loadToken() async {
     await AuthService.getToken();
   }
 
-  // Clears persisted session data and logs out the user
+  /// Clears persisted session data and logs out the user
   Future<void> _logout() async {
     final authProvider = context.read<AuthProvider>();
     final messagesProvider = context.read<MessagesProvider>();
@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 

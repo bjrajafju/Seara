@@ -28,7 +28,7 @@ class AttachmentPreviewScreen extends StatefulWidget {
   final AttachmentPreview preview;
 
   @override
-  // Creates the state object for this screen
+  /// Creates the state object for this screen
   State<AttachmentPreviewScreen> createState() =>
       _AttachmentPreviewScreenState();
 }
@@ -44,7 +44,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   Uint8List? _croppedBytes;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     if (widget.preview.type == PreviewType.audio) {
@@ -52,7 +52,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
-  // Safe delete windows temp audio
+  /// Safe delete windows temp audio
   void _safeDeleteWindowsTempAudio() {
     final p = _windowsTempAudioPath;
     if (p == null) return;
@@ -63,7 +63,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _captionController.dispose();
     if (widget.preview.type == PreviewType.audio) {
@@ -75,7 +75,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     super.dispose();
   }
 
-  // Prepare audio
+  /// Prepare audio
   Future<void> _prepareAudio() async {
     try {
       if (!kIsWeb && Platform.isWindows) {
@@ -103,7 +103,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
-  // Toggles preview audio
+  /// Toggles preview audio
   Future<void> _togglePreviewAudio() async {
     if (!_audioPrepared) return;
 
@@ -131,14 +131,14 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     await _audio.resume();
   }
 
-  // Formats duration
+  /// Formats duration
   String _formatDuration(Duration d) {
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return "$minutes:$seconds";
   }
 
-  // Confirm
+  /// Confirm
   void _confirm() {
     Navigator.pop(context, {
       'bytes': _croppedBytes ?? widget.preview.bytes,
@@ -149,7 +149,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -180,7 +180,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     );
   }
 
-  // Crop image
+  /// Crop image
   Future<void> _cropImage() async {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -220,7 +220,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
-  // Builds preview content
+  /// Builds preview content
   Widget _buildPreviewContent(ThemeData theme) {
     final cs = theme.colorScheme;
     switch (widget.preview.type) {
@@ -421,7 +421,7 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
-  // Builds caption and send
+  /// Builds caption and send
   Widget _buildCaptionAndSend(ThemeData theme) {
     final cs = theme.colorScheme;
     return Container(

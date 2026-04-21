@@ -156,7 +156,7 @@ class ConversationSettingsService {
     }
   }
 
-  // Leave conversation
+  /// Leave conversation
   static Future<void> leaveConversation(int conversationId, int userId) async {
     final response = await ApiClient.post(
       Uri.parse("$baseUrl/conversations/$conversationId/leave"),
@@ -170,7 +170,7 @@ class ConversationSettingsService {
     }
   }
 
-  // Toggles pin
+  /// Toggles pin
   static Future<bool> togglePin(int conversationId, int userId) async {
     final response = await ApiClient.put(
       Uri.parse("$baseUrl/conversations/$conversationId/pin"),
@@ -186,7 +186,7 @@ class ConversationSettingsService {
     }
   }
 
-  // Mark as read
+  /// Mark as read
   static Future<void> markAsRead(int conversationId, int userId) async {
     final response = await ApiClient.post(
       Uri.parse("$baseUrl/conversations/$conversationId/read"),

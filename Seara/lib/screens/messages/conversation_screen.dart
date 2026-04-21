@@ -68,7 +68,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _isJumpingToMessage = false;
   final Map<int, GlobalKey> _messageKeys = {};
 
-  // Key for message
+  /// Key for message
   GlobalKey _keyForMessage(int messageId) {
     return _messageKeys.putIfAbsent(messageId, () => GlobalKey());
   }
@@ -77,7 +77,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final TextEditingController _editMessageController = TextEditingController();
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _messagesProvider = context.read<MessagesProvider>();
@@ -99,14 +99,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _init();
   }
 
-  // Init file picker
+  /// Init file picker
   void _initFilePicker() {
     if (kIsWeb) {
       FilePicker.platform = FilePicker.platform;
     }
   }
 
-  // Handles text changed
+  /// Handles text changed
   void _onTextChanged() {
     final hasText = _messageController.text.trim().isNotEmpty;
     if (hasText != _hasText) {
@@ -114,7 +114,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Handles scroll
+  /// Handles scroll
   void _onScroll() {
     if (!_scrollController.hasClients) return;
 
@@ -148,7 +148,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Initializes local dependencies and startup state
+  /// Initializes local dependencies and startup state
   Future<void> _init() async {
     _myId = await AuthService.getUserId();
     if (!mounted) return;
@@ -173,7 +173,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   int _lastMessageCount = 0;
-  // Handles new message
+
+  /// Handles new message
   void _onNewMessage() {
     final count = _messagesProvider.messages.length;
     if (count > _lastMessageCount && _lastMessageCount > 0) {
@@ -184,7 +185,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _lastMessageCount = count;
   }
 
-  // Loads theme
+  /// Loads theme
   Future<void> _loadTheme() async {
     try {
       final details = await ConversationSettingsService.getDetails(
@@ -197,7 +198,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _messageController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
@@ -215,7 +216,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     super.dispose();
   }
 
-  // Scroll to bottom
+  /// Scroll to bottom
   void _scrollToBottom({bool animate = false, int attempts = 0}) {
     if (!mounted || _isJumpingToMessage) return;
 
@@ -250,7 +251,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Sends the current message and attachments
+  /// Sends the current message and attachments
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty || _myId == null) return;
@@ -266,7 +267,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (success) _scrollToBottom(animate: true);
   }
 
-  // Opens the attachment picker actions
+  /// Opens the attachment picker actions
   void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
@@ -318,7 +319,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Picks media
+  /// Picks media
   Future<void> _pickMedia({required bool isVideo}) async {
     final XFile? file = isVideo
         ? await _imagePicker.pickVideo(source: ImageSource.gallery)
@@ -352,7 +353,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Crop image bytes
+  /// Crop image bytes
   Future<Uint8List?> _cropImageBytes(Uint8List bytes, String fileName) async {
     try {
       final tempDir = await getTemporaryDirectory();
@@ -377,7 +378,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Picks audio file
+  /// Picks audio file
   Future<void> _pickAudioFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.audio,
@@ -397,7 +398,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Picks any file
+  /// Picks any file
   Future<void> _pickAnyFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.any,
@@ -472,7 +473,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Starts recording
+  /// Starts recording
   Future<void> _startRecording() async {
     final hasPermission = await _audioService.checkPermissions();
     if (!hasPermission) {
@@ -500,7 +501,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Stops and send recording
+  /// Stops and send recording
   Future<void> _stopAndSendRecording() async {
     if (!_isRecording) return;
 
@@ -528,14 +529,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Discard recording
+  /// Discard recording
   Future<void> _discardRecording() async {
     if (!_isRecording) return;
     await _audioService.cancelRecording();
     if (mounted) setState(() => _isRecording = false);
   }
 
-  // Returns whether first in group
+  /// Returns whether first in group
   bool _isFirstInGroup(List<Message> messages, int index) {
     if (index == 0) return true;
     final current = messages[index];
@@ -545,7 +546,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return diff >= _kGroupingMinutes;
   }
 
-  // Returns whether last in group
+  /// Returns whether last in group
   bool _isLastInGroup(List<Message> messages, int index) {
     if (index == messages.length - 1) return true;
     final current = messages[index];
@@ -555,7 +556,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return diff >= _kGroupingMinutes;
   }
 
-  // Returns display name
+  /// Returns display name
   String _getDisplayName() {
     if (widget.conversation.isGroup) {
       return widget.conversation.name ?? "Grupo";
@@ -566,7 +567,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return other.isNotEmpty ? other.first.username : "Utilizador";
   }
 
-  // Returns display avatar
+  /// Returns display avatar
   String _getDisplayAvatar() {
     final other = widget.conversation.participants
         .where((u) => u.id != _myId)
@@ -577,7 +578,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   bool _isDragOver = false;
 
-  // Wrap with drop target
+  /// Wrap with drop target
   Widget _wrapWithDropTarget(Widget child) {
     return DropTarget(
       onDragEntered: (_) {
@@ -677,7 +678,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final convTheme = ConversationThemeHelper.getTheme(_convThemeId);
@@ -705,7 +706,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds app bar
+  /// Builds app bar
   PreferredSizeWidget _buildAppBar(ThemeData theme) {
     return AppBar(
       backgroundColor: theme.colorScheme.primary,
@@ -752,7 +753,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Opens details
+  /// Opens details
   void _openDetails() {
     Navigator.push<int>(
       context,
@@ -772,7 +773,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     });
   }
 
-  // Scroll to message
+  /// Scroll to message
   Future<void> _scrollToMessage(int messageId) async {
     _isJumpingToMessage = true;
     setState(() => _highlightMessageId = messageId);
@@ -790,7 +791,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       }
 
       if (targetIndex != null) {
-        // Attempt scroll
+        /// Attempt scroll
         void attemptScroll(int attempts) {
           if (!mounted) {
             _isJumpingToMessage = false;
@@ -878,7 +879,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Builds pinned message bar
+  /// Builds pinned message bar
   Widget _buildPinnedMessageBar(ThemeData theme) {
     return Consumer<MessagesProvider>(
       builder: (context, provider, _) {
@@ -955,7 +956,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds messages list
+  /// Builds messages list
   Widget _buildMessagesList(ThemeData theme) {
     return Expanded(
       child: Consumer<MessagesProvider>(
@@ -1090,7 +1091,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds unread divider
+  /// Builds unread divider
   Widget _buildUnreadDivider(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -1123,12 +1124,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Returns whether same day
+  /// Returns whether same day
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  // Formats date label
+  /// Formats date label
   String _formatDateLabel(DateTime date) {
     final now = DateTime.now();
     if (_isSameDay(date, now)) return 'Hoje';
@@ -1137,7 +1138,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  // Builds date separator
+  /// Builds date separator
   Widget _buildDateSeparator(ThemeData theme, DateTime date) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 48),
@@ -1160,7 +1161,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds system message
+  /// Builds system message
   Widget _buildSystemMessage(ThemeData theme, Message message) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
@@ -1185,7 +1186,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds attachment content
+  /// Builds attachment content
   Widget _buildAttachmentContent(ThemeData theme, Message message) {
     switch (message.attachmentType) {
       case AttachmentType.image:
@@ -1236,7 +1237,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Builds file attachment
+  /// Builds file attachment
   Widget _buildFileAttachment(ThemeData theme, Message message) {
     final name = message.attachmentName ?? 'Ficheiro';
     final ext = name.contains('.') ? name.split('.').last.toUpperCase() : '?';
@@ -1296,7 +1297,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // File icon
+  /// File icon
   IconData _fileIcon(String name) {
     final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
     if (['pdf'].contains(ext)) return Icons.picture_as_pdf_rounded;
@@ -1309,7 +1310,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return Icons.insert_drive_file_rounded;
   }
 
-  // Confirm file download
+  /// Confirm file download
   Future<void> _confirmFileDownload(String url, String fileName) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1672,7 +1673,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   static final RegExp _urlRegex = RegExp(r'(https?:\/\/[^\s]+)');
 
-  // Extract url
+  /// Extract url
   String? _extractUrl(String text) {
     final match = _urlRegex.firstMatch(text);
     return match?.group(0);
@@ -1729,7 +1730,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds link preview
+  /// Builds link preview
   Widget _buildLinkPreview(String text) {
     final url = _extractUrl(text);
     if (url == null) return const SizedBox.shrink();
@@ -1745,7 +1746,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds status icon
+  /// Builds status icon
   Widget _buildStatusIcon(ThemeData theme, Message message) {
     IconData icon;
     Color color;
@@ -1775,7 +1776,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Handles edit message
+  /// Handles edit message
   void _handleEditMessage(Message message) {
     setState(() {
       _editingMessageId = message.id;
@@ -1783,7 +1784,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     });
   }
 
-  // Cancel edit
+  /// Cancel edit
   void _cancelEdit() {
     setState(() {
       _editingMessageId = null;
@@ -1791,7 +1792,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     });
   }
 
-  // Saves edited message
+  /// Saves edited message
   Future<void> _saveEditedMessage(Message message) async {
     final newText = _editMessageController.text.trim();
     if (newText.isEmpty) return;
@@ -1821,7 +1822,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Handles delete message
+  /// Handles delete message
   Future<void> _handleDeleteMessage(Message message) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1866,7 +1867,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Handles copy message
+  /// Handles copy message
   void _handleCopyMessage(Message message) {
     Clipboard.setData(ClipboardData(text: message.body));
     ScaffoldMessenger.of(
@@ -1874,7 +1875,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     ).showSnackBar(const SnackBar(content: Text('Mensagem copiada')));
   }
 
-  // Builds edit message bubble
+  /// Builds edit message bubble
   Widget _buildEditMessageBubble(ThemeData theme, Message message) {
     final isMe = message.userId == _myId;
     return Padding(
@@ -1939,7 +1940,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Handles pin message
+  /// Handles pin message
   void _handlePinMessage(Message message) async {
     final success = await context.read<MessagesProvider>().togglePinMessage(
       widget.conversation.id,
@@ -1952,7 +1953,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Handles forward message
+  /// Handles forward message
   void _handleForwardMessage(Message message) {
     if (!mounted) return;
     Navigator.push(
@@ -1964,13 +1965,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Handles reply message
+  /// Handles reply message
   void _handleReplyMessage(Message message) {
     context.read<MessagesProvider>().startReply(message);
     _focusNode.requestFocus();
   }
 
-  // Handles react to message
+  /// Handles react to message
   void _handleReactToMessage(Message message, String reaction) {
     if (_myId == null) return;
     context.read<MessagesProvider>().toggleReaction(
@@ -1980,7 +1981,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds input area
+  /// Builds input area
   Widget _buildInputArea(ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
@@ -2011,7 +2012,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds reply composer preview
+  /// Builds reply composer preview
   Widget _buildReplyComposerPreview(ThemeData theme) {
     return Consumer<MessagesProvider>(
       builder: (context, provider, _) {
@@ -2059,7 +2060,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Reply preview text
+  /// Reply preview text
   String _replyPreviewText(ReplyPreview reply) {
     if (reply.isUnavailable) return 'Mensagem indisponível';
     if ((reply.body ?? '').trim().isNotEmpty) return reply.body!.trim();
@@ -2070,7 +2071,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return 'Mensagem indisponível';
   }
 
-  // Builds reply snippet
+  /// Builds reply snippet
   Widget _buildReplySnippet(ThemeData theme, Message message) {
     if (message.replyToMessageId == null) return const SizedBox.shrink();
     final reply = message.replyTo;
@@ -2110,7 +2111,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds reactions row
+  /// Builds reactions row
   Widget _buildReactionsRow(ThemeData theme, Message message) {
     if (message.reactions.isEmpty) return const SizedBox.shrink();
     return Padding(
@@ -2150,7 +2151,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds normal input
+  /// Builds normal input
   Widget _buildNormalInput(ThemeData theme) {
     return Row(
       children: [
@@ -2189,7 +2190,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds recording indicator
+  /// Builds recording indicator
   Widget _buildRecordingIndicator(ThemeData theme) {
     return Row(
       children: [
@@ -2230,7 +2231,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Builds message field
+  /// Builds message field
   Widget _buildMessageField(ThemeData theme) {
     return TextFormField(
       controller: _messageController,
@@ -2260,7 +2261,7 @@ class _VideoThumbnailWidget extends StatelessWidget {
   final String url;
   final String? fileName;
 
-  // Opens lightbox
+  /// Opens lightbox
   void _openLightbox(BuildContext context) {
     Navigator.push(
       context,
@@ -2276,7 +2277,7 @@ class _VideoThumbnailWidget extends StatelessWidget {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;

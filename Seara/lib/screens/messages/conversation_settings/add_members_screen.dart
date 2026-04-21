@@ -28,7 +28,7 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
   bool _isAdding = false;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _loadUsers();
@@ -36,14 +36,14 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _searchController.removeListener(_onSearch);
     _searchController.dispose();
     super.dispose();
   }
 
-  // Loads users
+  /// Loads users
   Future<void> _loadUsers() async {
     try {
       final users = await ProfileService.getUsersWithRelationship(
@@ -65,7 +65,7 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
     }
   }
 
-  // Handles search
+  /// Handles search
   void _onSearch() {
     final q = _searchController.text.trim().toLowerCase();
     if (q.isEmpty) {
@@ -80,7 +80,7 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
     });
   }
 
-  // Add selected
+  /// Add selected
   Future<void> _addSelected() async {
     if (_selectedUsers.isEmpty || _isAdding) return;
     setState(() => _isAdding = true);
@@ -103,7 +103,7 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

@@ -12,7 +12,7 @@ class LinkPreviewCard extends StatelessWidget {
         preview.url.contains('youtu.be');
   }
 
-  // Launch url
+  /// Launch url
   Future<void> _launchUrl() async {
     final uri = Uri.parse(preview.url);
     if (await canLaunchUrl(uri)) {
@@ -21,7 +21,7 @@ class LinkPreviewCard extends StatelessWidget {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

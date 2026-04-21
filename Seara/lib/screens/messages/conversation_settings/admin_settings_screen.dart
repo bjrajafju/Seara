@@ -26,7 +26,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   bool _isSaving = false;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _whoCanManageMembers = widget.settings.whoCanManageMembers;
@@ -35,7 +35,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     _whoCanEditBio = widget.settings.whoCanEditBio;
   }
 
-  // Save
+  /// Save
   Future<void> _save() async {
     setState(() => _isSaving = true);
     try {
@@ -67,7 +67,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;

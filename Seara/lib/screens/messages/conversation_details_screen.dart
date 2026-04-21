@@ -29,7 +29,7 @@ class ConversationDetailsScreen extends StatefulWidget {
   final int myId;
 
   @override
-  // Creates the state object for this screen
+  /// Creates the state object for this screen
   State<ConversationDetailsScreen> createState() =>
       _ConversationDetailsScreenState();
 }
@@ -42,7 +42,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
   String? _error;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
@@ -50,13 +50,13 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
 
-  // Loads details
+  /// Loads details
   Future<void> _loadDetails() async {
     try {
       final details = await ConversationSettingsService.getDetails(
@@ -106,7 +106,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     return other.isNotEmpty ? other.first.id : null;
   }
 
-  // Toggles pin
+  /// Toggles pin
   Future<void> _togglePin() async {
     try {
       final newState = await ConversationSettingsService.togglePin(
@@ -145,7 +145,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     }
   }
 
-  // Danger action
+  /// Danger action
   Future<void> _dangerAction() async {
     final isGroup = widget.conversation.isGroup;
     final isCreator = _details?.isCreator ?? false;
@@ -211,7 +211,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -314,7 +314,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Builds sliver app bar
+  /// Builds sliver app bar
   Widget _buildSliverAppBar(ThemeData theme) {
     return SliverAppBar(
       backgroundColor: theme.colorScheme.surface,
@@ -445,7 +445,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Builds action buttons
+  /// Builds action buttons
   Widget _buildActionButtons(ThemeData theme) {
     final actions = [
       _QuickAction(
@@ -503,7 +503,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Builds settings sections
+  /// Builds settings sections
   Widget _buildSettingsSections(ThemeData theme) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -634,7 +634,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Builds tab bar
+  /// Builds tab bar
   TabBar _buildTabBar(ThemeData theme) {
     return TabBar(
       controller: _tabController,
@@ -652,7 +652,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Builds tab content
+  /// Builds tab content
   Widget _buildTabContent(ThemeData theme) {
     return TabBarView(
       controller: _tabController,
@@ -676,7 +676,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Builds danger zone
+  /// Builds danger zone
   Widget _buildDangerZone(ThemeData theme) {
     final isGroup = widget.conversation.isGroup;
     final isCreator = _details?.isCreator ?? false;
@@ -726,7 +726,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Navigates to the selected user profile
+  /// Navigates to the selected user profile
   void _openProfile(int userId) {
     Navigator.push(
       context,
@@ -738,7 +738,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Opens edit group
+  /// Opens edit group
   void _openEditGroup() {
     if (_details == null) return;
     Navigator.push(
@@ -754,7 +754,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
-  // Opens members
+  /// Opens members
   void _openMembers() {
     if (_details == null) return;
     Navigator.push(
@@ -770,7 +770,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
-  // Opens notifications
+  /// Opens notifications
   void _openNotifications() {
     if (_details == null) return;
     Navigator.push(
@@ -785,7 +785,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
-  // Opens search
+  /// Opens search
   void _openSearch() {
     Navigator.push<int>(
       context,
@@ -803,7 +803,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     });
   }
 
-  // Opens theme
+  /// Opens theme
   void _openTheme() {
     if (_details == null) return;
     Navigator.push(
@@ -819,7 +819,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
-  // Opens ephemeral
+  /// Opens ephemeral
   void _openEphemeral() {
     if (_details == null) return;
     Navigator.push(
@@ -835,7 +835,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
-  // Opens admin settings
+  /// Opens admin settings
   void _openAdminSettings() {
     if (_details == null) return;
     Navigator.push(
@@ -850,7 +850,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     ).then((_) => _loadDetails());
   }
 
-  // Starts call
+  /// Starts call
   void _startCall({required bool isVideo}) {
     Navigator.push(
       context,
@@ -864,7 +864,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     );
   }
 
-  // Edit description
+  /// Edit description
   void _editDescription() async {
     final controller = TextEditingController(text: _details?.description ?? '');
     final result = await showDialog<String>(
@@ -959,7 +959,7 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  // Should rebuild
+  /// Should rebuild
   bool shouldRebuild(covariant _StickyTabBarDelegate oldDelegate) {
     return tabBar != oldDelegate.tabBar || color != oldDelegate.color;
   }
@@ -990,13 +990,13 @@ class _MediaGridState extends State<_MediaGrid>
   bool get wantKeepAlive => true;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _load();
   }
 
-  // Load
+  /// Load
   Future<void> _load() async {
     setState(() {
       _isLoading = true;
@@ -1023,7 +1023,7 @@ class _MediaGridState extends State<_MediaGrid>
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
@@ -1276,13 +1276,13 @@ class _MediaGridState extends State<_MediaGrid>
     );
   }
 
-  // Formats date
+  /// Formats date
   String _formatDate(DateTime? date) {
     if (date == null) return '';
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  // Opens image viewer
+  /// Opens image viewer
   void _openImageViewer(BuildContext context, String url) {
     Navigator.push(
       context,
@@ -1296,7 +1296,7 @@ class _MediaGridState extends State<_MediaGrid>
     );
   }
 
-  // Opens video player
+  /// Opens video player
   void _openVideoPlayer(BuildContext context, String url) {
     Navigator.push(
       context,

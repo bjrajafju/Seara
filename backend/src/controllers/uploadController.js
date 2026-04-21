@@ -2,8 +2,8 @@ import supabase from "../services/supabase.js";
 
 const ALLOWED_BUCKETS = ["avatars", "attachments", "groups"];
 
-// Resolves content type from file extension when needed.
-// Handles uploads sent as application/octet-stream.
+/// Resolves content type from file extension when needed.
+/// Handles uploads sent as application/octet-stream.
 const EXTENSION_MIME_MAP = {
     jpg: "image/jpeg",
     jpeg: "image/jpeg",

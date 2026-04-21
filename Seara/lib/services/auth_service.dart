@@ -19,28 +19,28 @@ class AuthService {
     await _storage.write(key: 'refresh_token', value: refreshToken);
   }
 
-  // Reads the persisted auth token
+  /// Reads the persisted auth token
   static Future<String?> getToken() async {
     return await _storage.read(key: 'access_token');
   }
 
-  // Persists the authenticated user id
+  /// Persists the authenticated user id
   static Future<void> saveUserId(int userId) async {
     await _storage.write(key: 'user_id', value: userId.toString());
   }
 
-  // Reads the persisted user id
+  /// Reads the persisted user id
   static Future<int?> getUserId() async {
     final val = await _storage.read(key: 'user_id');
     return val != null ? int.tryParse(val) : null;
   }
 
-  // Clears persisted session data and logs out the user
+  /// Clears persisted session data and logs out the user
   static Future<void> logout() async {
     await _storage.deleteAll();
   }
 
-  // Validates the current auth token with the backend
+  /// Validates the current auth token with the backend
   static Future<bool> validateSession() async {
     try {
       final token = await getToken();
@@ -71,7 +71,7 @@ class AuthService {
     }
   }
 
-  // Sends registration data and creates a new account
+  /// Sends registration data and creates a new account
   static Future<String?> register(String email, String password) async {
     try {
       final response = await http.post(
@@ -92,7 +92,7 @@ class AuthService {
     }
   }
 
-  // Sends login credentials and stores the authenticated session
+  /// Sends login credentials and stores the authenticated session
   static Future<String?> login(String email, String password) async {
     try {
       final response = await http.post(

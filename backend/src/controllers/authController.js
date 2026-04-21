@@ -1,6 +1,6 @@
 import supabase from "../services/supabase.js";
 
-// Registers a new user account.
+/// Registers a new user account.
 export const register = async (req, res) => {
     let { email, password } = req.body || {};
     if (typeof email === "string") email = email.trim().toLowerCase();
@@ -21,7 +21,7 @@ export const register = async (req, res) => {
             return res.status(400).json({ error: error?.message });
         }
 
-        const authUserId = data.user.id; // UUID
+        const authUserId = data.user.id; /// UUID
 
         const baseUsername = email.split("@")[0];
         const username = await generateUsername(baseUsername);
@@ -45,8 +45,8 @@ export const register = async (req, res) => {
 
         res.status(201).json({
             user: {
-                id: appUser.id, // BIGINT
-                auth_id: authUserId, // UUID
+                id: appUser.id, /// BIGINT
+                auth_id: authUserId, /// UUID
                 email: appUser.email,
             },
         });
@@ -56,7 +56,7 @@ export const register = async (req, res) => {
     }
 };
 
-// Logs in a user and returns app session data.
+/// Logs in a user and returns app session data.
 export const login = async (req, res) => {
     const { email, password } = req.body;
 
@@ -103,7 +103,7 @@ export const login = async (req, res) => {
     }
 };
 
-// Generates a unique username from the requested base value.
+/// Generates a unique username from the requested base value.
 const generateUsername = async (base) => {
     let username = base.toLowerCase().replace(/[^a-z0-9_]/g, "");
     let count = 0;

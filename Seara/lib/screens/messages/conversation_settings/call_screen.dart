@@ -29,7 +29,7 @@ class _CallScreenState extends State<CallScreen>
   late Animation<double> _pulseAnimation;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _pulseController = AnimationController(
@@ -47,7 +47,7 @@ class _CallScreenState extends State<CallScreen>
     });
   }
 
-  // Starts timer
+  /// Starts timer
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -59,7 +59,7 @@ class _CallScreenState extends State<CallScreen>
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _timer?.cancel();
     _pulseController.dispose();
@@ -72,13 +72,13 @@ class _CallScreenState extends State<CallScreen>
     return '$min:$sec';
   }
 
-  // End call
+  /// End call
   void _endCall() {
     Navigator.pop(context);
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),

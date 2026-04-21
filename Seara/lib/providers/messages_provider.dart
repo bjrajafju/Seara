@@ -43,7 +43,7 @@ class MessagesProvider extends ChangeNotifier {
   ReplyPreview? get replyingTo => _replyingTo;
   List<String> get quickReactions => List.unmodifiable(_quickReactions);
 
-  // Merges incoming messages into local state
+  /// Merges incoming messages into local state
   void _upsertMessages(Iterable<Message> incoming) {
     if (incoming.isEmpty) return;
     final byId = <int, Message>{for (final m in _messages) m.id: m};
@@ -55,7 +55,7 @@ class MessagesProvider extends ChangeNotifier {
     _messages = merged;
   }
 
-  // Finds a message by id in local caches
+  /// Finds a message by id in local caches
   Message? getMessageById(int messageId) {
     try {
       return _messages.firstWhere((m) => m.id == messageId);
@@ -64,7 +64,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
-  // Stores the selected message as active reply target
+  /// Stores the selected message as active reply target
   void startReply(Message target) {
     _replyingTo =
         target.replyTo ??
@@ -81,14 +81,14 @@ class MessagesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Clears the active reply target
+  /// Clears the active reply target
   void cancelReply() {
     if (_replyingTo == null) return;
     _replyingTo = null;
     notifyListeners();
   }
 
-  // Loads messages for the current conversation
+  /// Loads messages for the current conversation
   Future<void> loadMessages(int conversationId, {int? userId}) async {
     _myUserId = userId;
     await _loadQuickReactions(userId);
@@ -111,7 +111,7 @@ class MessagesProvider extends ChangeNotifier {
     fetchPinnedMessages(conversationId);
   }
 
-  // Loads pinned messages for this conversation
+  /// Loads pinned messages for this conversation
   Future<void> fetchPinnedMessages(int conversationId) async {
     try {
       _pinnedMessages = await _service.getPinnedMessages(conversationId);
@@ -121,7 +121,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
-  // Pins or unpins the selected message
+  /// Pins or unpins the selected message
   Future<bool> togglePinMessage(int conversationId, Message msg) async {
     try {
       await _service.toggleMessagePin(conversationId, msg.id);
@@ -180,7 +180,7 @@ class MessagesProvider extends ChangeNotifier {
     return null;
   }
 
-  // Loads older messages for pagination
+  /// Loads older messages for pagination
   Future<void> loadMore(int conversationId, {int? userId}) async {
     _myUserId ??= userId;
     if (_isLoadingMore || !_hasMore || _messages.isEmpty) return;
@@ -204,7 +204,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
-  // Loads quick reactions
+  /// Loads quick reactions
   Future<void> _loadQuickReactions(int? userId) async {
     if (userId == null) return;
     try {
@@ -245,7 +245,7 @@ class MessagesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  // Subscribe to conversation
+  /// Subscribe to conversation
   void subscribeToConversation(int conversationId) {
     unsubscribe();
     _myUserId = null;
@@ -304,7 +304,7 @@ class MessagesProvider extends ChangeNotifier {
         .subscribe();
   }
 
-  // Removes active realtime listeners
+  /// Removes active realtime listeners
   void unsubscribe() {
     if (_channel != null) {
       Supabase.instance.client.removeChannel(_channel!);
@@ -316,7 +316,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
-  // Apply realtime reaction
+  /// Apply realtime reaction
   void _applyRealtimeReaction(Map<String, dynamic> row, bool added) {
     final messageId = (row['message_id'] as num?)?.toInt();
     final reaction = row['reaction']?.toString();
@@ -586,7 +586,7 @@ class MessagesProvider extends ChangeNotifier {
     }
   }
 
-  // Clears provider state for the current conversation
+  /// Clears provider state for the current conversation
   void clear() {
     unsubscribe();
     _messages = [];

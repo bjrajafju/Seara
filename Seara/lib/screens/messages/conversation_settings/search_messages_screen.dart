@@ -41,14 +41,14 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
   ];
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _searchController.addListener(_onTextChanged);
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _debounce?.cancel();
     _searchController.removeListener(_onTextChanged);
@@ -56,7 +56,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     super.dispose();
   }
 
-  // Handles text changed
+  /// Handles text changed
   void _onTextChanged() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -64,7 +64,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     });
   }
 
-  // Search
+  /// Search
   Future<void> _search() async {
     final q = _searchController.text.trim();
     if (q.isEmpty &&
@@ -109,19 +109,19 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     }
   }
 
-  // Set type filter
+  /// Set type filter
   void _setTypeFilter(String? value) {
     setState(() => _typeFilter = value);
     _search();
   }
 
-  // Set sender filter
+  /// Set sender filter
   void _setSenderFilter(int? value) {
     setState(() => _senderFilter = value);
     _search();
   }
 
-  // Picks date
+  /// Picks date
   Future<void> _pickDate(bool isFrom) async {
     final picked = await showDatePicker(
       context: context,
@@ -140,7 +140,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     _search();
   }
 
-  // Clear dates
+  /// Clear dates
   void _clearDates() {
     setState(() {
       _dateFrom = null;
@@ -152,7 +152,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
   bool get _hasDateFilter => _dateFrom != null || _dateTo != null;
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -351,7 +351,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     );
   }
 
-  // Builds sender dropdown
+  /// Builds sender dropdown
   Widget _buildSenderDropdown(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -384,7 +384,7 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
     );
   }
 
-  // Builds message result
+  /// Builds message result
   Widget _buildMessageResult(ThemeData theme, Message msg) {
     final isImage = msg.attachmentType == AttachmentType.image;
 

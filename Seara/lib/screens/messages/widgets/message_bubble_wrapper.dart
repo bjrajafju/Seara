@@ -23,14 +23,14 @@ class _EmojiPickerCustomViewState extends State<_EmojiPickerCustomView> {
   int _categoryIndex = 0;
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _search.dispose();
     super.dispose();
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textUnit = (theme.textTheme.bodyMedium?.fontSize ?? 14.0);
@@ -177,7 +177,7 @@ class _ReactionOverlayManager {
   static OverlayEntry? _bubble;
   static OverlayEntry? _emojiPicker;
 
-  // Close all
+  /// Close all
   static void closeAll() {
     _emojiPicker?.remove();
     _emojiPicker = null;
@@ -240,12 +240,12 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     return false;
   }
 
-  // Handles enter
+  /// Handles enter
   void _onEnter() {
     _hovered.value = true;
   }
 
-  // Handles exit
+  /// Handles exit
   void _onExit() {
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted && !_menuOpen.value) {
@@ -254,7 +254,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     });
   }
 
-  // Shows context menu
+  /// Shows context menu
   void _showContextMenu(Offset globalPosition) {
     if (!mounted) return;
     if (widget.message.isSystemMessage) return;
@@ -317,7 +317,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     });
   }
 
-  // Returns widget rect
+  /// Returns widget rect
   Rect? _getWidgetRect() {
     final overlayBox =
         Overlay.of(context, rootOverlay: true).context.findRenderObject()
@@ -328,7 +328,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     return topLeft & box.size;
   }
 
-  // Opens reaction bubble
+  /// Opens reaction bubble
   void _openReactionBubble() {
     if (!mounted || widget.message.isSystemMessage) return;
     _ReactionOverlayManager.closeAll();
@@ -621,7 +621,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _hovered.dispose();
     _menuOpen.dispose();
@@ -629,7 +629,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     if (widget.message.isSystemMessage) {
       return widget.child;

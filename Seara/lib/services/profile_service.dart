@@ -7,7 +7,7 @@ import 'package:seara/models/auxiliar/user_with_relationship_model.dart';
 class ProfileService {
   static String get baseUrl => ApiConfig.baseUrl;
 
-  // Fetches a user profile from the API
+  /// Fetches a user profile from the API
   static Future<Profile> getProfile(int userId) async {
     final url = Uri.parse('$baseUrl/profile/$userId');
     final response = await ApiClient.get(url);
@@ -46,7 +46,7 @@ class ProfileService {
     }
   }
 
-  // Fetches users that can be shown in user pickers
+  /// Fetches users that can be shown in user pickers
   static Future<List<Map<String, dynamic>>> getAllUsers() async {
     final url = Uri.parse('$baseUrl/profile/users');
     final response = await ApiClient.get(url);

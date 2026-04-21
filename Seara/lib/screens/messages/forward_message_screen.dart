@@ -29,13 +29,13 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
   bool _isLoading = true;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _loadConversations();
   }
 
-  // Loads conversations
+  /// Loads conversations
   Future<void> _loadConversations() async {
     try {
       final convs = await _service.fetchConversations(widget.myId);
@@ -64,7 +64,7 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
     }).toList();
   }
 
-  // Toggles selection
+  /// Toggles selection
   void _toggleSelection(int convId) {
     setState(() {
       if (_selectedIds.contains(convId)) {
@@ -75,7 +75,7 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
     });
   }
 
-  // Handles forward
+  /// Handles forward
   Future<void> _handleForward() async {
     if (_selectedIds.isEmpty) return;
 
@@ -126,7 +126,7 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final convs = _filteredConversations;

@@ -30,7 +30,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   bool _isFullscreen = false;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
 
@@ -62,7 +62,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _focusNode.dispose();
     _controlsFade.dispose();
@@ -74,7 +74,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     super.dispose();
   }
 
-  // Shows controls temporarily
+  /// Shows controls temporarily
   void _showControlsTemporarily() {
     if (!_showControls) {
       setState(() => _showControls = true);
@@ -83,7 +83,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _autoHideControls();
   }
 
-  // Toggles controls
+  /// Toggles controls
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
     if (_showControls) {
@@ -94,7 +94,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     }
   }
 
-  // Auto hide controls
+  /// Auto hide controls
   void _autoHideControls() {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted && _showControls && !_isSeeking) {
@@ -104,7 +104,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     });
   }
 
-  // Handles key event
+  /// Handles key event
   void _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return;
 
@@ -134,7 +134,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     }
   }
 
-  // Toggles play
+  /// Toggles play
   void _togglePlay() {
     setState(() {
       _controller.value.isPlaying ? _controller.pause() : _controller.play();
@@ -142,7 +142,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _showControlsTemporarily();
   }
 
-  // Seek
+  /// Seek
   Future<void> _seek(double value) async {
     final target = Duration(
       milliseconds: (value * _controller.value.duration.inMilliseconds).round(),
@@ -150,7 +150,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     await _controller.seekTo(target);
   }
 
-  // Toggles mute
+  /// Toggles mute
   void _toggleMute() {
     setState(() {
       _isMuted = !_isMuted;
@@ -159,7 +159,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _showControlsTemporarily();
   }
 
-  // Toggles fullscreen
+  /// Toggles fullscreen
   void _toggleFullscreen() {
     if (kIsWeb) return;
     setState(() => _isFullscreen = !_isFullscreen);
@@ -176,7 +176,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _showControlsTemporarily();
   }
 
-  // Download
+  /// Download
   Future<void> _download() async {
     if (_isDownloading) return;
     setState(() => _isDownloading = true);
@@ -193,7 +193,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     }
   }
 
-  // Formats a duration for display
+  /// Formats a duration for display
   String _fmt(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -202,7 +202,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -233,7 +233,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     );
   }
 
-  // Builds video content
+  /// Builds video content
   Widget _buildVideoContent() {
     if (!_initialized) {
       return CircularProgressIndicator(
@@ -247,7 +247,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     );
   }
 
-  // Builds controls overlay
+  /// Builds controls overlay
   Widget _buildControlsOverlay() {
     final cs = Theme.of(context).colorScheme;
     return Column(
@@ -279,7 +279,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     );
   }
 
-  // Builds top bar
+  /// Builds top bar
   Widget _buildTopBar() {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -347,7 +347,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     );
   }
 
-  // Builds bottom bar
+  /// Builds bottom bar
   Widget _buildBottomBar() {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;

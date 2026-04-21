@@ -22,7 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _message = '';
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Sends login credentials and stores the authenticated session
+  /// Sends login credentials and stores the authenticated session
   void _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Go to register
+  /// Go to register
   void _goToRegister() {
     Navigator.pushReplacement(
       context,
@@ -77,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;

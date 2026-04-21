@@ -24,7 +24,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isSaving = false;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _isMuted = widget.notification.isEffectivelyMuted;
@@ -63,7 +63,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  // Shows duration picker
+  /// Shows duration picker
   void _showDurationPicker() {
     final theme = Theme.of(context);
     final now = DateTime.now();
@@ -119,7 +119,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

@@ -25,7 +25,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
   int? _myId;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _loadUsers();
@@ -33,7 +33,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
@@ -41,7 +41,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     super.dispose();
   }
 
-  // Loads users
+  /// Loads users
   Future<void> _loadUsers() async {
     int? myId = await AuthService.getUserId();
     if (myId == null) return;
@@ -63,7 +63,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     }
   }
 
-  // Handles search changed
+  /// Handles search changed
   void _onSearchChanged() {
     final query = _searchController.text.trim().toLowerCase();
 
@@ -82,7 +82,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     setState(() => _filteredUsers = filtered);
   }
 
-  // Create conversation
+  /// Create conversation
   Future<void> _createConversation() async {
     if (_selectedUsers.isEmpty || _myId == null || _isCreating) return;
 
@@ -111,7 +111,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     }
   }
 
-  // Returns relationship label
+  /// Returns relationship label
   String? _getRelationshipLabel(UserWithRelationship user) {
     if (user.isMutual) return "Mutuos";
     if (user.followsMe) return "Segue-te";
@@ -120,7 +120,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -135,7 +135,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
-  // Builds app bar
+  /// Builds app bar
   PreferredSizeWidget _buildAppBar(ThemeData theme) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(100),
@@ -175,7 +175,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
-  // Builds floating button
+  /// Builds floating button
   Widget _buildFloatingButton(ThemeData theme) {
     if (_selectedUsers.isEmpty) return const SizedBox.shrink();
 
@@ -201,7 +201,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
-  // Builds body
+  /// Builds body
   Widget _buildBody(ThemeData theme) {
     return Column(
       children: [
@@ -213,7 +213,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
-  // Builds search field
+  /// Builds search field
   Widget _buildSearchField(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -248,7 +248,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
-  // Builds results header
+  /// Builds results header
   Widget _buildResultsHeader(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(left: 16, top: 12),
@@ -272,7 +272,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
     );
   }
 
-  // Builds users list
+  /// Builds users list
   Widget _buildUsersList(ThemeData theme) {
     if (_isLoading) {
       return const Expanded(child: Center(child: CircularProgressIndicator()));

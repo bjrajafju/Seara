@@ -2,10 +2,10 @@ import supabase from "../services/supabase.js";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-// Shared constants used by message handlers.
+/// Shared constants used by message handlers.
 const DEFAULT_PAGE_SIZE = 30;
 
-// Maps ephemeral mode to expiration duration in milliseconds.
+/// Maps ephemeral mode to expiration duration in milliseconds.
 const EPHEMERAL_MS = {
     0: 0,
     1: 24 * 60 * 60 * 1000,
@@ -80,18 +80,18 @@ const enrichMessagesWithReplyAndReactions = async (messages, requestingUserId) =
     }));
 };
 
-// Lists conversations visible to the requesting user.
+/// Lists conversations visible to the requesting user.
 export const listConversations = async (req, res) => {
     const { userId } = req.params;
     const {
         q,
-        type,           // 'group', 'direct'
-        is_pinned,      // 'true'
-        unread,         // 'true'
-        file_type,      // 'image', 'video', 'audio', 'document'
+        type,           /// 'group', 'direct'
+        is_pinned,      /// 'true'
+        unread,         /// 'true'
+        file_type,      /// 'image', 'video', 'audio', 'document'
         date_from,
         date_to,
-        only_usernames  // 'true'
+        only_usernames  /// 'true'
     } = req.query;
 
     if (!userId) {
@@ -103,7 +103,7 @@ export const listConversations = async (req, res) => {
             .from("conversation_user")
             .select("conversation_id, is_pinned, last_read_at")
             .eq("user_id", userId)
-            .eq("is_archived", false); // Never show archived conversations
+            .eq("is_archived", false); /// Never show archived conversations
             
         if (is_pinned === 'true') {
             userConvQuery = userConvQuery.eq("is_pinned", true);
@@ -156,7 +156,7 @@ export const listConversations = async (req, res) => {
         if (error) throw error;
         if (!conversations || conversations.length === 0) return res.json([]);
 
-        // Computes unread counts in parallel for each conversation.
+        /// Computes unread counts in parallel for each conversation.
         const unreadCounts = {};
         await Promise.all(userConversations.map(async (uc) => {
             const { count } = await supabase
@@ -202,10 +202,10 @@ export const listConversations = async (req, res) => {
             const needsQMatch = searchQ.length > 0;
 
             if (isNameSearchOnly && needsQMatch && !metadataMatched) {
-                return; // drop
+                return; /// drop
             }
 
-            // Builds message query filters for search matching.
+            /// Builds message query filters for search matching.
             let msgQuery = supabase.from("messages").select(`
                 id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at, is_forwarded
             `).eq("conversation_id", conv.id).is("deleted_at", null).order('created_at', { ascending: false });
@@ -240,11 +240,11 @@ export const listConversations = async (req, res) => {
                 const { data: matchedData } = await msgQuery.limit(1);
                 previewMsg = matchedData && matchedData.length > 0 ? matchedData[0] : null;
 
-                if (!previewMsg && textMatchRequiredAtQueryLevel) return; // Drop
-                if (file_type && !previewMsg) return; // Drop
+                if (!previewMsg && textMatchRequiredAtQueryLevel) return; /// Drop
+                if (file_type && !previewMsg) return; /// Drop
             }
 
-            // If we didn't require a specialized query or we got a match on metadata but still need a preview message fallback:
+            /// If we didn't require a specialized query or we got a match on metadata but still need a preview message fallback:
             if (!previewMsg) {
                 const { data: latestRaw } = await supabase.from("messages").select(`
                     id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at
@@ -281,7 +281,7 @@ export const listConversations = async (req, res) => {
     }
 };
 
-// Creates a direct or group conversation.
+/// Creates a direct or group conversation.
 export const createConversation = async (req, res) => {
     const { creatorId, participantIds, name } = req.body;
 
@@ -293,7 +293,7 @@ export const createConversation = async (req, res) => {
         const allParticipants = [...new Set([creatorId, ...participantIds])];
         const isGroup = allParticipants.length > 2;
 
-        // Handles direct message conversation behavior.
+        /// Handles direct message conversation behavior.
         if (!isGroup) {
             const { data: conversations, error } = await supabase
                 .from("conversations")
@@ -318,7 +318,7 @@ export const createConversation = async (req, res) => {
             });
 
             if (existingConversation) {
-                // Unarchive if archived
+                /// Unarchive if archived
                 const archivedEntries = existingConversation.conversation_user.filter(
                     (u) => u.is_archived,
                 );
@@ -329,7 +329,7 @@ export const createConversation = async (req, res) => {
                         .eq("conversation_id", existingConversation.id);
                 }
 
-                // Return full conversation
+                /// Return full conversation
                 const { data: fullConversation, error: fullError } =
                     await supabase
                         .from("conversations")
@@ -380,7 +380,7 @@ export const createConversation = async (req, res) => {
             }
         }
 
-        // Creates the conversation record.
+        /// Creates the conversation record.
         const { data: newConversation, error } = await supabase
             .from("conversations")
             .insert({
@@ -392,11 +392,11 @@ export const createConversation = async (req, res) => {
 
         if (error) throw error;
 
-        // Inserts participants with default or admin roles.
+        /// Inserts participants with default or admin roles.
         const inserts = allParticipants.map((uid) => ({
             conversation_id: newConversation.id,
             user_id: uid,
-            role: uid === creatorId ? 1 : 0, // creator = admin
+            role: uid === creatorId ? 1 : 0, /// creator = admin
             is_creator: uid === creatorId,
         }));
 
@@ -406,14 +406,14 @@ export const createConversation = async (req, res) => {
 
         if (insertError) throw insertError;
 
-        // Creates default settings for new conversations.
+        /// Creates default settings for new conversations.
         const { error: settingsError } = await supabase
             .from("conversation_settings")
             .insert({ conversation_id: newConversation.id });
 
         if (settingsError) throw settingsError;
 
-        // Returns the formatted conversation payload.
+        /// Returns the formatted conversation payload.
         const { data: fullConversation } = await supabase
             .from("conversations")
             .select(
@@ -449,7 +449,7 @@ export const createConversation = async (req, res) => {
     }
 };
 
-// Returns paginated messages for a conversation.
+/// Returns paginated messages for a conversation.
 export const getMessages = async (req, res) => {
     const { conversationId } = req.params;
     const limit = parseInt(req.query.limit) || DEFAULT_PAGE_SIZE;
@@ -468,7 +468,7 @@ export const getMessages = async (req, res) => {
     try {
         const now = new Date().toISOString();
 
-        // Marks pending incoming messages as delivered.
+        /// Marks pending incoming messages as delivered.
         if (requestingUserId) {
             await supabase
                 .from("messages")
@@ -479,7 +479,7 @@ export const getMessages = async (req, res) => {
         }
 
         if (around) {
-            // Get the target message
+            /// Get the target message
             const { data: targetMsg, error: targetErr } = await supabase
                 .from("messages")
                 .select("created_at, id")
@@ -493,7 +493,7 @@ export const getMessages = async (req, res) => {
 
             const aroundLimit = Math.floor(limit / 2);
 
-            // Get messages BEFORE the target
+            /// Get messages BEFORE the target
             const { data: before_msgs } = await supabase
                 .from("messages")
                 .select(
@@ -527,7 +527,7 @@ export const getMessages = async (req, res) => {
                 .order("created_at", { ascending: false })
                 .limit(aroundLimit);
 
-            // Get the target message details
+            /// Get the target message details
             const { data: target_full } = await supabase
                 .from("messages")
                 .select(
@@ -557,7 +557,7 @@ export const getMessages = async (req, res) => {
                 .eq("id", around)
                 .single();
 
-            // Get messages AFTER the target
+            /// Get messages AFTER the target
             const { data: after_msgs } = await supabase
                 .from("messages")
                 .select(
@@ -698,9 +698,9 @@ export const getMessages = async (req, res) => {
             .order("created_at", { ascending: false })
             .limit(limit + 1);
 
-        // Applies cursor pagination to load older messages.
+        /// Applies cursor pagination to load older messages.
         if (before) {
-            // Get the created_at of the cursor message
+            /// Get the created_at of the cursor message
             const { data: cursorMsg } = await supabase
                 .from("messages")
                 .select("created_at")
@@ -716,11 +716,11 @@ export const getMessages = async (req, res) => {
 
         if (error) throw error;
 
-        // Checks whether additional messages are available.
+        /// Checks whether additional messages are available.
         const hasMore = messages.length > limit;
         const pageMessages = hasMore ? messages.slice(0, limit) : messages;
 
-        // Get last_read_at for other participants (for read receipts) 
+        /// Get last_read_at for other participants (for read receipts) 
         let othersLastRead = [];
         if (requestingUserId) {
             const { data: otherReads } = await supabase
@@ -732,21 +732,21 @@ export const getMessages = async (req, res) => {
             othersLastRead = otherReads || [];
         }
 
-        // Formats message rows for API response.
+        /// Formats message rows for API response.
         const formatted = pageMessages
             .map((msg) => {
-                // Determine read status for messages sent by requesting user
-                let status = 0; // sent
+                /// Determine read status for messages sent by requesting user
+                let status = 0; /// sent
                 if (msg.user_id === requestingUserId) {
-                    if (msg.delivered_at) status = 1; // delivered
-                    // Check if any other user has read it
+                    if (msg.delivered_at) status = 1; /// delivered
+                    /// Check if any other user has read it
                     const isRead = othersLastRead.some(
                         (r) =>
                             r.last_read_at &&
                             new Date(r.last_read_at) >=
                                 new Date(msg.created_at),
                     );
-                    if (isRead) status = 2; // read
+                    if (isRead) status = 2; /// read
                 }
 
                 return {
@@ -768,10 +768,10 @@ export const getMessages = async (req, res) => {
                     sender_avatar: msg.users?.avatar ?? null,
                 };
             })
-            .reverse(); // Reverse so oldest first
+            .reverse(); /// Reverse so oldest first
         const enrichedMessages = await enrichMessagesWithReplyAndReactions(formatted, requestingUserId);
 
-        // Get my last_read_at for unread divider
+        /// Get my last_read_at for unread divider
         let myLastReadAt = null;
         if (requestingUserId) {
             const { data: myMembership } = await supabase
@@ -795,7 +795,7 @@ export const getMessages = async (req, res) => {
     }
 };
 
-// Sends a message to the conversation.
+/// Sends a message to the conversation.
 export const sendMessage = async (req, res) => {
     const { conversationId } = req.params;
     const { userId, body, attachment, attachment_type, attachment_name, is_forwarded, reply_to_message_id } =
@@ -806,7 +806,7 @@ export const sendMessage = async (req, res) => {
     }
 
     try {
-        // Validates sender permissions before creating the message.
+        /// Validates sender permissions before creating the message.
         const { data: settings } = await supabase
             .from("conversation_settings")
             .select("who_can_send_messages, ephemeral_duration")
@@ -814,7 +814,7 @@ export const sendMessage = async (req, res) => {
             .single();
 
         if (settings && settings.who_can_send_messages === 1) {
-            // Restricts sending to admins when announcement mode is enabled.
+            /// Restricts sending to admins when announcement mode is enabled.
             const { data: membership } = await supabase
                 .from("conversation_user")
                 .select("role, is_creator")
@@ -846,7 +846,7 @@ export const sendMessage = async (req, res) => {
             safeReplyToMessageId = replyTarget.id;
         }
 
-        // Calculates expiration timestamp for ephemeral messages.
+        /// Calculates expiration timestamp for ephemeral messages.
         let expiresAt = null;
         if (settings && settings.ephemeral_duration > 0) {
             const durationMs = EPHEMERAL_MS[settings.ephemeral_duration] || 0;
@@ -855,7 +855,7 @@ export const sendMessage = async (req, res) => {
             }
         }
 
-        // Insert message
+        /// Insert message
         const { data: message, error } = await supabase
             .from("messages")
             .insert({
@@ -926,7 +926,7 @@ export const sendMessage = async (req, res) => {
             }
         }
 
-        // Touches conversation timestamp after sending a message.
+        /// Touches conversation timestamp after sending a message.
         await supabase
             .from("conversations")
             .update({ updated_at: new Date().toISOString() })
@@ -943,7 +943,7 @@ export const sendMessage = async (req, res) => {
             reply_to_message_id: message.reply_to_message_id,
             reply_to: replyTo,
             delivered_at: message.delivered_at,
-            status: 0, // just sent
+            status: 0, /// just sent
             is_forwarded: message.is_forwarded || false,
             created_at: message.created_at,
             updated_at: message.updated_at,
@@ -957,7 +957,7 @@ export const sendMessage = async (req, res) => {
     }
 };
 
-// Adds or removes a reaction atomically.
+/// Adds or removes a reaction atomically.
 export const toggleMessageReaction = async (req, res) => {
     const messageId = Number(req.params.id);
     const { userId, reaction } = req.body || {};
@@ -1012,9 +1012,9 @@ export const toggleMessageReaction = async (req, res) => {
     }
 };
 
-// Search is handled by listConversations filters.
+/// Search is handled by listConversations filters.
 
-// Updates an editable message body.
+/// Updates an editable message body.
 export const editMessage = async (req, res) => {
     const { conversationId, messageId } = req.params;
     const { body } = req.body;
@@ -1089,7 +1089,7 @@ export const editMessage = async (req, res) => {
     }
 };
 
-// Soft-deletes a message in this conversation.
+/// Soft-deletes a message in this conversation.
 export const deleteMessage = async (req, res) => {
     const { conversationId, messageId } = req.params;
 
@@ -1111,7 +1111,7 @@ export const deleteMessage = async (req, res) => {
             return res.status(403).json({ error: "Apenas pode eliminar mensagens enviadas nas últimas 24 horas." });
         }
 
-        // Marks message as deleted without removing the record.
+        /// Marks message as deleted without removing the record.
         const { error } = await supabase
             .from("messages")
             .update({ deleted_at: new Date().toISOString() })
@@ -1127,7 +1127,7 @@ export const deleteMessage = async (req, res) => {
     }
 };
 
-// Fetches metadata for URL previews.
+/// Fetches metadata for URL previews.
 export const getLinkPreview = async (req, res) => {
     const { url } = req.query;
 
@@ -1179,12 +1179,12 @@ export const getLinkPreview = async (req, res) => {
         });
     } catch (err) {
         console.error("getLinkPreview error:", err.message);
-        // Returns null preview data when metadata scraping fails.
+        /// Returns null preview data when metadata scraping fails.
         return res.json(null);
     }
 };
 
-// Returns pinned messages for a conversation.
+/// Returns pinned messages for a conversation.
 export const getPinnedMessages = async (req, res) => {
     const { conversationId } = req.params;
 
@@ -1237,17 +1237,17 @@ export const getPinnedMessages = async (req, res) => {
     }
 };
 
-// Pins or unpins a message.
+/// Pins or unpins a message.
 export const toggleMessagePin = async (req, res) => {
     const { conversationId, messageId } = req.params;
-    const authId = req.user.id; // From authMiddleware (UUID)
+    const authId = req.user.id; /// From authMiddleware (UUID)
 
     if (!conversationId || !messageId) {
         return res.status(400).json({ error: "Dados inválidos." });
     }
 
     try {
-        // Resolves internal user id from authenticated auth id.
+        /// Resolves internal user id from authenticated auth id.
         const { data: userRecord } = await supabase
             .from("users")
             .select("id")
@@ -1259,7 +1259,7 @@ export const toggleMessagePin = async (req, res) => {
         }
         const userId = userRecord.id;
 
-        // Verifies message ownership for this conversation.
+        /// Verifies message ownership for this conversation.
         const { data: msg } = await supabase
             .from("messages")
             .select("id")
@@ -1271,7 +1271,7 @@ export const toggleMessagePin = async (req, res) => {
             return res.status(404).json({ error: "Mensagem não encontrada." });
         }
 
-        // Checks current pin state before toggling.
+        /// Checks current pin state before toggling.
         const { data: existingPin } = await supabase
             .from("pinned_messages")
             .select("id")
@@ -1280,7 +1280,7 @@ export const toggleMessagePin = async (req, res) => {
             .single();
 
         if (existingPin) {
-            // Removes the message from pinned list.
+            /// Removes the message from pinned list.
             const { error: deleteErr } = await supabase
                 .from("pinned_messages")
                 .delete()
@@ -1289,7 +1289,7 @@ export const toggleMessagePin = async (req, res) => {
             if (deleteErr) throw deleteErr;
             return res.status(200).json({ status: "unpinned", message_id: messageId });
         } else {
-            // Adds the message to pinned list.
+            /// Adds the message to pinned list.
             const { error: insertErr } = await supabase
                 .from("pinned_messages")
                 .insert({

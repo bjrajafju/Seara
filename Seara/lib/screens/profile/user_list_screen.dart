@@ -16,13 +16,13 @@ class _UserListScreenState extends State<UserListScreen> {
   int? _myId;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _loadUsers();
   }
 
-  // Loads users
+  /// Loads users
   Future<void> _loadUsers() async {
     try {
       _myId = await AuthService.getUserId();
@@ -38,7 +38,7 @@ class _UserListScreenState extends State<UserListScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Utilizadores")),

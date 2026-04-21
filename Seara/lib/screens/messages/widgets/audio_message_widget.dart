@@ -32,14 +32,14 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
 
   bool get _isThisActive => _manager.currentMessageId == widget.messageId;
 
-  // Formats a duration for display
+  /// Formats a duration for display
   String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
   }
 
-  // Toggle
+  /// Toggle
   Future<void> _toggle() async {
     try {
       if (_manager.isPlaying(widget.messageId)) {
@@ -57,7 +57,7 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
     }
   }
 
-  // Seek
+  /// Seek
   Future<void> _seek(double ratio) async {
     if (!_isThisActive) return;
     final dur = _manager.durationFor(widget.messageId);
@@ -67,7 +67,7 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
     if (mounted) setState(() => _seekPosition = target);
   }
 
-  // Cycle speed
+  /// Cycle speed
   void _cycleSpeed() {
     if (_isChangingSpeed) return;
     final next = (_speedIndex + 1) % _speeds.length;
@@ -86,7 +86,7 @@ class _AudioMessageWidgetState extends State<AudioMessageWidget> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

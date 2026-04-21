@@ -229,7 +229,7 @@ class ConversationThemeHelper {
     ),
   ];
 
-  // Returns the theme data for the selected conversation style
+  /// Returns the theme data for the selected conversation style
   static ConversationThemeData getTheme(int id) {
     try {
       return themes.firstWhere((t) => t.id == id);

@@ -37,7 +37,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   DateTime? _filterDateTo;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
@@ -45,7 +45,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
@@ -53,7 +53,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     super.dispose();
   }
 
-  // Handles search changed
+  /// Handles search changed
   void _onSearchChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -61,7 +61,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     });
   }
 
-  // Loads conversations
+  /// Loads conversations
   Future<void> _loadConversations() async {
     try {
       int? myId = await AuthService.getUserId();
@@ -121,7 +121,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     }
   }
 
-  // Clear filters
+  /// Clear filters
   void _clearFilters() {
     setState(() {
       _contentFilter = ContentFilter.all;
@@ -144,7 +144,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       _filterDateFrom != null ||
       _filterDateTo != null;
 
-  // Shows filter panel
+  /// Shows filter panel
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -177,14 +177,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // Builds last message preview
+  /// Builds last message preview
   String _buildLastMessagePreview(Message message) {
     if (message.body.isNotEmpty) return message.body;
     if (message.attachment != null) return "Imagem";
     return "Sem mensagens";
   }
 
-  // Builds search bar
+  /// Builds search bar
   Widget _buildSearchBar(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -248,7 +248,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // Builds results header
+  /// Builds results header
   Widget _buildResultsHeader(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -284,7 +284,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // Builds message item
+  /// Builds message item
   Widget _buildMessageItem(ThemeData theme, Conversation conversation) {
     final lastMessage = conversation.messages.isNotEmpty
         ? conversation.messages.first
@@ -432,7 +432,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // Formats date
+  /// Formats date
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -451,7 +451,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     }
   }
 
-  // Builds conversations list
+  /// Builds conversations list
   Widget _buildConversationsList(ThemeData theme) {
     if (_isLoading) {
       return const Expanded(child: Center(child: CircularProgressIndicator()));
@@ -484,7 +484,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // Builds new message button
+  /// Builds new message button
   Widget _buildNewMessageButton(ThemeData theme) {
     return FloatingActionButton(
       onPressed: () async {
@@ -504,7 +504,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  // Builds body
+  /// Builds body
   Widget _buildBody(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,7 +518,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -589,7 +589,7 @@ class _FilterPanelState extends State<_FilterPanel> {
   DateTime? _dateTo;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _contentFilter = widget.contentFilter;
@@ -601,7 +601,7 @@ class _FilterPanelState extends State<_FilterPanel> {
     _dateTo = widget.dateTo;
   }
 
-  // Picks date
+  /// Picks date
   Future<void> _pickDate(bool isFrom) async {
     final picked = await showDatePicker(
       context: context,
@@ -625,14 +625,14 @@ class _FilterPanelState extends State<_FilterPanel> {
     });
   }
 
-  // Formats picked date
+  /// Formats picked date
   String _formatPickedDate(DateTime? date) {
     if (date == null) return "Qualquer data";
     return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

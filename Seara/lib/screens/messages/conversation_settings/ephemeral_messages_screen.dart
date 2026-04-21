@@ -16,7 +16,7 @@ class EphemeralMessagesScreen extends StatefulWidget {
   final bool isAdmin;
 
   @override
-  // Creates the state object for this screen
+  /// Creates the state object for this screen
   State<EphemeralMessagesScreen> createState() =>
       _EphemeralMessagesScreenState();
 }
@@ -53,13 +53,13 @@ class _EphemeralMessagesScreenState extends State<EphemeralMessagesScreen> {
   ];
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _selected = widget.currentDuration;
   }
 
-  // Save
+  /// Save
   Future<void> _save(int duration) async {
     if (!widget.isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,7 +103,7 @@ class _EphemeralMessagesScreenState extends State<EphemeralMessagesScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

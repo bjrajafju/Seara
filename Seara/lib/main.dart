@@ -15,7 +15,7 @@ import 'screens/messages/messages_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Starts the app and wires top-level providers
+/// Starts the app and wires top-level providers
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   JustAudioMediaKit.ensureInitialized();
@@ -50,7 +50,7 @@ class SearaApp extends StatelessWidget {
   final AuthProvider authProvider;
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [

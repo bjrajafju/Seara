@@ -11,13 +11,13 @@ class _AudioServiceWeb implements AudioService {
   bool _isRecording = false;
 
   @override
-  // Check permissions
+  /// Check permissions
   Future<bool> checkPermissions() async {
     return _recorder.hasPermission();
   }
 
   @override
-  // Starts recording
+  /// Starts recording
   Future<void> startRecording() async {
     final path = 'audio_${DateTime.now().millisecondsSinceEpoch}.webm';
     await _recorder.start(
@@ -28,7 +28,7 @@ class _AudioServiceWeb implements AudioService {
   }
 
   @override
-  // Stops recording
+  /// Stops recording
   Future<AudioRecordingResult?> stopRecording() async {
     if (!_isRecording) return null;
     final path = await _recorder.stop();
@@ -45,7 +45,7 @@ class _AudioServiceWeb implements AudioService {
     );
   }
 
-  // Read bytes from path
+  /// Read bytes from path
   Future<Uint8List?> _readBytesFromPath(String path) async {
     if (path.startsWith('data:')) {
       final commaIndex = path.indexOf(',');
@@ -69,7 +69,7 @@ class _AudioServiceWeb implements AudioService {
   }
 
   @override
-  // Cancel recording
+  /// Cancel recording
   Future<void> cancelRecording() async {
     if (_isRecording) {
       await _recorder.cancel();
@@ -78,7 +78,7 @@ class _AudioServiceWeb implements AudioService {
   }
 
   @override
-  // Releases controllers and subscriptions used by this widget
+  /// Releases controllers and subscriptions used by this widget
   Future<void> dispose() async {
     await _recorder.dispose();
   }

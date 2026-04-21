@@ -6,7 +6,7 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -116,7 +116,7 @@ class _ThemeTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final label = ThemeProvider.labels[id] ?? id.name;

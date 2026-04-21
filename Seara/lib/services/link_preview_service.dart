@@ -8,7 +8,7 @@ class LinkPreviewService {
 
   static final Map<String, LinkPreview?> _cache = {};
 
-  // Fetches metadata used in link previews
+  /// Fetches metadata used in link previews
   static Future<LinkPreview?> fetchLinkPreview(String url) async {
     if (_cache.containsKey(url)) {
       return _cache[url];

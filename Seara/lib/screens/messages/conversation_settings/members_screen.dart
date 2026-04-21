@@ -27,14 +27,14 @@ class _MembersScreenState extends State<MembersScreen> {
   late bool _amAdmin;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _members = widget.details.members.where((m) => m.id != 0).toList();
     _amAdmin = widget.details.amAdmin;
   }
 
-  // Reload
+  /// Reload
   Future<void> _reload() async {
     try {
       final details = await ConversationSettingsService.getDetails(
@@ -49,7 +49,7 @@ class _MembersScreenState extends State<MembersScreen> {
     } catch (_) {}
   }
 
-  // Navigates to the selected user profile
+  /// Navigates to the selected user profile
   void _openProfile(ConversationMember member) {
     Navigator.push(
       context,
@@ -61,7 +61,7 @@ class _MembersScreenState extends State<MembersScreen> {
     );
   }
 
-  // Shows member options
+  /// Shows member options
   void _showMemberOptions(ConversationMember member) {
     if (!_amAdmin || member.id == widget.userId) return;
     if (member.isCreator) return;
@@ -159,7 +159,7 @@ class _MembersScreenState extends State<MembersScreen> {
     );
   }
 
-  // Toggles role
+  /// Toggles role
   Future<void> _toggleRole(ConversationMember member) async {
     final newRole = member.isAdmin ? 0 : 1;
     try {
@@ -189,7 +189,7 @@ class _MembersScreenState extends State<MembersScreen> {
     }
   }
 
-  // Remove member
+  /// Remove member
   Future<void> _removeMember(ConversationMember member) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -232,7 +232,7 @@ class _MembersScreenState extends State<MembersScreen> {
     }
   }
 
-  // Opens add members
+  /// Opens add members
   void _openAddMembers() async {
     await Navigator.push(
       context,
@@ -248,7 +248,7 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

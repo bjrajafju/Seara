@@ -43,13 +43,13 @@ const cleanupExpiredMessages = async () => {
     }
 };
 
-// Cleanup interval in milliseconds.
+/// Cleanup interval in milliseconds.
 const CLEANUP_INTERVAL = 15 * 60 * 1000;
 
 export const startEphemeralCleanup = () => {
     console.log("[EphemeralCleanup] Started — runs every 15 minutes.");
-    // Run once immediately on startup
+    /// Run once immediately on startup
     cleanupExpiredMessages();
-    // Then every 15 minutes
+    /// Then every 15 minutes
     setInterval(cleanupExpiredMessages, CLEANUP_INTERVAL);
 };

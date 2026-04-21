@@ -25,13 +25,13 @@ class _ThemeScreenState extends State<ThemeScreen> {
   bool _isSaving = false;
 
   @override
-  // Initializes state used by this widget
+  /// Initializes state used by this widget
   void initState() {
     super.initState();
     _selectedTheme = widget.currentTheme;
   }
 
-  // Save
+  /// Save
   Future<void> _save(int theme) async {
     if (!widget.isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +71,7 @@ class _ThemeScreenState extends State<ThemeScreen> {
   }
 
   @override
-  // Builds the widget tree for this view
+  /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
