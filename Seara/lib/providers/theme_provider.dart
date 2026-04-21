@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
+/// To add a new theme:
+///  1. Add a new value here.
+///  2. Add a matching ThemeData getter in [AppTheme].
+///  3. Register it in [ThemeProvider.themes].
+
 enum AppThemeId {
   light,
   dark,

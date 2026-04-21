@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+/// To add a new theme:
+///  1. Define a static ThemeData getter here.
+///  2. Add a new value to [AppThemeId] in theme_provider.dart.
+///  3. Register it in [ThemeProvider.themes].
+
 class AppTheme {
   AppTheme._();
 
