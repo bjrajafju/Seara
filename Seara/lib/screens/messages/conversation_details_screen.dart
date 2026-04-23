@@ -11,12 +11,11 @@ import 'package:seara/screens/messages/conversation_settings/ephemeral_messages_
 import 'package:seara/screens/messages/conversation_settings/edit_group_screen.dart';
 import 'package:seara/screens/messages/conversation_settings/call_screen.dart';
 import 'package:seara/screens/profile/profile_screen.dart';
-import 'package:seara/screens/messages/image_lightbox_screen.dart';
-import 'package:seara/screens/messages/video_lightbox_screen.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:seara/services/link_preview_service.dart';
-import 'package:seara/models/link_preview_model.dart';
-import 'package:seara/screens/messages/widgets/link_preview_card.dart';
+import 'package:seara/screens/messages/widgets/conversation_details/conversation_danger_zone.dart';
+import 'package:seara/screens/messages/widgets/conversation_details/conversation_info_sliver.dart';
+import 'package:seara/screens/messages/widgets/conversation_details/conversation_media_sections.dart';
+import 'package:seara/screens/messages/widgets/conversation_details/conversation_quick_actions.dart';
+import 'package:seara/screens/messages/widgets/conversation_details/conversation_settings_list.dart';
 
 class ConversationDetailsScreen extends StatefulWidget {
   const ConversationDetailsScreen({
@@ -302,7 +301,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
             ),
             SliverPersistentHeader(
               pinned: true,
-              delegate: _StickyTabBarDelegate(
+              delegate: ConversationStickyTabBarDelegate(
                 tabBar: _buildTabBar(theme),
                 color: theme.colorScheme.surface,
               ),
@@ -316,322 +315,114 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
 
   /// Builds sliver app bar
   Widget _buildSliverAppBar(ThemeData theme) {
-    return SliverAppBar(
-      backgroundColor: theme.colorScheme.surface,
-      elevation: 0,
-      pinned: true,
-      expandedHeight: 260,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded),
-        onPressed: () => Navigator.pop(context),
-      ),
-      actions: [
-        if (!widget.conversation.isGroup && _otherUserId != null)
-          IconButton(
-            icon: const Icon(Icons.person_rounded),
-            tooltip: 'Ver perfil',
-            onPressed: () => _openProfile(_otherUserId!),
-          ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 56),
-            child: Column(
-              children: [
-                GestureDetector(
-                  onTap:
-                      widget.conversation.isGroup &&
-                          (_details?.amAdmin ?? false)
-                      ? _openEditGroup
-                      : !widget.conversation.isGroup && _otherUserId != null
-                      ? () => _openProfile(_otherUserId!)
-                      : null,
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundImage: NetworkImage(_displayAvatar),
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                      ),
-                      if (widget.conversation.isGroup &&
-                          (_details?.amAdmin ?? false))
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: theme.colorScheme.surface,
-                                width: 2,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.camera_alt_rounded,
-                              size: 16,
-                              color: theme.colorScheme.onPrimary,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _displayName,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (widget.conversation.isGroup)
-                  Text(
-                    '${_details?.members.length ?? widget.conversation.participants.length} membros',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
-                    ),
-                  ),
-                if (widget.conversation.isGroup &&
-                    _details?.description != null &&
-                    _details!.description!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: GestureDetector(
-                      onTap: _canEditBio ? _editDescription : null,
-                      child: Text(
-                        _details!.description!,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withAlpha(180),
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                if (widget.conversation.isGroup &&
-                    (_details?.description == null ||
-                        _details!.description!.isEmpty) &&
-                    _canEditBio)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: GestureDetector(
-                      onTap: _editDescription,
-                      child: Text(
-                        'Adicionar descrição...',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.primary.withAlpha(150),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (!widget.conversation.isGroup)
-                  Text(
-                    '@${widget.conversation.participants.where((u) => u.id != widget.myId).firstOrNull?.username ?? ''}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    final membersCount =
+        _details?.members.length ?? widget.conversation.participants.length;
+    final username = widget.conversation.participants
+        .where((u) => u.id != widget.myId)
+        .firstOrNull
+        ?.username;
+    return ConversationInfoSliver(
+      isGroup: widget.conversation.isGroup,
+      isAdmin: _details?.amAdmin ?? false,
+      displayAvatar: _displayAvatar,
+      displayName: _displayName,
+      membersLabel: widget.conversation.isGroup
+          ? '$membersCount membros'
+          : null,
+      description: _details?.description,
+      usernameLabel: !widget.conversation.isGroup ? '@${username ?? ''}' : null,
+      canEditBio: _canEditBio,
+      onBack: () => Navigator.pop(context),
+      onOpenProfile: !widget.conversation.isGroup && _otherUserId != null
+          ? () => _openProfile(_otherUserId!)
+          : null,
+      onOpenEditGroup:
+          widget.conversation.isGroup && (_details?.amAdmin ?? false)
+          ? _openEditGroup
+          : null,
+      onEditDescription: _editDescription,
     );
   }
 
   /// Builds action buttons
   Widget _buildActionButtons(ThemeData theme) {
     final actions = [
-      _QuickAction(
+      ConversationQuickActionItem(
         icon: Icons.search_rounded,
         label: 'Pesquisar',
         onTap: () => _openSearch(),
       ),
-      _QuickAction(
+      ConversationQuickActionItem(
         icon: Icons.call_rounded,
         label: 'Voz',
         onTap: () => _startCall(isVideo: false),
       ),
-      _QuickAction(
+      ConversationQuickActionItem(
         icon: Icons.videocam_rounded,
         label: 'Vídeo',
         onTap: () => _startCall(isVideo: true),
       ),
     ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: actions.map((action) {
-          return GestureDetector(
-            onTap: action.onTap,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    action.icon,
-                    color: theme.colorScheme.primary,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  action.label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withAlpha(180),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
+    return ConversationQuickActions(actions: actions);
   }
 
   /// Builds settings sections
   Widget _buildSettingsSections(ThemeData theme) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (widget.conversation.isGroup)
-          _buildSettingRow(
-            theme,
-            icon: Icons.group_outlined,
-            title: 'Membros',
-            subtitle: '${_details?.members.length ?? 0} membros',
-            onTap: () => _openMembers(),
-          ),
-        if (!widget.conversation.isGroup && _otherUserId != null)
-          _buildSettingRow(
-            theme,
-            icon: Icons.person_outlined,
-            title: 'Ver perfil',
-            onTap: () => _openProfile(_otherUserId!),
-          ),
-        _buildSettingRow(
-          theme,
-          icon: Icons.notifications_outlined,
-          title: 'Notificações',
-          subtitle: _details?.notification.muteLabel ?? 'Ativadas',
-          onTap: () => _openNotifications(),
+    final items = <ConversationSettingsItem>[
+      if (widget.conversation.isGroup)
+        ConversationSettingsItem(
+          icon: Icons.group_outlined,
+          title: 'Membros',
+          subtitle: '${_details?.members.length ?? 0} membros',
+          onTap: () => _openMembers(),
         ),
-        _buildSettingRow(
-          theme,
-          icon: Icons.palette_outlined,
-          title: 'Tema da conversa',
-          subtitle: _details?.settings?.themeLabel ?? 'Padrão',
-          onTap: () => _openTheme(),
+      if (!widget.conversation.isGroup && _otherUserId != null)
+        ConversationSettingsItem(
+          icon: Icons.person_outlined,
+          title: 'Ver perfil',
+          onTap: () => _openProfile(_otherUserId!),
         ),
-        _buildSettingRow(
-          theme,
-          icon: Icons.timer_outlined,
-          title: 'Mensagens temporárias',
-          subtitle: _details?.settings?.ephemeralLabel ?? 'Desativado',
-          onTap: () => _openEphemeral(),
+      ConversationSettingsItem(
+        icon: Icons.notifications_outlined,
+        title: 'Notificações',
+        subtitle: _details?.notification.muteLabel ?? 'Ativadas',
+        onTap: () => _openNotifications(),
+      ),
+      ConversationSettingsItem(
+        icon: Icons.palette_outlined,
+        title: 'Tema da conversa',
+        subtitle: _details?.settings?.themeLabel ?? 'Padrão',
+        onTap: () => _openTheme(),
+      ),
+      ConversationSettingsItem(
+        icon: Icons.timer_outlined,
+        title: 'Mensagens temporárias',
+        subtitle: _details?.settings?.ephemeralLabel ?? 'Desativado',
+        onTap: () => _openEphemeral(),
+      ),
+      if (widget.conversation.isGroup && (_details?.amAdmin ?? false))
+        ConversationSettingsItem(
+          icon: Icons.admin_panel_settings_outlined,
+          title: 'Administração',
+          subtitle: 'Permissões e cargos',
+          onTap: () => _openAdminSettings(),
         ),
-        if (widget.conversation.isGroup && (_details?.amAdmin ?? false))
-          _buildSettingRow(
-            theme,
-            icon: Icons.admin_panel_settings_outlined,
-            title: 'Administração',
-            subtitle: 'Permissões e cargos',
-            onTap: () => _openAdminSettings(),
-          ),
-        _buildSettingRow(
-          theme,
-          icon: _details?.isPinned == true
-              ? Icons.push_pin_rounded
-              : Icons.push_pin_outlined,
-          title: _details?.isPinned == true
-              ? 'Desfixar conversa'
-              : 'Fixar conversa',
-          onTap: () => _togglePin(),
-          trailing: Switch(
-            value: _details?.isPinned ?? false,
-            onChanged: (_) => _togglePin(),
-            activeThumbColor: theme.colorScheme.primary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSettingRow(
-    ThemeData theme, {
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Color? titleColor,
-    Color? iconColor,
-    Widget? trailing,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: (iconColor ?? theme.colorScheme.primary).withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: iconColor ?? theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: titleColor,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withAlpha(120),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            trailing ??
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: theme.colorScheme.onSurface.withAlpha(120),
-                ),
-          ],
+      ConversationSettingsItem(
+        icon: _details?.isPinned == true
+            ? Icons.push_pin_rounded
+            : Icons.push_pin_outlined,
+        title: _details?.isPinned == true
+            ? 'Desfixar conversa'
+            : 'Fixar conversa',
+        onTap: () => _togglePin(),
+        trailing: Switch(
+          value: _details?.isPinned ?? false,
+          onChanged: (_) => _togglePin(),
+          activeThumbColor: theme.colorScheme.primary,
         ),
       ),
-    );
+    ];
+    return ConversationSettingsList(items: items);
   }
 
   /// Builds tab bar
@@ -657,17 +448,20 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     return TabBarView(
       controller: _tabController,
       children: [
-        _MediaGrid(
+        ConversationMediaGrid(
+          key: const ValueKey('media'),
           conversationId: widget.conversation.id,
           userId: widget.myId,
           type: 'media',
         ),
-        _MediaGrid(
+        ConversationMediaGrid(
+          key: const ValueKey('file'),
           conversationId: widget.conversation.id,
           userId: widget.myId,
           type: 'file',
         ),
-        _MediaGrid(
+        ConversationMediaGrid(
+          key: const ValueKey('link'),
           conversationId: widget.conversation.id,
           userId: widget.myId,
           type: 'link',
@@ -694,35 +488,10 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
       icon = Icons.archive_rounded;
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: InkWell(
-        onTap: _dangerAction,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withAlpha(20),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 20, color: theme.colorScheme.error),
-              ),
-              const SizedBox(width: 14),
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return ConversationDangerZone(
+      label: label,
+      icon: icon,
+      onTap: _dangerAction,
     );
   }
 
@@ -922,429 +691,5 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     final perm = _details!.settings?.whoCanEditBio ?? 0;
     if (perm == 0) return true;
     return _details!.amAdmin;
-  }
-}
-
-class _QuickAction {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-}
-
-class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-  final Color color;
-
-  const _StickyTabBarDelegate({required this.tabBar, required this.color});
-
-  @override
-  double get minExtent => tabBar.preferredSize.height;
-
-  @override
-  double get maxExtent => tabBar.preferredSize.height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(color: color, child: tabBar);
-  }
-
-  @override
-  /// Should rebuild
-  bool shouldRebuild(covariant _StickyTabBarDelegate oldDelegate) {
-    return tabBar != oldDelegate.tabBar || color != oldDelegate.color;
-  }
-}
-
-class _MediaGrid extends StatefulWidget {
-  const _MediaGrid({
-    required this.conversationId,
-    required this.userId,
-    required this.type,
-  });
-
-  final int conversationId;
-  final int userId;
-  final String type;
-
-  @override
-  State<_MediaGrid> createState() => _MediaGridState();
-}
-
-class _MediaGridState extends State<_MediaGrid>
-    with AutomaticKeepAliveClientMixin {
-  List<Map<String, dynamic>> _items = [];
-  bool _isLoading = true;
-  bool _hasError = false;
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  /// Initializes state used by this widget
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  /// Load
-  Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
-    try {
-      final items = await ConversationSettingsService.getSharedMedia(
-        widget.conversationId,
-        widget.userId,
-        type: widget.type,
-      );
-      if (!mounted) return;
-      setState(() {
-        _items = items;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
-    }
-  }
-
-  @override
-  /// Builds the widget tree for this view
-  Widget build(BuildContext context) {
-    super.build(context);
-    final theme = Theme.of(context);
-
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 36,
-              color: theme.colorScheme.error.withAlpha(150),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Erro ao carregar',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withAlpha(120),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextButton(onPressed: _load, child: const Text('Tentar novamente')),
-          ],
-        ),
-      );
-    }
-
-    if (_items.isEmpty) {
-      IconData emptyIcon;
-      String emptyText;
-      switch (widget.type) {
-        case 'media':
-          emptyIcon = Icons.photo_library_outlined;
-          emptyText = 'Sem multimédia partilhada.';
-          break;
-        case 'file':
-          emptyIcon = Icons.folder_outlined;
-          emptyText = 'Sem ficheiros partilhados.';
-          break;
-        case 'link':
-          emptyIcon = Icons.link_off_rounded;
-          emptyText = 'Sem links partilhados.';
-          break;
-        default:
-          emptyIcon = Icons.folder_open_rounded;
-          emptyText = 'Sem conteúdo.';
-      }
-
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                emptyIcon,
-                size: 48,
-                color: theme.colorScheme.onSurface.withAlpha(80),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                emptyText,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withAlpha(120),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (widget.type == 'media') {
-      return GridView.builder(
-        padding: const EdgeInsets.all(4),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 2,
-          crossAxisSpacing: 2,
-        ),
-        itemCount: _items.length,
-        itemBuilder: (context, index) {
-          final item = _items[index];
-          final isVideo = (item['attachment_type'] ?? '').toString().startsWith(
-            'video',
-          );
-          final url = item['attachment'] ?? '';
-          return GestureDetector(
-            onTap: () {
-              if (isVideo) {
-                _openVideoPlayer(context, url);
-              } else {
-                _openImageViewer(context, url);
-              }
-            },
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: Icon(
-                      Icons.broken_image_rounded,
-                      color: theme.colorScheme.onSurface.withAlpha(80),
-                    ),
-                  ),
-                ),
-                if (isVideo)
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.scrim.withAlpha(140),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.play_arrow_rounded,
-                        color: theme.colorScheme.onInverseSurface,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        },
-      );
-    }
-
-    if (widget.type == 'link') {
-      return ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: _items.length,
-        itemBuilder: (context, index) {
-          final item = _items[index];
-          final body = item['body'] ?? '';
-          final urlMatch = RegExp(r'(https?://[^\s]+)').firstMatch(body);
-          final url = urlMatch?.group(0) ?? body;
-          return InkWell(
-            onTap: () {
-              final uri = Uri.tryParse(url);
-              if (uri != null) {
-                launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FutureBuilder<LinkPreview?>(
-                    future: LinkPreviewService.fetchLinkPreview(url),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data != null) {
-                        return LinkPreviewCard(preview: snapshot.data!);
-                      }
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.link_rounded,
-                            color: theme.colorScheme.primary,
-                            size: 20,
-                          ),
-                        ),
-                        title: Text(
-                          url,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: theme.colorScheme.primary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          _formatDate(
-                            DateTime.tryParse(item['created_at'] ?? ''),
-                          ),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withAlpha(120),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _items.length,
-      itemBuilder: (context, index) {
-        final item = _items[index];
-        final name = item['attachment_name'] ?? 'Ficheiro';
-        final url = item['attachment'] ?? '';
-        return ListTile(
-          onTap: () => _confirmDownload(context, url, name),
-          leading: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.insert_drive_file_rounded,
-              color: theme.colorScheme.primary,
-              size: 20,
-            ),
-          ),
-          title: Text(
-            name,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            _formatDate(DateTime.tryParse(item['created_at'] ?? '')),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withAlpha(120),
-            ),
-          ),
-          trailing: Icon(
-            Icons.download_rounded,
-            size: 20,
-            color: theme.colorScheme.primary,
-          ),
-        );
-      },
-    );
-  }
-
-  /// Formats date
-  String _formatDate(DateTime? date) {
-    if (date == null) return '';
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
-
-  /// Opens image viewer
-  void _openImageViewer(BuildContext context, String url) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Theme.of(context).colorScheme.scrim,
-        pageBuilder: (_, __, ___) => ImageLightboxScreen(imageUrl: url),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
-  }
-
-  /// Opens video player
-  void _openVideoPlayer(BuildContext context, String url) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Theme.of(context).colorScheme.scrim,
-        pageBuilder: (_, __, ___) => VideoLightboxScreen(videoUrl: url),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
-  }
-
-  Future<void> _confirmDownload(
-    BuildContext context,
-    String url,
-    String fileName,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Download'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Deseja fazer download de:'),
-            const SizedBox(height: 8),
-            Text(fileName, style: const TextStyle(fontWeight: FontWeight.w600)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(ctx, true),
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: const Text('Download'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      final uri = Uri.tryParse(url);
-      if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
   }
 }

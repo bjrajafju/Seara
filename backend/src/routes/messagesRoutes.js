@@ -3,15 +3,23 @@ import { authenticate } from "../middleware/authMiddleware.js";
 import {
     listConversations,
     createConversation,
+} from "../controllers/conversationController.js";
+import {
     getMessages,
     sendMessage,
     editMessage,
     deleteMessage,
-    getLinkPreview,
+} from "../controllers/messageController.js";
+import {
+    toggleMessageReaction,
+} from "../controllers/reactionController.js";
+import {
     getPinnedMessages,
     toggleMessagePin,
-    toggleMessageReaction,
-} from "../controllers/messagesController.js";
+} from "../controllers/pinController.js";
+import {
+    getLinkPreview,
+} from "../controllers/previewController.js";
 import {
     getConversationDetails,
     updateConversationName,
