@@ -1,4 +1,5 @@
 import supabase from "../../services/supabase.js";
+import { createSafeReplyObject, getAttachmentLabel, filterSystemUsers } from "../helpers.js";
 
 /**
  * Formats a message object for API response
@@ -29,6 +30,7 @@ export const formatMessage = (msg, requestingUserId = null, othersLastRead = [])
         attachment: msg.attachment,
         attachment_type: msg.attachment_type,
         attachment_name: msg.attachment_name,
+        attachment_label: msg.attachment_type ? getAttachmentLabel(msg.attachment_type) : null,
         reply_to_message_id: msg.reply_to_message_id,
         delivered_at: msg.delivered_at,
         expires_at: msg.expires_at,
@@ -49,17 +51,7 @@ export const formatMessage = (msg, requestingUserId = null, othersLastRead = [])
  * @returns {Object|null} Formatted reply object or null
  */
 export const formatReplyMessage = (replyMessage) => {
-    if (!replyMessage) return null;
-
-    return {
-        id: replyMessage.id,
-        user_id: replyMessage.user_id,
-        sender_username: replyMessage.users?.username ?? null,
-        body: replyMessage.deleted_at ? null : replyMessage.body,
-        attachment_type: replyMessage.deleted_at ? null : replyMessage.attachment_type,
-        attachment_name: replyMessage.deleted_at ? null : replyMessage.attachment_name,
-        deleted_at: replyMessage.deleted_at,
-    };
+    return createSafeReplyObject(replyMessage);
 };
 
 /**
@@ -153,13 +145,18 @@ export const formatEditMessageResponse = (message) => {
  */
 export const formatConversation = (conv, membershipMap, unreadCounts, previewMsg = null) => {
     const participants = Array.isArray(conv.conversation_user)
-        ? conv.conversation_user.map((cu) => cu.users)
+        ? filterSystemUsers(conv.conversation_user.map((cu) => cu.users))
         : [];
 
     const image =
         conv.conversation_settings?.[0]?.image ||
         conv.conversation_settings?.image ||
         null;
+
+    // Add attachment label to preview message if it has an attachment
+    if (previewMsg && previewMsg.attachment_type) {
+        previewMsg.attachment_label = getAttachmentLabel(previewMsg.attachment_type);
+    }
 
     return {
         id: conv.id,

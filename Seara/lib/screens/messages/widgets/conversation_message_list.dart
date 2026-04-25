@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:seara/models/conversation_model.dart';
 import 'package:seara/models/link_preview_model.dart';
@@ -12,6 +13,7 @@ import 'package:seara/screens/messages/widgets/link_preview_card.dart';
 import 'package:seara/screens/messages/widgets/message_bubble_wrapper.dart';
 import 'package:seara/services/link_preview_service.dart';
 import 'package:seara/utils/conversation_theme_helper.dart';
+import 'package:seara/utils/message_helpers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const int _kGroupingMinutes = 5;
@@ -611,7 +613,9 @@ class ConversationMessageList extends StatelessWidget {
   }
 
   Widget _buildFileAttachment(ThemeData theme, Message message) {
-    final name = message.attachmentName ?? 'Ficheiro';
+    final name =
+        message.attachmentName ??
+        getAttachmentLabel(message.attachmentType.toString());
     final ext = name.contains('.') ? name.split('.').last.toUpperCase() : '?';
     final icon = _fileIcon(name);
 
@@ -885,13 +889,23 @@ class ConversationMessageList extends StatelessWidget {
   }
 
   String _replyPreviewText(ReplyPreview reply) {
-    if (reply.isUnavailable) return 'Mensagem indisponível';
+    // Use fallback text from backend if message is unavailable
+    if (reply.isUnavailable)
+      return reply.fallbackText ?? 'Mensagem indisponível';
+
+    // Use body if available
     if ((reply.body ?? '').trim().isNotEmpty) return reply.body!.trim();
-    final type = (reply.attachmentType ?? '').toLowerCase();
-    if (type.startsWith('image/')) return '📷 Foto';
-    if (type.startsWith('video/')) return '🎥 Vídeo';
-    if (type.isNotEmpty) return '📎 Anexo';
-    return 'Mensagem indisponível';
+
+    // Use centralized attachment label helper
+    final type = reply.attachmentType;
+    if (type != null && type.isNotEmpty) {
+      final label = getAttachmentLabel(type);
+      if (type.startsWith('image/')) return '📷 $label';
+      if (type.startsWith('video/')) return '🎥 $label';
+      return '📎 $label';
+    }
+
+    return reply.fallbackText ?? 'Mensagem indisponível';
   }
 
   Widget _buildReactionsRow(ThemeData theme, Message message) {

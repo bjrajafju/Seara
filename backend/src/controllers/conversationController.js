@@ -1,6 +1,7 @@
 import supabase from "../services/supabase.js";
 import { formatConversation } from "../utils/messages/messageFormatter.js";
 import { calculateUnreadCount } from "../utils/messages/messageStatus.js";
+import { filterSystemUsers } from "../utils/helpers.js";
 
 /// Lists conversations visible to the requesting user.
 export const listConversations = async (req, res) => {
@@ -14,6 +15,8 @@ export const listConversations = async (req, res) => {
         date_from,
         date_to,
         only_usernames, /// 'true'
+        limit,
+        cursor, /// cursor for pagination (timestamp)
     } = req.query;
 
     if (!userId) {
@@ -21,6 +24,7 @@ export const listConversations = async (req, res) => {
     }
 
     try {
+
         let userConvQuery = supabase
             .from("conversation_user")
             .select("conversation_id, is_pinned, last_read_at")
@@ -40,10 +44,14 @@ export const listConversations = async (req, res) => {
         }
 
         const conversationIds = userConversations.map((c) => c.conversation_id);
+        
         const membershipMap = {};
         for (const uc of userConversations) {
             membershipMap[uc.conversation_id] = uc;
         }
+
+        // Store original conversationIds for fallback
+        const originalConversationIds = [...conversationIds];
 
         let dbQuery = supabase
             .from("conversations")
@@ -79,9 +87,52 @@ export const listConversations = async (req, res) => {
             dbQuery = dbQuery.lte("updated_at", endOfDay);
         }
 
+        // Apply cursor pagination
+        if (cursor) {
+            dbQuery = dbQuery.lt("updated_at", cursor);
+        }
+
         let { data: conversations, error } = await dbQuery;
         if (error) throw error;
-        if (!conversations || conversations.length === 0) return res.json([]);
+        
+        // Fallback safety: if no conversations after filtering but we had conversationIds
+        if ((!conversations || conversations.length === 0) && originalConversationIds.length > 0) {
+            // Retry without filters except basic conversation ID filter
+            let fallbackQuery = supabase
+                .from("conversations")
+                .select(
+                    `
+                    id,
+                    name,
+                    is_group,
+                    created_at,
+                    updated_at,
+                    conversation_user (
+                        users (
+                            id,
+                            username,
+                            name,
+                            avatar
+                        )
+                    ),
+                    conversation_settings (
+                        image
+                    )
+                `,
+                )
+                .in("id", originalConversationIds);
+
+            if (cursor) {
+                fallbackQuery = fallbackQuery.lt("updated_at", cursor);
+            }
+
+            const { data: fallbackConversations } = await fallbackQuery;
+            conversations = fallbackConversations;
+        }
+
+        if (!conversations || conversations.length === 0) {
+            return res.json([]);
+        }
 
         /// Computes unread counts in parallel for each conversation.
         const unreadCounts = {};
@@ -97,20 +148,25 @@ export const listConversations = async (req, res) => {
 
         if (unread === "true") {
             conversations = conversations.filter((c) => unreadCounts[c.id] > 0);
-            if (conversations.length === 0) return res.json([]);
+            // Don't return empty here - let the fallback safety handle it
         }
 
         const searchQ = (q || "").trim().toLowerCase();
         const isNameSearchOnly = only_usernames === "true";
 
-        const finalResult = [];
+        // Process conversations with simplified filtering
+        const processedConversations = [];
 
-        await Promise.all(
-            conversations.map(async (conv) => {
-                const participants = Array.isArray(conv.conversation_user)
-                    ? conv.conversation_user.map((cu) => cu.users)
-                    : [];
+        for (const conv of conversations) {
+            const participants = Array.isArray(conv.conversation_user)
+                ? conv.conversation_user.map((cu) => cu.users)
+                : [];
 
+            let shouldInclude = true;
+            let previewMsg = null;
+
+            // Check search filters
+            if (searchQ || file_type) {
                 let metadataMatched = false;
 
                 if (searchQ) {
@@ -135,97 +191,104 @@ export const listConversations = async (req, res) => {
 
                 const needsQMatch = searchQ.length > 0;
 
+                // Check if we should drop based on name-only search
                 if (isNameSearchOnly && needsQMatch && !metadataMatched) {
-                    return; /// drop
+                    shouldInclude = false;
                 }
 
-                /// Builds message query filters for search matching.
-                let msgQuery = supabase
-                    .from("messages")
-                    .select(
-                        `
-                id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at, is_forwarded
-            `,
-                    )
-                    .eq("conversation_id", conv.id)
-                    .is("deleted_at", null)
-                    .order("created_at", { ascending: false });
-
-                let requiresSpecializedQuery = false;
-
-                if (file_type === "images") {
-                    msgQuery = msgQuery.ilike("attachment_type", "image/%");
-                    requiresSpecializedQuery = true;
-                } else if (file_type === "videos") {
-                    msgQuery = msgQuery.ilike("attachment_type", "video/%");
-                    requiresSpecializedQuery = true;
-                } else if (file_type === "documents") {
-                    msgQuery = msgQuery
-                        .not("attachment_type", "is", null)
-                        .not("attachment_type", "ilike", "image/%")
-                        .not("attachment_type", "ilike", "video/%");
-                    requiresSpecializedQuery = true;
-                }
-
-                let textMatchRequiredAtQueryLevel = false;
-
-                if (
-                    needsQMatch &&
-                    !isNameSearchOnly &&
-                    !metadataMatched &&
-                    !file_type
-                ) {
-                    msgQuery = msgQuery.ilike("body", `%${searchQ}%`);
-                    requiresSpecializedQuery = true;
-                    textMatchRequiredAtQueryLevel = true;
-                } else if (needsQMatch && !isNameSearchOnly && file_type) {
-                    if (!metadataMatched) {
-                        msgQuery = msgQuery.ilike("body", `%${searchQ}%`);
-                        textMatchRequiredAtQueryLevel = true;
-                    }
-                }
-
-                let previewMsg = null;
-
-                if (requiresSpecializedQuery) {
-                    const { data: matchedData } = await msgQuery.limit(1);
-                    previewMsg =
-                        matchedData && matchedData.length > 0
-                            ? matchedData[0]
-                            : null;
-
-                    if (!previewMsg && textMatchRequiredAtQueryLevel) return; /// Drop
-                    if (file_type && !previewMsg) return; /// Drop
-                }
-
-                /// If we didn't require a specialized query or we got a match on metadata but still need a preview message fallback:
-                if (!previewMsg) {
-                    const { data: latestRaw } = await supabase
+                // If we still need to include, check message content
+                if (shouldInclude && (searchQ || file_type)) {
+                    let msgQuery = supabase
                         .from("messages")
                         .select(
-                            `
-                    id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at
-                `,
+                            `id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at, is_forwarded`
                         )
                         .eq("conversation_id", conv.id)
                         .is("deleted_at", null)
-                        .order("created_at", { ascending: false })
-                        .limit(1);
-                    previewMsg =
-                        latestRaw && latestRaw.length > 0 ? latestRaw[0] : null;
+                        .order("created_at", { ascending: false });
+
+                    // Apply file type filters
+                    if (file_type === "images") {
+                        msgQuery = msgQuery.ilike("attachment_type", "image/%");
+                    } else if (file_type === "videos") {
+                        msgQuery = msgQuery.ilike("attachment_type", "video/%");
+                    } else if (file_type === "documents") {
+                        msgQuery = msgQuery
+                            .not("attachment_type", "is", null)
+                            .not("attachment_type", "ilike", "image/%")
+                            .not("attachment_type", "ilike", "video/%");
+                    }
+
+                    // Apply text search if needed
+                    let textMatchRequired = false;
+                    if (needsQMatch && !isNameSearchOnly && !metadataMatched) {
+                        msgQuery = msgQuery.ilike("body", `%${searchQ}%`);
+                        textMatchRequired = true;
+                    }
+
+                    const { data: matchedData } = await msgQuery.limit(1);
+                    previewMsg = matchedData && matchedData.length > 0 ? matchedData[0] : null;
+
+                    // Drop if text match was required but not found
+                    if (textMatchRequired && !previewMsg) {
+                        shouldInclude = false;
+                    }
+                    // Drop if file type filter was applied but no matches found
+                    if (file_type && !previewMsg) {
+                        shouldInclude = false;
+                    }
                 }
+            }
 
-                finalResult.push(formatConversation(conv, membershipMap, unreadCounts, previewMsg));
-            }),
-        );
+            // Get latest message for preview if not already fetched
+            if (!previewMsg && shouldInclude) {
+                const { data: latestRaw } = await supabase
+                    .from("messages")
+                    .select(
+                        `id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, reply_to_message_id, created_at, updated_at, edited_at`
+                    )
+                    .eq("conversation_id", conv.id)
+                    .is("deleted_at", null)
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+                previewMsg = latestRaw && latestRaw.length > 0 ? latestRaw[0] : null;
+                
+                // DEBUG: Log preview message reply data
+                if (previewMsg) {
+                    console.log("DEBUG listConversations previewMsg:", {
+                        id: previewMsg.id,
+                        reply_to_message_id: previewMsg.reply_to_message_id
+                    });
+                }
+            }
 
-        finalResult.sort((a, b) => {
+            if (shouldInclude) {
+                processedConversations.push(formatConversation(conv, membershipMap, unreadCounts, previewMsg));
+            }
+        }
+
+        // Sort results
+        processedConversations.sort((a, b) => {
             if (a.is_pinned && !b.is_pinned) return -1;
             if (!a.is_pinned && b.is_pinned) return 1;
             return new Date(b.updated_at) - new Date(a.updated_at);
         });
 
-        res.json(finalResult);
+        console.log(`[DEBUG] Processed conversations count:`, processedConversations.length);
+
+        // Apply pagination at the end
+        const pageLimit = parseInt(limit) || 50;
+        const hasMore = processedConversations.length > pageLimit;
+        const pageResults = hasMore ? processedConversations.slice(0, pageLimit) : processedConversations;
+        
+        // Get next cursor (timestamp of last item)
+        let nextCursor = null;
+        if (hasMore && pageResults.length > 0) {
+            nextCursor = pageResults[pageResults.length - 1].updated_at;
+        }
+
+        // Return original format for frontend compatibility
+        res.json(pageResults);
     } catch (err) {
         console.error("listConversations:", err);
         res.status(500).json({ error: "Erro ao listar conversas." });
@@ -320,8 +383,8 @@ export const createConversation = async (req, res) => {
                     id: fullConversation.id,
                     name: fullConversation.name,
                     is_group: fullConversation.is_group,
-                    participants: fullConversation.conversation_user.map(
-                        (cu) => cu.users,
+                    participants: filterSystemUsers(
+                        fullConversation.conversation_user.map((cu) => cu.users)
                     ),
                     messages: fullConversation.messages ?? [],
                     created_at: fullConversation.created_at,
@@ -388,8 +451,8 @@ export const createConversation = async (req, res) => {
 
         return res.status(201).json({
             ...fullConversation,
-            participants: fullConversation.conversation_user.map(
-                (cu) => cu.users,
+            participants: filterSystemUsers(
+                fullConversation.conversation_user.map((cu) => cu.users)
             ),
             messages: [],
         });

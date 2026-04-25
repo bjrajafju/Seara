@@ -4,7 +4,7 @@ class ConversationThemeHelper {
   static const List<ConversationThemeData> themes = [
     ConversationThemeData(
       id: 0,
-      name: 'Padrao',
+      name: 'Padrão',
       backgroundColors: [Color(0xFF1C1C1E), Color(0xFF2C2C2E)],
       myBubbleColor: Color(0xFF1C63B8),
       otherBubbleColor: Color(0xFF38383A),
@@ -22,7 +22,7 @@ class ConversationThemeHelper {
     ),
     ConversationThemeData(
       id: 2,
-      name: 'Por do Sol',
+      name: 'Pôr do Sol',
       backgroundColors: [Color(0xFF2D1B69), Color(0xFF862F58)],
       myBubbleColor: Color(0xFF7B2D5F),
       otherBubbleColor: Color(0xFF3D2470),

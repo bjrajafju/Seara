@@ -18,7 +18,8 @@ class ConversationSettingsService {
     );
 
     if (response.statusCode == 200) {
-      return ConversationDetails.fromJson(jsonDecode(response.body));
+      final responseData = jsonDecode(response.body);
+      return ConversationDetails.fromJson(responseData);
     } else {
       throw Exception("Erro ao obter detalhes da conversa.");
     }

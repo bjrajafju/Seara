@@ -391,7 +391,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
       ConversationSettingsItem(
         icon: Icons.palette_outlined,
         title: 'Tema da conversa',
-        subtitle: _details?.settings?.themeLabel ?? 'Padrão',
+        subtitle: _details?.settings?.themeLabel,
         onTap: () => _openTheme(),
       ),
       ConversationSettingsItem(

@@ -1,4 +1,5 @@
 import supabase from "../services/supabase.js";
+import { filterSystemUsers } from "../utils/helpers.js";
 
 /// Profile controller for profile and relationship endpoints.
 export const getProfile = async (req, res) => {
@@ -155,7 +156,9 @@ export const getAllUsers = async (req, res) => {
 
         if (error) throw error;
 
-        res.json(users ?? []);
+        const filteredUsers = filterSystemUsers(users ?? []);
+
+        res.json(filteredUsers);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
@@ -197,7 +200,9 @@ export const getUsersWithRelationship = async (req, res) => {
         const iFollowIds = new Set(iFollow.map((f) => f.user_id));
         const followsMeIds = new Set(followsMe.map((f) => f.follower_id));
 
-        const formatted = users.map((user) => ({
+        const filteredUsers = filterSystemUsers(users ?? []);
+
+        const formatted = filteredUsers.map((user) => ({
             id: user.id,
             username: user.username,
             name: user.name,

@@ -5,6 +5,7 @@ import {
     fetchAndFormatReplyMessage,
     formatEditMessageResponse
 } from "../utils/messages/messageFormatter.js";
+import { createSafeReplyObject } from "../utils/helpers.js";
 import {
     fetchOthersLastRead,
     fetchMyLastRead,
@@ -287,6 +288,17 @@ export const sendMessage = async (req, res) => {
 
         let safeReplyToMessageId = await validateReplyMessage(reply_to_message_id, conversationId);
 
+        /// Additional validation for forwarded messages to ensure conversation consistency
+        if (is_forwarded && req.body.original_conversation_id) {
+            const originalConversationId = req.body.original_conversation_id;
+            if (String(originalConversationId) !== String(conversationId)) {
+                // Reject forwarded messages that don't match the target conversation
+                return res.status(400).json({ 
+                    error: "Forwarded message conversation mismatch. The message was forwarded from a different conversation." 
+                });
+            }
+        }
+
         /// Calculates expiration timestamp for ephemeral messages.
         const expiresAt = calculateExpirationTime(settings?.ephemeral_duration || 0);
 
@@ -330,7 +342,38 @@ export const sendMessage = async (req, res) => {
 
         if (error) throw error;
 
-        let replyTo = await fetchAndFormatReplyMessage(message.reply_to_message_id);
+        // Build proper reply object using the same logic as enrichMessagesWithReplyAndReactions
+        let replyTo = null;
+        if (message.reply_to_message_id) {
+            try {
+                const { data: replyMessage, error: replyError } = await supabase
+                    .from("messages")
+                    .select(`
+                        id,
+                        user_id,
+                        body,
+                        attachment_type,
+                        attachment_name,
+                        deleted_at,
+                        users (
+                            username
+                        )
+                    `)
+                    .eq("id", message.reply_to_message_id)
+                    .single();
+                
+                if (replyError) {
+                    console.error("Error fetching reply message:", replyError);
+                    // If there's an error fetching the reply message, create a missing reply object
+                    replyTo = createSafeReplyObject(null);
+                } else {
+                    replyTo = createSafeReplyObject(replyMessage);
+                }
+            } catch (err) {
+                console.error("Exception fetching reply message:", err);
+                replyTo = createSafeReplyObject(null);
+            }
+        }
 
         /// Touches conversation timestamp after sending a message.
         await updateConversationTimestamp(conversationId);
@@ -338,6 +381,20 @@ export const sendMessage = async (req, res) => {
         res.status(201).json(formatSendMessageResponse(message, replyTo));
     } catch (err) {
         console.error("sendMessage:", err);
+        
+        // Check if this is a permission error
+        if (err.message && (
+            err.message.includes("Apenas admins podem enviar mensagens") ||
+            err.message.includes("Ninguém pode enviar mensagens") ||
+            err.message.includes("não pode enviar mensagens") ||
+            err.message.includes("permission") ||
+            err.message.includes("authorized")
+        )) {
+            return res.status(403).json({ 
+                error: "You are not allowed to send messages in this conversation" 
+            });
+        }
+        
         res.status(500).json({ error: "Erro ao enviar mensagem." });
     }
 };

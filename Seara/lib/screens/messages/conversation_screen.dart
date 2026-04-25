@@ -20,6 +20,7 @@ import 'package:seara/services/conversation_settings_service.dart';
 import 'package:seara/screens/messages/conversation_details_screen.dart';
 import 'package:seara/screens/messages/forward_message_screen.dart';
 import 'package:seara/utils/conversation_theme_helper.dart';
+import 'package:seara/utils/message_helpers.dart';
 import 'widgets/conversation_message_list.dart';
 import 'widgets/message_input_bar.dart';
 import 'package:desktop_drop/desktop_drop.dart';
@@ -58,6 +59,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _isUserNearBottom = true;
   bool _isJumpingToMessage = false;
   final Map<int, GlobalKey> _messageKeys = {};
+
+  // Permission checking
+  dynamic _conversationDetails;
 
   /// Key for message
   GlobalKey _keyForMessage(int messageId) {
@@ -143,6 +147,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
   Future<void> _init() async {
     _myId = await AuthService.getUserId();
     if (!mounted) return;
+
+    // Load conversation details after userId is available
+    _loadConversationDetails();
+
     await _loadTheme();
 
     if (widget.initialScrollToMessageId != null) {
@@ -174,6 +182,30 @@ class _ConversationScreenState extends State<ConversationScreen> {
       }
     }
     _lastMessageCount = count;
+  }
+
+  /// Loads conversation details for permission checking
+  Future<void> _loadConversationDetails() async {
+    try {
+      if (_myId == null) {
+        print("ERROR: userId is null, skipping API call");
+        return;
+      }
+
+      final details = await ConversationSettingsService.getDetails(
+        widget.conversation.id,
+        _myId!,
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _conversationDetails = details;
+        _convThemeId = details.settings?.theme ?? 0;
+      });
+    } catch (_) {
+      // Handle error silently - conversation details will remain null
+      print("DEBUG: Exception in _loadConversationDetails");
+    }
   }
 
   /// Loads theme
@@ -837,6 +869,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
           if (mounted) setState(() => _highlightMessageId = null);
         });
       } else {
+        // Message not found - log error
+        print(
+          "ERROR: Pinned message $messageId not found in conversation ${widget.conversation.id}",
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Mensagem indisponível')),
@@ -845,6 +881,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
         _isJumpingToMessage = false;
       }
     } catch (e) {
+      // Error loading message - log error
+      print("ERROR: Failed to load pinned message $messageId: $e");
       if (mounted) setState(() => _highlightMessageId = null);
       _isJumpingToMessage = false;
     }
@@ -855,20 +893,28 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return Consumer<MessagesProvider>(
       builder: (context, provider, _) {
         final pinned = provider.pinnedMessages;
-        if (pinned.isEmpty) return const SizedBox.shrink();
 
-        if (_currentPinnedIndex >= pinned.length) {
+        // Filter by conversation_id to prevent cross-conversation leakage
+        final currentConversationPinned = pinned
+            .where((msg) => msg.conversationId == widget.conversation.id)
+            .toList();
+
+        if (currentConversationPinned.isEmpty) return const SizedBox.shrink();
+
+        if (_currentPinnedIndex >= currentConversationPinned.length) {
           _currentPinnedIndex = 0;
         }
 
-        final currentPin = pinned[_currentPinnedIndex];
+        final currentPin = currentConversationPinned[_currentPinnedIndex];
 
         return GestureDetector(
           onTap: () {
             _scrollToMessage(currentPin.id);
-            if (pinned.length > 1) {
+            if (currentConversationPinned.length > 1) {
               setState(() {
-                _currentPinnedIndex = (_currentPinnedIndex + 1) % pinned.length;
+                _currentPinnedIndex =
+                    (_currentPinnedIndex + 1) %
+                    currentConversationPinned.length;
               });
             }
           },
@@ -897,8 +943,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        pinned.length > 1
-                            ? "Mensagem Fixada (${_currentPinnedIndex + 1}/${pinned.length})"
+                        currentConversationPinned.length > 1
+                            ? "Mensagem Fixada (${_currentPinnedIndex + 1}/${currentConversationPinned.length})"
                             : "Mensagem Fixada",
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.primary,
@@ -909,7 +955,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
                       Text(
                         currentPin.body.isNotEmpty
                             ? currentPin.body.replaceAll('\n', ' ')
-                            : 'Anexo',
+                            : getAttachmentLabel(
+                                currentPin.attachmentType.toString(),
+                              ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -1177,16 +1225,73 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   /// Builds input area
   Widget _buildInputArea(ThemeData theme) {
+    // Block UI during loading - when conversation details are null, user cannot send
+    final canSend = _conversationDetails == null
+        ? false
+        : canUserSendMessage(
+            _conversationDetails!.settings,
+            _conversationDetails!.amAdmin,
+          );
+    final permissionMessage = getPermissionMessage(
+      _conversationDetails?.settings,
+      _conversationDetails?.amAdmin ?? false,
+    );
+
+    if (!canSend && permissionMessage.isNotEmpty) {
+      // Show disabled input with permission message
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 3,
+              color: theme.colorScheme.shadow.withAlpha(50),
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                ),
+                child: Text(
+                  permissionMessage,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withAlpha(120),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return MessageInputBar(
       messageController: _messageController,
       focusNode: _focusNode,
       isRecording: _isRecording,
       hasText: _hasText,
-      onShowAttachmentOptions: _showAttachmentOptions,
-      onSendMessage: _sendMessage,
-      onStartRecording: _startRecording,
-      onDiscardRecording: _discardRecording,
-      onStopAndSendRecording: _stopAndSendRecording,
+      canSend: canSend,
+      onShowAttachmentOptions: canSend ? _showAttachmentOptions : () {},
+      onSendMessage: canSend ? _sendMessage : () {},
+      onStartRecording: canSend ? () => _startRecording() : () {},
+      onDiscardRecording: canSend ? () => _discardRecording() : () {},
+      onStopAndSendRecording: canSend ? () => _stopAndSendRecording() : () {},
     );
   }
 }

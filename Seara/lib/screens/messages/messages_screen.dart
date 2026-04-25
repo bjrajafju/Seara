@@ -6,6 +6,7 @@ import 'package:seara/screens/messages/conversation_screen.dart';
 import 'package:seara/screens/messages/new_conversation_screen.dart';
 import 'package:seara/services/auth_service.dart';
 import 'package:seara/services/messages_service.dart';
+import 'package:seara/utils/message_helpers.dart';
 
 enum ContentFilter { all, images, videos, audio, documents }
 
@@ -180,7 +181,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
   /// Builds last message preview
   String _buildLastMessagePreview(Message message) {
     if (message.body.isNotEmpty) return message.body;
-    if (message.attachment != null) return "Imagem";
+    if (message.attachment != null) {
+      return getAttachmentLabel(
+        message.attachmentTypeString ?? message.attachmentType.toString(),
+      );
+    }
     return "Sem mensagens";
   }
 

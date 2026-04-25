@@ -1,4 +1,5 @@
 import supabase from "../../services/supabase.js";
+import { createSafeReplyObject } from "../helpers.js";
 
 /// Maps ephemeral mode to expiration duration in milliseconds.
 export const EPHEMERAL_MS = {
@@ -42,7 +43,7 @@ export const validateReplyMessage = async (replyToMessageId, conversationId) => 
  */
 export const calculateExpirationTime = (ephemeralDuration) => {
     if (ephemeralDuration <= 0) return null;
-    
+
     const durationMs = EPHEMERAL_MS[ephemeralDuration] || 0;
     if (durationMs > 0) {
         return new Date(Date.now() + durationMs).toISOString();
@@ -75,6 +76,9 @@ export const enrichMessagesWithReplyAndReactions = async (messages, requestingUs
         ...new Set(messages.map((m) => m.reply_to_message_id).filter(Boolean)),
     ];
 
+    // DEBUG: Log all reply IDs being requested
+    console.log("DEBUG enrichMessages replyIds:", replyIds);
+
     let replyMap = new Map();
     if (replyIds.length > 0) {
         const { data: replyMessages } = await supabase
@@ -92,18 +96,13 @@ export const enrichMessagesWithReplyAndReactions = async (messages, requestingUs
             `)
             .in("id", replyIds);
 
+        // DEBUG: Log fetched reply messages
+        console.log("DEBUG enrichMessages fetched replyMessages:", replyMessages?.map(m => ({ id: m.id, reply_to_message_id: m.reply_to_message_id })));
+
         replyMap = new Map(
             (replyMessages || []).map((msg) => [
                 msg.id,
-                {
-                    id: msg.id,
-                    user_id: msg.user_id,
-                    sender_username: msg.users?.username ?? null,
-                    body: msg.deleted_at ? null : msg.body,
-                    attachment_type: msg.deleted_at ? null : msg.attachment_type,
-                    attachment_name: msg.deleted_at ? null : msg.attachment_name,
-                    deleted_at: msg.deleted_at,
-                },
+                createSafeReplyObject(msg),
             ]),
         );
     }
@@ -130,15 +129,22 @@ export const enrichMessagesWithReplyAndReactions = async (messages, requestingUs
         reactionsByMessage.set(row.message_id, messageReactionMap);
     }
 
-    return messages.map((msg) => ({
-        ...msg,
-        reply_to: msg.reply_to_message_id
-            ? replyMap.get(msg.reply_to_message_id) || null
-            : null,
-        reactions: Array.from(
-            (reactionsByMessage.get(msg.id) || new Map()).values(),
-        ),
-    }));
+    return messages.map((msg) => {
+        // DEBUG: Log missing reply cases
+        if (msg.reply_to_message_id && !replyMap.has(msg.reply_to_message_id)) {
+            console.log("DEBUG Missing reply for message:", msg.id, "reply_to_message_id:", msg.reply_to_message_id);
+        }
+        
+        return {
+            ...msg,
+            reply_to: msg.reply_to_message_id
+                ? replyMap.get(msg.reply_to_message_id) || createSafeReplyObject(null)
+                : null,
+            reactions: Array.from(
+                (reactionsByMessage.get(msg.id) || new Map()).values(),
+            ),
+        };
+    });
 };
 
 /**
@@ -269,17 +275,22 @@ export const validateSendMessagePermissions = async (conversationId, userId) => 
         .eq("conversation_id", conversationId)
         .single();
 
-    if (settings && settings.who_can_send_messages === 1) {
-        // Restricts sending to admins when announcement mode is enabled
-        const { data: membership } = await supabase
-            .from("conversation_user")
-            .select("role, is_creator")
-            .eq("conversation_id", conversationId)
-            .eq("user_id", userId)
-            .single();
+    if (settings) {
+        if (settings.who_can_send_messages === 1) {
+            // Restricts sending to admins when announcement mode is enabled
+            const { data: membership } = await supabase
+                .from("conversation_user")
+                .select("role, is_creator")
+                .eq("conversation_id", conversationId)
+                .eq("user_id", userId)
+                .single();
 
-        if (!membership || (membership.role !== 1 && !membership.is_creator)) {
-            throw new Error("Apenas admins podem enviar mensagens nesta conversa.");
+            if (!membership || (membership.role !== 1 && !membership.is_creator)) {
+                throw new Error("Apenas admins podem enviar mensagens nesta conversa.");
+            }
+        } else if (settings.who_can_send_messages === 2) {
+            // Nobody can send messages
+            throw new Error("Ninguém pode enviar mensagens nesta conversa.");
         }
     }
 

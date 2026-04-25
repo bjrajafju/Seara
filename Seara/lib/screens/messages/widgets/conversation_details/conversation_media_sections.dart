@@ -5,6 +5,7 @@ import 'package:seara/screens/messages/video_lightbox_screen.dart';
 import 'package:seara/screens/messages/widgets/link_preview_card.dart';
 import 'package:seara/services/conversation_settings_service.dart';
 import 'package:seara/services/link_preview_service.dart';
+import 'package:seara/utils/message_helpers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ConversationStickyTabBarDelegate extends SliverPersistentHeaderDelegate {
@@ -305,7 +306,9 @@ class _ConversationMediaGridState extends State<ConversationMediaGrid>
       itemCount: _items.length,
       itemBuilder: (context, index) {
         final item = _items[index];
-        final name = item['attachment_name'] ?? 'Ficheiro';
+        final name =
+            item['attachment_name'] ??
+            getAttachmentLabel(item['attachment_type']?.toString() ?? '');
         final url = item['attachment'] ?? '';
         return ListTile(
           onTap: () => _confirmDownload(context, url, name),

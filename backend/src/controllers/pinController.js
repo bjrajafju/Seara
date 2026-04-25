@@ -4,18 +4,23 @@ import { formatPinnedMessage } from "../utils/messages/messageFormatter.js";
 /// Returns pinned messages for a conversation.
 export const getPinnedMessages = async (req, res) => {
     const { conversationId } = req.params;
+    const { limit, cursor } = req.query;
 
     if (!conversationId) {
         return res.status(400).json({ error: "Conversation ID obrigatório." });
     }
 
     try {
-        const { data: pins, error } = await supabase
+        // Apply limit with default
+        const pageLimit = parseInt(limit) || 50;
+        
+        let query = supabase
             .from("pinned_messages")
             .select(
                 `
                 id,
                 message_id,
+                created_at,
                 messages (
                     id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, delivered_at, expires_at, created_at, updated_at, edited_at, is_forwarded,
                     users ( id, username, avatar )
@@ -25,13 +30,36 @@ export const getPinnedMessages = async (req, res) => {
             .eq("conversation_id", conversationId)
             .order("created_at", { ascending: true });
 
+        // Apply cursor pagination
+        if (cursor) {
+            query = query.gt("created_at", cursor);
+        }
+
+        query = query.limit(pageLimit + 1); // +1 to check if there are more
+
+        const { data: pins, error } = await query;
+
         if (error) throw error;
 
         const formatted = pins
             .map((pin) => formatPinnedMessage(pin))
             .filter((m) => m !== null);
 
-        res.json(formatted);
+        // Check if there are more results
+        const hasMore = pins.length > pageLimit;
+        const pageResults = hasMore ? formatted.slice(0, pageLimit) : formatted;
+        
+        // Get next cursor (timestamp of last item)
+        let nextCursor = null;
+        if (hasMore && pageResults.length > 0) {
+            nextCursor = pins[pageLimit - 1].created_at;
+        }
+
+        res.json({
+            messages: pageResults,
+            has_more: hasMore,
+            next_cursor: nextCursor,
+        });
     } catch (err) {
         console.error("getPinnedMessages error:", err);
         res.status(500).json({ error: "Erro ao buscar mensagens fixadas." });

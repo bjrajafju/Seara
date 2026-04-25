@@ -29,6 +29,7 @@ class MessagesProvider extends ChangeNotifier {
   final Set<String> _pendingReactionToggles = {};
   ReplyPreview? _replyingTo;
   int? _myUserId;
+  int? _currentConversationId;
   List<String> _quickReactions = defaultQuickReactions;
 
   List<Message> get messages => _messages;
@@ -46,13 +47,26 @@ class MessagesProvider extends ChangeNotifier {
   /// Merges incoming messages into local state
   void _upsertMessages(Iterable<Message> incoming) {
     if (incoming.isEmpty) return;
+
+    // Filter messages to only include those that belong to the current conversation
+    final filteredMessages = incoming.where(
+      _messageBelongsToCurrentConversation,
+    );
+    if (filteredMessages.isEmpty) return;
+
     final byId = <int, Message>{for (final m in _messages) m.id: m};
-    for (final m in incoming) {
+    for (final m in filteredMessages) {
       byId[m.id] = m;
     }
     final merged = byId.values.toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     _messages = merged;
+  }
+
+  /// Validates that a message belongs to the current conversation
+  bool _messageBelongsToCurrentConversation(Message message) {
+    return _currentConversationId == null ||
+        message.conversationId == _currentConversationId;
   }
 
   /// Finds a message by id in local caches
@@ -66,18 +80,16 @@ class MessagesProvider extends ChangeNotifier {
 
   /// Stores the selected message as active reply target
   void startReply(Message target) {
-    _replyingTo =
-        target.replyTo ??
-        ReplyPreview(
-          id: target.id,
-          userId: target.userId,
-          senderUsername: target.senderUsername,
-          body: target.body,
-          attachmentType: target.attachment != null
-              ? target.attachmentType.name
-              : null,
-          attachmentName: target.attachmentName,
-        );
+    _replyingTo = ReplyPreview(
+      id: target.id,
+      userId: target.userId,
+      senderUsername: target.senderUsername,
+      body: target.body,
+      attachmentType: target.attachment != null
+          ? target.attachmentType.name
+          : null,
+      attachmentName: target.attachmentName,
+    );
     notifyListeners();
   }
 
@@ -91,6 +103,7 @@ class MessagesProvider extends ChangeNotifier {
   /// Loads messages for the current conversation
   Future<void> loadMessages(int conversationId, {int? userId}) async {
     _myUserId = userId;
+    _currentConversationId = conversationId;
     await _loadQuickReactions(userId);
     _isLoading = true;
     _loadError = null;
@@ -249,6 +262,7 @@ class MessagesProvider extends ChangeNotifier {
   void subscribeToConversation(int conversationId) {
     unsubscribe();
     _myUserId = null;
+    _currentConversationId = conversationId;
     final client = Supabase.instance.client;
     _channel = client.channel('messages:$conversationId');
     _reactionsChannel = client.channel('reactions:$conversationId');
@@ -265,6 +279,12 @@ class MessagesProvider extends ChangeNotifier {
           callback: (payload) {
             final newMsg = payload.newRecord;
             if (newMsg.isEmpty) return;
+
+            // Validate that the message belongs to the current conversation
+            final msgConversationId = (newMsg['conversation_id'] as num?)
+                ?.toInt();
+            if (msgConversationId != conversationId) return;
+
             final msgId = newMsg['id'] as int?;
             if (msgId != null && _messages.any((m) => m.id == msgId)) return;
             try {
@@ -394,7 +414,8 @@ class MessagesProvider extends ChangeNotifier {
         isForwarded: isForwarded,
         replyToMessageId: replyToMessageId,
       );
-      if (!_messages.any((m) => m.id == message.id)) {
+      if (!_messages.any((m) => m.id == message.id) &&
+          _messageBelongsToCurrentConversation(message)) {
         _messages.add(message);
       }
       _isSending = false;
@@ -484,7 +505,8 @@ class MessagesProvider extends ChangeNotifier {
         replyToMessageId: replyToMessageId,
       );
 
-      if (!_messages.any((m) => m.id == message.id)) {
+      if (!_messages.any((m) => m.id == message.id) &&
+          _messageBelongsToCurrentConversation(message)) {
         _messages.add(message);
       }
       _isSending = false;
@@ -597,5 +619,6 @@ class MessagesProvider extends ChangeNotifier {
     _isSending = false;
     _hasMore = false;
     _lastReadAt = null;
+    _currentConversationId = null;
   }
 }

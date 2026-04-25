@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:seara/models/message_model.dart';
 import 'package:seara/providers/messages_provider.dart';
+import 'package:seara/utils/message_helpers.dart';
 
 class MessageInputBar extends StatelessWidget {
   const MessageInputBar({
@@ -11,6 +12,7 @@ class MessageInputBar extends StatelessWidget {
     required this.focusNode,
     required this.isRecording,
     required this.hasText,
+    required this.canSend,
     required this.onShowAttachmentOptions,
     required this.onSendMessage,
     required this.onStartRecording,
@@ -22,6 +24,7 @@ class MessageInputBar extends StatelessWidget {
   final FocusNode focusNode;
   final bool isRecording;
   final bool hasText;
+  final bool canSend;
   final VoidCallback onShowAttachmentOptions;
   final VoidCallback onSendMessage;
   final VoidCallback onStartRecording;
@@ -108,12 +111,17 @@ class MessageInputBar extends StatelessWidget {
   }
 
   String _replyPreviewText(ReplyPreview reply) {
-    if (reply.isUnavailable) return 'Mensagem indisponível';
     if ((reply.body ?? '').trim().isNotEmpty) return reply.body!.trim();
-    final type = (reply.attachmentType ?? '').toLowerCase();
-    if (type.startsWith('image/')) return '📷 Foto';
-    if (type.startsWith('video/')) return '🎥 Vídeo';
-    if (type.isNotEmpty) return '📎 Anexo';
+
+    // Use centralized attachment label helper
+    final type = reply.attachmentType;
+    if (type != null && type.isNotEmpty) {
+      final label = getAttachmentLabel(type);
+      if (type.startsWith('image/')) return '📷 $label';
+      if (type.startsWith('video/')) return '🎥 $label';
+      return '📎 $label';
+    }
+
     return 'Mensagem indisponível';
   }
 
@@ -122,8 +130,10 @@ class MessageInputBar extends StatelessWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.add_rounded),
-          color: theme.colorScheme.onSurface,
-          onPressed: onShowAttachmentOptions,
+          color: canSend
+              ? theme.colorScheme.onSurface
+              : theme.colorScheme.onSurface.withAlpha(120),
+          onPressed: canSend ? onShowAttachmentOptions : null,
         ),
         Expanded(child: _buildMessageField(theme)),
         const SizedBox(width: 8),
@@ -139,15 +149,19 @@ class MessageInputBar extends StatelessWidget {
             if (hasText) {
               return IconButton(
                 icon: const Icon(Icons.send_rounded),
-                color: theme.colorScheme.primary,
-                onPressed: onSendMessage,
+                color: canSend
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withAlpha(120),
+                onPressed: canSend ? onSendMessage : null,
               );
             }
             return IconButton(
               icon: const Icon(Icons.mic_rounded),
-              color: theme.colorScheme.primary,
+              color: canSend
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withAlpha(120),
               tooltip: "Gravar audio",
-              onPressed: onStartRecording,
+              onPressed: canSend ? onStartRecording : null,
             );
           },
         ),
@@ -203,11 +217,23 @@ class MessageInputBar extends StatelessWidget {
       textInputAction: TextInputAction.newline,
       maxLines: 6,
       minLines: 1,
+      enabled: canSend,
       decoration: InputDecoration(
-        hintText: 'Escreva uma mensagem...',
+        hintText: canSend
+            ? 'Escreva uma mensagem...'
+            : 'Apenas administradores podem enviar mensagens',
         filled: true,
-        fillColor: theme.colorScheme.surface,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+        fillColor: canSend
+            ? theme.colorScheme.surface
+            : theme.colorScheme.surfaceContainerHighest,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: BorderSide(
+            color: canSend
+                ? theme.colorScheme.outline
+                : theme.colorScheme.outline.withAlpha(120),
+          ),
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 12,

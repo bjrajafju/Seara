@@ -213,8 +213,34 @@ class MessagesService {
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Message.fromJson(json)).toList();
+      final dynamic rawPinned = jsonDecode(response.body);
+      List<dynamic> pinnedMessages;
+
+      // Detect response shape
+      if (rawPinned is Map && rawPinned['messages'] is List) {
+        // Response has { messages: [...], has_more: ..., next_cursor: ... }
+        pinnedMessages = rawPinned['messages'] as List<dynamic>;
+      } else if (rawPinned is List) {
+        // Response is directly a list
+        pinnedMessages = rawPinned;
+      } else if (rawPinned is Map && rawPinned['id'] != null) {
+        // Response is a single object with id
+        pinnedMessages = [rawPinned];
+      } else {
+        // Unknown shape
+        pinnedMessages = [];
+      }
+
+      // Filter by conversation_id to prevent cross-conversation leakage
+      final filteredMessages = pinnedMessages.where((json) {
+        if (json is Map<String, dynamic>) {
+          final msgConversationId = json['conversation_id'];
+          return msgConversationId == conversationId;
+        }
+        return false;
+      }).toList();
+
+      return filteredMessages.map((json) => Message.fromJson(json)).toList();
     } else {
       final errBody = jsonDecode(response.body);
       throw Exception(errBody['error'] ?? "Erro ao carregar mensagens fixadas");

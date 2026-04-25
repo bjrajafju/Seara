@@ -35,6 +35,9 @@ import {
     searchConversationMessages,
     getSharedMedia,
 } from "../controllers/conversationSettingsController.js";
+import {
+    checkSendMessagePermissions,
+} from "../controllers/conversationPermissionsController.js";
 
 const router = express.Router();
 
@@ -51,6 +54,9 @@ router.get("/conversations/:conversationId/messages", getMessages);
 router.post("/conversations/:conversationId/messages", sendMessage);
 router.put("/conversations/:conversationId/messages/:messageId", editMessage);
 router.delete("/conversations/:conversationId/messages/:messageId", deleteMessage);
+
+/// Permission check routes.
+router.get("/conversations/:conversationId/users/:userId/can-send", checkSendMessagePermissions);
 router.post("/:id/reactions", toggleMessageReaction);
 
 /// Pinned message routes.

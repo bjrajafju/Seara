@@ -28,6 +28,9 @@ class ReplyPreview {
   final String? attachmentType;
   final String? attachmentName;
   final DateTime? deletedAt;
+  final bool isDeleted;
+  final bool isMissing;
+  final String? fallbackText;
 
   const ReplyPreview({
     required this.id,
@@ -37,14 +40,17 @@ class ReplyPreview {
     this.attachmentType,
     this.attachmentName,
     this.deletedAt,
+    this.isDeleted = false,
+    this.isMissing = false,
+    this.fallbackText,
   });
 
-  bool get isUnavailable => deletedAt != null;
+  bool get isUnavailable => isDeleted || isMissing || deletedAt != null;
 
   factory ReplyPreview.fromJson(Map<String, dynamic> json) {
     return ReplyPreview(
-      id: (json['id'] as num).toInt(),
-      userId: (json['user_id'] as num).toInt(),
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      userId: (json['user_id'] as num?)?.toInt() ?? 0,
       senderUsername: json['sender_username']?.toString(),
       body: json['body']?.toString(),
       attachmentType: json['attachment_type']?.toString(),
@@ -52,6 +58,9 @@ class ReplyPreview {
       deletedAt: json['deleted_at'] != null
           ? DateTime.tryParse(json['deleted_at'].toString())
           : null,
+      isDeleted: json['is_deleted'] == true,
+      isMissing: json['is_missing'] == true,
+      fallbackText: json['fallback_text']?.toString(),
     );
   }
 }
@@ -63,6 +72,8 @@ class Message {
   final String body;
   final String? attachment;
   final AttachmentType attachmentType;
+  final String?
+  attachmentTypeString; // Preserves original MIME type from backend
   final String? attachmentName;
   final String? senderUsername;
   final String? senderAvatar;
@@ -85,6 +96,7 @@ class Message {
     required this.body,
     this.attachment,
     this.attachmentType = AttachmentType.none,
+    this.attachmentTypeString,
     this.attachmentName,
     this.senderUsername,
     this.senderAvatar,
@@ -128,14 +140,14 @@ class Message {
       final lower = attachmentUrl.toLowerCase();
       if (lower.contains('.mp4') ||
           lower.contains('.mov') ||
-          lower.contains('.avi')) {
+          lower.contains('.avi') ||
+          lower.contains('.mkv')) {
         type = AttachmentType.video;
       } else if (lower.contains('.mp3') ||
-          lower.contains('.m4a') ||
           lower.contains('.wav') ||
           lower.contains('.ogg') ||
-          lower.contains('.aac') ||
-          lower.contains('.webm')) {
+          lower.contains('.m4a') ||
+          lower.contains('.flac')) {
         type = AttachmentType.audio;
       } else if (lower.contains('.jpg') ||
           lower.contains('.jpeg') ||
@@ -149,27 +161,28 @@ class Message {
     }
 
     return Message(
-      id: json['id'],
-      conversationId: json['conversation_id'],
-      userId: json['user_id'],
-      body: json['body'] ?? '',
+      id: json['id'] != null ? json['id'] as int : 0,
+      conversationId: json['conversation_id'] != null ? json['conversation_id'] as int : 0,
+      userId: json['user_id'] != null ? json['user_id'] as int : 0,
+      body: json['body']?.toString() ?? '',
       attachment: attachmentUrl,
       attachmentType: type,
+      attachmentTypeString: attachmentMime, // Preserve original MIME type
       attachmentName: attachmentName,
-      senderUsername: json['sender_username'],
-      senderAvatar: json['sender_avatar'],
-      status: json['status'] as int? ?? 0,
+      senderUsername: json['sender_username']?.toString(),
+      senderAvatar: json['sender_avatar']?.toString(),
+      status: json['status'] != null ? json['status'] as int : 0,
       deliveredAt: json['delivered_at'] != null
-          ? DateTime.tryParse(json['delivered_at'])
+          ? DateTime.tryParse(json['delivered_at'].toString())
           : null,
       expiresAt: json['expires_at'] != null
-          ? DateTime.tryParse(json['expires_at'])
+          ? DateTime.tryParse(json['expires_at'].toString())
           : null,
-      isSystemMessage: json['is_system'] == true || json['user_id'] == 0,
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      isSystemMessage: json['is_system'] == true || (json['user_id'] != null && json['user_id'] == 0),
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now() : DateTime.now(),
       editedAt: json['edited_at'] != null
-          ? DateTime.tryParse(json['edited_at'])
+          ? DateTime.tryParse(json['edited_at'].toString())
           : null,
       isForwarded: json['is_forwarded'] == true,
       replyToMessageId: (json['reply_to_message_id'] as num?)?.toInt(),
@@ -187,6 +200,7 @@ class Message {
     String? body,
     String? attachment,
     AttachmentType? attachmentType,
+    String? attachmentTypeString,
     String? attachmentName,
     String? senderUsername,
     String? senderAvatar,
@@ -209,6 +223,7 @@ class Message {
       body: body ?? this.body,
       attachment: attachment ?? this.attachment,
       attachmentType: attachmentType ?? this.attachmentType,
+      attachmentTypeString: attachmentTypeString ?? this.attachmentTypeString,
       attachmentName: attachmentName ?? this.attachmentName,
       senderUsername: senderUsername ?? this.senderUsername,
       senderAvatar: senderAvatar ?? this.senderAvatar,

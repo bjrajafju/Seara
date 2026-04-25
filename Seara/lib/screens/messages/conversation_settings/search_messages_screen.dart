@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:seara/models/conversation_settings_model.dart';
 import 'package:seara/models/message_model.dart';
 import 'package:seara/services/conversation_settings_service.dart';
+import 'package:seara/utils/message_helpers.dart';
 
 class SearchMessagesScreen extends StatefulWidget {
   const SearchMessagesScreen({
@@ -437,7 +438,8 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  msg.attachmentName ?? 'Anexo',
+                  msg.attachmentName ??
+                      getAttachmentLabel(msg.attachmentType.toString()),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withAlpha(120),
                     fontStyle: FontStyle.italic,

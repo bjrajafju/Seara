@@ -1,3 +1,5 @@
+import 'package:seara/utils/message_helpers.dart';
+
 class ConversationMember {
   final int id;
   final String username;
@@ -24,9 +26,9 @@ class ConversationMember {
   factory ConversationMember.fromJson(Map<String, dynamic> json) {
     return ConversationMember(
       id: json['id'] as int,
-      username: (json['username'] ?? '') as String,
-      name: (json['name'] ?? '') as String,
-      avatar: (json['avatar'] ?? '') as String,
+      username: json['username']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      avatar: json['avatar']?.toString() ?? '',
       role: json['role'] as int? ?? 0,
       isCreator: json['is_creator'] as bool? ?? false,
     );
@@ -75,18 +77,7 @@ class ConversationSettings {
   }
 
   String get themeLabel {
-    switch (theme) {
-      case 1:
-        return 'Oceano';
-      case 2:
-        return 'Pôr do Sol';
-      case 3:
-        return 'Floresta';
-      case 4:
-        return 'Meia-noite';
-      default:
-        return 'Padrão';
-    }
+    return getThemeDisplayName(theme);
   }
 }
 
@@ -100,7 +91,7 @@ class ConversationNotification {
     return ConversationNotification(
       isMuted: json['is_muted'] as bool? ?? false,
       mutedUntil: json['muted_until'] != null
-          ? DateTime.tryParse(json['muted_until'])
+          ? DateTime.parse(json['muted_until'])
           : null,
     );
   }
@@ -152,34 +143,126 @@ class ConversationDetails {
   bool get amAdmin => myRole == 1 || isCreator;
 
   factory ConversationDetails.fromJson(Map<String, dynamic> json) {
+    List<ConversationMember> members = [];
+    try {
+      if (json['members'] != null && json['members'] is List) {
+        members = (json['members'] as List<dynamic>)
+            .where((m) => m != null)
+            .map((m) => ConversationMember.fromJson(m as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (e) {
+      print("ERROR parsing members: $e");
+    }
+
+    ConversationSettings? settings;
+    try {
+      if (json['settings'] != null && json['settings'] is Map) {
+        settings = ConversationSettings.fromJson(
+          json['settings'] as Map<String, dynamic>,
+        );
+      }
+    } catch (e) {
+      print("ERROR parsing settings: $e");
+      settings = null;
+    }
+
+    ConversationNotification notification = ConversationNotification();
+    try {
+      if (json['notification'] != null && json['notification'] is Map) {
+        notification = ConversationNotification.fromJson(
+          json['notification'] as Map<String, dynamic>,
+        );
+      }
+    } catch (e) {
+      print("ERROR parsing notification: $e");
+    }
+
+    // Parse other fields safely
+    int id = 0;
+    try {
+      id = json['id'] as int;
+    } catch (e) {
+      print("ERROR parsing id: $e");
+    }
+
+    String? name;
+    try {
+      name = json['name'] as String?;
+    } catch (e) {
+      print("ERROR parsing name: $e");
+    }
+
+    bool isGroup = false;
+    try {
+      isGroup = json['is_group'] as bool;
+    } catch (e) {
+      print("ERROR parsing is_group: $e");
+    }
+
+    String? image;
+    try {
+      image = json['image'] as String?;
+    } catch (e) {
+      print("ERROR parsing image: $e");
+    }
+
+    String? description;
+    try {
+      description = json['description'] as String?;
+    } catch (e) {
+      print("ERROR parsing description: $e");
+    }
+
+    int myRole = 0;
+    try {
+      myRole = json['my_role'] as int? ?? 0;
+    } catch (e) {
+      print("ERROR parsing my_role: $e");
+    }
+
+    bool isCreator = false;
+    try {
+      isCreator = json['is_creator'] as bool? ?? false;
+    } catch (e) {
+      print("ERROR parsing is_creator: $e");
+    }
+
+    bool isPinned = false;
+    try {
+      isPinned = json['is_pinned'] as bool? ?? false;
+    } catch (e) {
+      print("ERROR parsing is_pinned: $e");
+    }
+
+    DateTime createdAt = DateTime.now();
+    try {
+      createdAt = DateTime.parse(json['created_at']);
+    } catch (e) {
+      print("ERROR parsing created_at: $e");
+    }
+
+    DateTime updatedAt = DateTime.now();
+    try {
+      updatedAt = DateTime.parse(json['updated_at']);
+    } catch (e) {
+      print("ERROR parsing updated_at: $e");
+    }
+
     return ConversationDetails(
-      id: json['id'] as int,
-      name: json['name'] as String?,
-      isGroup: json['is_group'] as bool,
-      image: json['image'] as String?,
-      description: json['description'] as String?,
-      members:
-          (json['members'] as List<dynamic>?)
-              ?.map(
-                (m) => ConversationMember.fromJson(m as Map<String, dynamic>),
-              )
-              .toList() ??
-          [],
-      settings: json['settings'] != null
-          ? ConversationSettings.fromJson(
-              json['settings'] as Map<String, dynamic>,
-            )
-          : null,
-      myRole: json['my_role'] as int? ?? 0,
-      isCreator: json['is_creator'] as bool? ?? false,
-      isPinned: json['is_pinned'] as bool? ?? false,
-      notification: json['notification'] != null
-          ? ConversationNotification.fromJson(
-              json['notification'] as Map<String, dynamic>,
-            )
-          : ConversationNotification(),
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      id: id,
+      name: name,
+      isGroup: isGroup,
+      image: image,
+      description: description,
+      members: members,
+      settings: settings,
+      myRole: myRole,
+      isCreator: isCreator,
+      isPinned: isPinned,
+      notification: notification,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 }

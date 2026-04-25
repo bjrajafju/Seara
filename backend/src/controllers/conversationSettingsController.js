@@ -1,4 +1,5 @@
 import supabase from "../services/supabase.js";
+import { getThemeDisplayName, filterSystemUsers } from "../utils/helpers.js";
 
 /// Returns whether the user is an admin in the conversation.
 const isAdmin = async (conversationId, userId) => {
@@ -124,7 +125,8 @@ export const getConversationDetails = async (req, res) => {
             .eq("user_id", userId)
             .single();
 
-        const formattedMembers = (members || [])
+        // Map conversation_user -> users first
+        const mappedMembers = (members || [])
             .filter((m) => m.users && m.users.id !== 0)
             .map((m) => ({
                 id: m.users.id,
@@ -135,19 +137,22 @@ export const getConversationDetails = async (req, res) => {
                 is_creator: m.is_creator,
             }));
 
-        res.json({
+        const filteredMembers = filterSystemUsers(mappedMembers);
+        
+        // DEBUG: Log response before sending
+        const responseData = {
             ...conversation,
             image: settings?.image || null,
-            members: formattedMembers,
+            members: filteredMembers,
             settings: settings
                 ? {
-                      who_can_manage_members: settings.who_can_manage_members,
-                      who_can_edit_info: settings.who_can_edit_info,
-                      who_can_send_messages: settings.who_can_send_messages,
-                      who_can_edit_bio: settings.who_can_edit_bio,
-                      ephemeral_duration: settings.ephemeral_duration,
-                      theme: settings.theme,
-                  }
+                    who_can_manage_members: settings.who_can_manage_members,
+                    who_can_edit_info: settings.who_can_edit_info,
+                    who_can_send_messages: settings.who_can_send_messages,
+                    who_can_edit_bio: settings.who_can_edit_bio,
+                    ephemeral_duration: settings.ephemeral_duration,
+                    theme: settings.theme,
+                }
                 : null,
             description: settings?.description || null,
             my_role: myMembership?.role ?? 0,
@@ -155,11 +160,18 @@ export const getConversationDetails = async (req, res) => {
             is_pinned: myMembership?.is_pinned ?? false,
             notification: notification
                 ? {
-                      is_muted: notification.is_muted,
-                      muted_until: notification.muted_until,
-                  }
+                    is_muted: notification.is_muted,
+                    muted_until: notification.muted_until,
+                }
                 : { is_muted: false, muted_until: null },
+        };
+        
+        console.log("DEBUG: Conversation details response:", {
+            settings: responseData.settings,
+            amAdmin: (responseData.my_role === 1 || responseData.is_creator)
         });
+        
+        res.json(responseData);
     } catch (err) {
         console.error("getConversationDetails:", err);
         res.status(500).json({ error: "Erro ao obter detalhes da conversa." });
@@ -500,14 +512,7 @@ export const updateSettings = async (req, res) => {
             currentSettings &&
             settingsUpdate.theme !== currentSettings.theme
         ) {
-            const themeNames = {
-                0: "Padrão",
-                1: "Oceano",
-                2: "Pôr do Sol",
-                3: "Floresta",
-                4: "Meia-noite",
-            };
-            const themeName = themeNames[settingsUpdate.theme] || "Padrão";
+            const themeName = getThemeDisplayName(settingsUpdate.theme);
             await insertSystemMessage(
                 id,
                 `${username} alterou o tema para ${themeName}`,
@@ -518,7 +523,7 @@ export const updateSettings = async (req, res) => {
             settingsUpdate.ephemeral_duration !== undefined &&
             currentSettings &&
             settingsUpdate.ephemeral_duration !==
-                currentSettings.ephemeral_duration
+            currentSettings.ephemeral_duration
         ) {
             const durLabels = {
                 0: "desativou",
@@ -722,7 +727,7 @@ export const markAsRead = async (req, res) => {
 /// Searches conversation messages using available filters.
 export const searchConversationMessages = async (req, res) => {
     const { id } = req.params;
-    const { userId, q, type, senderId, from, to } = req.query;
+    const { userId, q, type, senderId, from, to, limit, cursor } = req.query;
 
     if (!id || !userId) {
         return res.status(400).json({ error: "Dados inválidos." });
@@ -734,6 +739,9 @@ export const searchConversationMessages = async (req, res) => {
                 .status(403)
                 .json({ error: "Não é membro desta conversa." });
         }
+
+        // Apply limit with default
+        const pageLimit = parseInt(limit) || 50;
 
         let query = supabase
             .from("messages")
@@ -756,8 +764,14 @@ export const searchConversationMessages = async (req, res) => {
             `,
             )
             .eq("conversation_id", id)
-            .order("created_at", { ascending: false })
-            .limit(50);
+            .order("created_at", { ascending: false });
+
+        // Apply cursor pagination
+        if (cursor) {
+            query = query.lt("created_at", cursor);
+        }
+
+        query = query.limit(pageLimit + 1); // +1 to check if there are more
 
         /// Text filter
         if (q && q.trim().length > 0) {
@@ -817,7 +831,21 @@ export const searchConversationMessages = async (req, res) => {
             sender_avatar: msg.users?.avatar ?? null,
         }));
 
-        res.json(formatted);
+        // Check if there are more results
+        const hasMore = messages.length > pageLimit;
+        const pageResults = hasMore ? formatted.slice(0, pageLimit) : formatted;
+
+        // Get next cursor (timestamp of last item)
+        let nextCursor = null;
+        if (hasMore && pageResults.length > 0) {
+            nextCursor = messages[pageLimit - 1].created_at;
+        }
+
+        res.json({
+            messages: pageResults,
+            has_more: hasMore,
+            next_cursor: nextCursor,
+        });
     } catch (err) {
         console.error("searchConversationMessages:", err);
         res.status(500).json({ error: "Erro ao pesquisar mensagens." });
