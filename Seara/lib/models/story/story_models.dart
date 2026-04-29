@@ -7,6 +7,7 @@ library;
 export 'drawing_path.dart';
 export 'drawing_point.dart';
 export 'drawing_overlay.dart';
+export 'media_asset.dart';
 export 'overlay_element.dart';
 export 'story_audio.dart';
 export 'story_draft.dart';

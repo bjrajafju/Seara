@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../../models/story/media_asset.dart';
 import 'media_input_service.dart';
 
 /// Web / desktop fallback implementation of [MediaInputService].
@@ -30,12 +31,13 @@ class FilePickerMediaInputService implements MediaInputService {
   }
 
   @override
-  Future<String?> capturePhoto() async {
+  Future<MediaAsset?> capturePhoto() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
     );
-    return result?.files.single.path;
+    final path = result?.files.single.path;
+    return path != null ? FileMediaAsset(path) : null;
   }
 
   /// Opens the video picker immediately.
@@ -53,12 +55,12 @@ class FilePickerMediaInputService implements MediaInputService {
     return _pendingVideoPath != null;
   }
 
-  /// Returns the path buffered by [startVideoRecording].
+  /// Returns the asset buffered by [startVideoRecording].
   @override
-  Future<String?> stopVideoRecording() async {
+  Future<MediaAsset?> stopVideoRecording() async {
     final path = _pendingVideoPath;
     _pendingVideoPath = null;
-    return path;
+    return path != null ? FileMediaAsset(path) : null;
   }
 
   /// Flash is not available on this platform.

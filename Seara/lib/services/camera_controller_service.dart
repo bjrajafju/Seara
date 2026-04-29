@@ -1,7 +1,9 @@
 import 'package:camera/camera.dart';
-import 'package:permission_handler/permission_handler.dart';
 
-/// Service to handle camera initialization, capturing photos, and recording videos.
+/// Low-level wrapper around [CameraController].
+///
+/// Permission requests have been removed — each platform's [MediaInputService]
+/// calls its own [CameraPermissionService] before calling [initialize].
 class CameraControllerService {
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
@@ -9,112 +11,103 @@ class CameraControllerService {
 
   CameraController? get controller => _controller;
 
-  /// Requests permissions and initializes the camera.
-  /// Returns true if successful, false otherwise.
+  /// Initialises the first available camera. Returns true on success.
   Future<bool> initialize() async {
-    final cameraStatus = await Permission.camera.request();
-    if (cameraStatus != PermissionStatus.granted) {
-      return false;
-    }
-
-    await Permission.microphone.request();
-    // Proceed even if mic is denied; video just won't have audio if denied.
-    
     try {
       _cameras = await availableCameras();
-      if (_cameras.isEmpty) {
-        return false;
-      }
+      if (_cameras.isEmpty) return false;
       return await _initCamera(_cameras[_currentCameraIndex]);
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
 
   Future<bool> _initCamera(CameraDescription description) async {
+    await _controller?.dispose();
     _controller = CameraController(
       description,
       ResolutionPreset.high,
       enableAudio: true,
     );
-
     try {
       await _controller!.initialize();
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
 
-  /// Switches between front and back cameras.
-  /// Returns true if successful.
+  // ---------------------------------------------------------------------------
+  // Camera controls
+  // ---------------------------------------------------------------------------
+
   Future<bool> switchCamera() async {
     if (_cameras.length < 2) return false;
-
     _currentCameraIndex = (_currentCameraIndex + 1) % _cameras.length;
-    await _controller?.dispose();
     return _initCamera(_cameras[_currentCameraIndex]);
   }
 
-  /// Toggles the flash mode between always on and off.
-  /// Returns true if flash is now on, false if off or failed.
+  /// Toggles flash between always-on and off.
+  /// Returns false on platforms where flash is not supported.
   Future<bool> toggleFlash() async {
-    if (_controller == null || !_controller!.value.isInitialized) return false;
-
-    final currentMode = _controller!.value.flashMode;
-    final newMode = currentMode == FlashMode.off ? FlashMode.always : FlashMode.off;
-    
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return false;
+    final next = c.value.flashMode == FlashMode.off
+        ? FlashMode.always
+        : FlashMode.off;
     try {
-      await _controller!.setFlashMode(newMode);
-      return newMode == FlashMode.always;
-    } catch (e) {
+      await c.setFlashMode(next);
+      return next == FlashMode.always;
+    } catch (_) {
       return false;
     }
   }
 
-  /// Captures a photo and returns the file path, or null if failed.
-  Future<String?> takePhoto() async {
-    if (_controller == null || !_controller!.value.isInitialized || _controller!.value.isTakingPicture) {
+  // ---------------------------------------------------------------------------
+  // Capture — XFile-returning variants used by all three platform services
+  // ---------------------------------------------------------------------------
+
+  /// Captures a still image. Returns the [XFile] on success, null otherwise.
+  Future<XFile?> takePictureXFile() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized || c.value.isTakingPicture) {
       return null;
     }
-
     try {
-      final file = await _controller!.takePicture();
-      return file.path;
-    } catch (e) {
+      return await c.takePicture();
+    } catch (_) {
       return null;
     }
   }
 
   /// Starts video recording. Returns true if started successfully.
   Future<bool> startVideoRecording() async {
-    if (_controller == null || !_controller!.value.isInitialized || _controller!.value.isRecordingVideo) {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized || c.value.isRecordingVideo) {
       return false;
     }
-
     try {
-      await _controller!.startVideoRecording();
+      await c.startVideoRecording();
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
 
-  /// Stops video recording and returns the file path, or null if failed.
-  Future<String?> stopVideoRecording() async {
-    if (_controller == null || !_controller!.value.isInitialized || !_controller!.value.isRecordingVideo) {
+  /// Stops video recording. Returns the [XFile] on success, null otherwise.
+  Future<XFile?> stopVideoRecordingXFile() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized || !c.value.isRecordingVideo) {
       return null;
     }
-
     try {
-      final file = await _controller!.stopVideoRecording();
-      return file.path;
-    } catch (e) {
+      return await c.stopVideoRecording();
+    } catch (_) {
       return null;
     }
   }
 
-  /// Disposes the camera controller.
+  /// Disposes the controller and releases hardware resources.
   Future<void> dispose() async {
     await _controller?.dispose();
     _controller = null;

@@ -1,15 +1,19 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'camera_media_input_service.dart';
-import 'file_picker_media_input_service.dart';
+// Conditional import entry point — compile-time platform resolution.
+//
+// dart.library.html is only present on web → factory_web.dart
+// All other (native) targets → factory_io.dart
+//
+// No runtime Platform checks exist in this file.
+import 'media_input_service_factory_io.dart'
+    if (dart.library.html) 'media_input_service_factory_web.dart'
+    as factory_impl;
+
 import 'media_input_service.dart';
 
-/// Returns the appropriate [MediaInputService] for the current platform.
+/// Returns the [MediaInputService] appropriate for the current platform.
 ///
-/// Web and desktop use the file picker; mobile uses the live camera.
-MediaInputService createMediaInputService() {
-  if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    return FilePickerMediaInputService();
-  }
-  return CameraMediaInputService();
-}
+/// Platform resolution is compile-time via conditional imports:
+/// - Web    → [CameraWebMediaInputService]
+/// - Windows → [CameraWindowsMediaInputService]
+/// - Mobile  → [CameraMobileMediaInputService]
+MediaInputService createMediaInputService() => factory_impl.create();

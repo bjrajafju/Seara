@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../mappers/story_media_mapper.dart';
 import '../../models/story/story_models.dart';
 import '../../services/story/media_input_service.dart';
 import '../../services/story/media_input_service_factory.dart';
@@ -77,14 +78,6 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   // Capture actions
   // ---------------------------------------------------------------------------
 
-  String _inferMimeType(String path) {
-    final lowerPath = path.toLowerCase();
-    if (lowerPath.endsWith('.jpg') || lowerPath.endsWith('.jpeg')) return 'image/jpeg';
-    if (lowerPath.endsWith('.png')) return 'image/png';
-    if (lowerPath.endsWith('.mp4')) return 'video/mp4';
-    if (lowerPath.endsWith('.mov')) return 'video/quicktime';
-    return 'application/octet-stream';
-  }
 
   Future<void> _pickFromGallery() async {
     if (_isProcessing || _isRecording) return;
@@ -99,10 +92,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
       if (result != null && result.files.single.path != null) {
         final path = result.files.single.path!;
-        final mimeType = _inferMimeType(path);
+        final mimeType = StoryMediaMapper.inferMimeType(path);
         final isVideo = mimeType.startsWith('video/');
 
-        // Unknown duration from file picker; can be implemented later with a metadata package
+        // Unknown duration from file picker; can be added later with a metadata package.
         final double? durationSeconds = null;
 
         Navigator.pop(
@@ -110,9 +103,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           StoryDraft(
             type: isVideo ? StoryType.video : StoryType.photo,
             media: [
-              StoryMedia(
-                filePath: path,
-                mimeType: mimeType,
+              StoryMediaMapper.fromAsset(
+                FileMediaAsset(path),
                 durationSeconds: isVideo ? durationSeconds : null,
               )
             ],
@@ -138,15 +130,15 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      final path = await _mediaService.capturePhoto();
+      final asset = await _mediaService.capturePhoto();
       if (!mounted) return;
 
-      if (path != null) {
+      if (asset != null) {
         Navigator.pop(
           context,
           StoryDraft(
             type: StoryType.photo,
-            media: [StoryMedia(filePath: path, mimeType: _inferMimeType(path))],
+            media: [StoryMediaMapper.fromAsset(asset)],
           ),
         );
       } else {
@@ -202,20 +194,16 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     setState(() => _isRecording = false);
 
     try {
-      final path = await _mediaService.stopVideoRecording();
+      final asset = await _mediaService.stopVideoRecording();
       if (!mounted) return;
 
-      if (path != null) {
+      if (asset != null) {
         Navigator.pop(
           context,
           StoryDraft(
             type: StoryType.video,
             media: [
-              StoryMedia(
-                filePath: path,
-                mimeType: _inferMimeType(path),
-                durationSeconds: duration.toDouble(),
-              )
+              StoryMediaMapper.fromAsset(asset, durationSeconds: duration.toDouble())
             ],
           ),
         );
@@ -304,9 +292,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   Widget _buildPreview() {
     final previewData = _mediaService.getPreview(context);
     if (previewData != null) {
-      return previewData.preview;
+      return previewData.builder(context);
     }
-    // Fallback: dark background with a centered icon (web / desktop / uninitialized).
+    // Fallback: loading or camera not yet initialised.
     return Container(
       color: Colors.black,
       child: const Center(

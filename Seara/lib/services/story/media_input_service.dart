@@ -1,52 +1,53 @@
 import 'package:flutter/material.dart';
+import '../../models/story/media_asset.dart';
 
-/// Holds a ready-to-render preview widget and its native aspect ratio.
+/// Holds a builder for the camera preview widget plus the camera's aspect ratio.
 ///
-/// Produced by [MediaInputService.getPreview] so the UI never needs to
-/// import package:camera or know which implementation is active.
+/// Using a [WidgetBuilder] instead of a concrete [Widget] avoids stale-context
+/// issues when the service produces the preview before [BuildContext] is ready.
 class CameraPreviewData {
   final double aspectRatio;
-  final Widget preview;
-  const CameraPreviewData({required this.aspectRatio, required this.preview});
+
+  /// Builds the preview widget for the given [BuildContext].
+  final WidgetBuilder builder;
+
+  const CameraPreviewData({required this.aspectRatio, required this.builder});
 }
 
 /// Abstract contract for media capture input.
 ///
-/// Implementations cover mobile (live camera) and
-/// web/desktop (file picker fallback).
+/// Concrete implementations:
+/// - [CameraMobileMediaInputService] — iOS / Android
+/// - [CameraWebMediaInputService]    — Web (camera_web)
+/// - [CameraWindowsMediaInputService] — Windows (camera_windows)
 abstract class MediaInputService {
-  /// Whether a live camera preview is available.
-  /// False for file-picker-based implementations.
+  /// Whether a live camera preview stream is available.
   bool get hasCameraPreview;
 
-  /// Returns a [CameraPreviewData] ready for rendering, or null if the
-  /// service is not yet initialized or has no preview.
+  /// Returns preview data for rendering, or null if not yet initialised.
   CameraPreviewData? getPreview(BuildContext context);
 
-  /// Initialize the service (request permissions, open camera, etc.).
-  /// Returns true if ready to use.
+  /// Initialises hardware and requests permissions.
+  /// Returns true if ready to capture.
   Future<bool> initialize();
 
-  /// Capture a photo. Returns a local file path, or null on failure.
-  Future<String?> capturePhoto();
+  /// Captures a still photo. Returns a [MediaAsset] on success, null on failure.
+  Future<MediaAsset?> capturePhoto();
 
-  /// Begin video recording. Returns true if started successfully.
-  /// On file-picker implementations, immediately opens the picker and
-  /// resolves when the user selects a file (startVideoRecording and
-  /// stopVideoRecording are treated as a single pick-on-start flow).
+  /// Begins video recording. Returns true if started successfully.
   Future<bool> startVideoRecording();
 
-  /// Stop video recording. Returns the recorded file path, or null on failure.
-  Future<String?> stopVideoRecording();
+  /// Stops video recording. Returns a [MediaAsset] on success, null on failure.
+  Future<MediaAsset?> stopVideoRecording();
 
-  /// Toggle flash. Returns true if flash is now on.
-  /// No-op on platforms without a camera; returns false.
+  /// Toggles flash. Returns true if flash is now on.
+  /// Returns false on platforms / hardware where flash is unavailable.
   Future<bool> toggleFlash();
 
-  /// Switch between front and back camera.
-  /// No-op on platforms without a camera; returns false.
+  /// Switches between available cameras (e.g. front ↔ back).
+  /// Returns false if only one camera is present or switching failed.
   Future<bool> switchCamera();
 
-  /// Release resources.
+  /// Releases all held resources.
   Future<void> dispose();
 }
