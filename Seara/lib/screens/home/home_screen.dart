@@ -10,6 +10,7 @@ import '../profile/user_list_screen.dart';
 import '../settings/settings_screen.dart';
 import '../challenges/challenges_screen.dart';
 import '../feed/feed_screen.dart';
+import '../story/create_story_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -67,6 +68,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Seara')),
       body: _pages[_selectedIndex],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         backgroundColor: cs.surface,
