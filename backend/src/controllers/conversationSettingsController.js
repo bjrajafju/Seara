@@ -166,11 +166,6 @@ export const getConversationDetails = async (req, res) => {
                 : { is_muted: false, muted_until: null },
         };
         
-        console.log("DEBUG: Conversation details response:", {
-            settings: responseData.settings,
-            amAdmin: (responseData.my_role === 1 || responseData.is_creator)
-        });
-        
         res.json(responseData);
     } catch (err) {
         console.error("getConversationDetails:", err);

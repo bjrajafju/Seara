@@ -5,6 +5,7 @@ import '../../mappers/story_media_mapper.dart';
 import '../../models/story/story_models.dart';
 import '../../services/story/media_input_service.dart';
 import '../../services/story/media_input_service_factory.dart';
+import 'story_editor_screen.dart';
 
 class CreateStoryScreen extends StatefulWidget {
   const CreateStoryScreen({super.key});
@@ -94,18 +95,13 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         final path = result.files.single.path!;
         final mimeType = StoryMediaMapper.inferMimeType(path);
         final isVideo = mimeType.startsWith('video/');
-
-        // Unknown duration from file picker; can be added later with a metadata package.
-        final double? durationSeconds = null;
-
-        Navigator.pop(
-          context,
+        _navigateToEditor(
           StoryDraft(
             type: isVideo ? StoryType.video : StoryType.photo,
             media: [
               StoryMediaMapper.fromAsset(
                 FileMediaAsset(path),
-                durationSeconds: isVideo ? durationSeconds : null,
+                durationSeconds: isVideo ? null : null,
               ),
             ],
           ),
@@ -134,8 +130,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (!mounted) return;
 
       if (asset != null) {
-        Navigator.pop(
-          context,
+        _navigateToEditor(
           StoryDraft(
             type: StoryType.photo,
             media: [StoryMediaMapper.fromAsset(asset)],
@@ -198,8 +193,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (!mounted) return;
 
       if (asset != null) {
-        Navigator.pop(
-          context,
+        _navigateToEditor(
           StoryDraft(
             type: StoryType.video,
             media: [
@@ -228,6 +222,16 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   Future<void> _switchCamera() async {
     final success = await _mediaService.switchCamera();
     if (success && mounted) setState(() {});
+  }
+
+  /// Pushes [StoryEditorScreen] replacing the camera screen so the user
+  /// cannot navigate back to the camera after capturing.
+  void _navigateToEditor(StoryDraft draft) {
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => StoryEditorScreen(draft: draft)),
+    );
   }
 
   // ---------------------------------------------------------------------------

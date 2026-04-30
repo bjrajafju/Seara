@@ -76,9 +76,6 @@ export const enrichMessagesWithReplyAndReactions = async (messages, requestingUs
         ...new Set(messages.map((m) => m.reply_to_message_id).filter(Boolean)),
     ];
 
-    // DEBUG: Log all reply IDs being requested
-    console.log("DEBUG enrichMessages replyIds:", replyIds);
-
     let replyMap = new Map();
     if (replyIds.length > 0) {
         const { data: replyMessages } = await supabase
@@ -95,9 +92,6 @@ export const enrichMessagesWithReplyAndReactions = async (messages, requestingUs
                 )
             `)
             .in("id", replyIds);
-
-        // DEBUG: Log fetched reply messages
-        console.log("DEBUG enrichMessages fetched replyMessages:", replyMessages?.map(m => ({ id: m.id, reply_to_message_id: m.reply_to_message_id })));
 
         replyMap = new Map(
             (replyMessages || []).map((msg) => [
@@ -130,11 +124,6 @@ export const enrichMessagesWithReplyAndReactions = async (messages, requestingUs
     }
 
     return messages.map((msg) => {
-        // DEBUG: Log missing reply cases
-        if (msg.reply_to_message_id && !replyMap.has(msg.reply_to_message_id)) {
-            console.log("DEBUG Missing reply for message:", msg.id, "reply_to_message_id:", msg.reply_to_message_id);
-        }
-        
         return {
             ...msg,
             reply_to: msg.reply_to_message_id

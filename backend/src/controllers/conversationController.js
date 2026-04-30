@@ -252,14 +252,6 @@ export const listConversations = async (req, res) => {
                     .order("created_at", { ascending: false })
                     .limit(1);
                 previewMsg = latestRaw && latestRaw.length > 0 ? latestRaw[0] : null;
-                
-                // DEBUG: Log preview message reply data
-                if (previewMsg) {
-                    console.log("DEBUG listConversations previewMsg:", {
-                        id: previewMsg.id,
-                        reply_to_message_id: previewMsg.reply_to_message_id
-                    });
-                }
             }
 
             if (shouldInclude) {
@@ -273,8 +265,6 @@ export const listConversations = async (req, res) => {
             if (!a.is_pinned && b.is_pinned) return 1;
             return new Date(b.updated_at) - new Date(a.updated_at);
         });
-
-        console.log(`[DEBUG] Processed conversations count:`, processedConversations.length);
 
         // Apply pagination at the end
         const pageLimit = parseInt(limit) || 50;
