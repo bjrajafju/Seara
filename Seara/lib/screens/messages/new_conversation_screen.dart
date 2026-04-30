@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:seara/screens/messages/conversation_screen.dart';
 import 'package:seara/services/auth_service.dart';
 import 'package:seara/services/messages_service.dart';
-import 'package:seara/services/profile_service.dart';
+import 'package:seara/services/profile/profile_service.dart';
 import 'package:seara/models/auxiliar/user_with_relationship_model.dart';
 
 class NewConversationScreen extends StatefulWidget {

@@ -42,7 +42,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Failed to initialize camera or permission denied.')),
+            content: Text('Failed to initialize camera or permission denied.'),
+          ),
         );
       }
     }
@@ -78,7 +79,6 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   // Capture actions
   // ---------------------------------------------------------------------------
 
-
   Future<void> _pickFromGallery() async {
     if (_isProcessing || _isRecording) return;
     setState(() => _isProcessing = true);
@@ -106,7 +106,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               StoryMediaMapper.fromAsset(
                 FileMediaAsset(path),
                 durationSeconds: isVideo ? durationSeconds : null,
-              )
+              ),
             ],
           ),
         );
@@ -203,14 +203,17 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           StoryDraft(
             type: StoryType.video,
             media: [
-              StoryMediaMapper.fromAsset(asset, durationSeconds: duration.toDouble())
+              StoryMediaMapper.fromAsset(
+                asset,
+                durationSeconds: duration.toDouble(),
+              ),
             ],
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to record video')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to record video')));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -226,8 +229,6 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     final success = await _mediaService.switchCamera();
     if (success && mounted) setState(() {});
   }
-
-
 
   // ---------------------------------------------------------------------------
   // Build
@@ -283,8 +284,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         ),
       ),
       body: Center(
-        child: Text(message,
-            style: const TextStyle(color: Colors.white, fontSize: 16)),
+        child: Text(
+          message,
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
       ),
     );
   }
@@ -325,7 +328,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               child: Text(
                 '00:${_recordingDuration.toString().padLeft(2, '0')}',
                 style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           Row(
@@ -343,8 +348,11 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               const SizedBox(width: 8),
               if (_mediaService.hasCameraPreview)
                 IconButton(
-                  icon: const Icon(Icons.flip_camera_ios,
-                      color: Colors.white, size: 30),
+                  icon: const Icon(
+                    Icons.flip_camera_ios,
+                    color: Colors.white,
+                    size: 30,
+                  ),
                   onPressed: _switchCamera,
                 ),
             ],
@@ -365,8 +373,11 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         children: [
           // Gallery
           IconButton(
-            icon:
-                const Icon(Icons.photo_library, color: Colors.white, size: 32),
+            icon: const Icon(
+              Icons.photo_library,
+              color: Colors.white,
+              size: 32,
+            ),
             onPressed: _pickFromGallery,
           ),
 
@@ -393,14 +404,12 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   height: _isRecording ? 30 : 64,
                   decoration: BoxDecoration(
                     color: _isRecording ? Colors.red : Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(_isRecording ? 8 : 32),
+                    borderRadius: BorderRadius.circular(_isRecording ? 8 : 32),
                   ),
                 ),
               ),
             ),
           ),
-
           // Spacer to balance the row
           const SizedBox(width: 48),
         ],

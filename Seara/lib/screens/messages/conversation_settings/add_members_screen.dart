@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:seara/models/auxiliar/user_with_relationship_model.dart';
 import 'package:seara/services/conversation_settings_service.dart';
-import 'package:seara/services/profile_service.dart';
+import 'package:seara/services/profile/profile_service.dart';
 
 class AddMembersScreen extends StatefulWidget {
   const AddMembersScreen({
