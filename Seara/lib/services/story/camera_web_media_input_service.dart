@@ -27,18 +27,21 @@ class CameraWebMediaInputService implements MediaInputService {
     return CameraPreviewData(
       aspectRatio: camAspect,
       builder: (ctx) {
-        final mediaSize = MediaQuery.of(ctx).size;
-        final scale = mediaSize.aspectRatio > camAspect
-            ? mediaSize.aspectRatio / camAspect
-            : camAspect / mediaSize.aspectRatio;
-        return Transform.scale(
-          scale: scale,
-          child: Center(
-            child: AspectRatio(
-              aspectRatio: camAspect,
-              child: CameraPreview(controller),
-            ),
-          ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // BoxFit.cover behavior within the available 9:16 viewport
+            // provided by StoryViewport.
+            return ClipRect(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  height: constraints.maxWidth / camAspect,
+                  child: CameraPreview(controller),
+                ),
+              ),
+            );
+          },
         );
       },
     );

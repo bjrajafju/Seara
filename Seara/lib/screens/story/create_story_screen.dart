@@ -5,6 +5,7 @@ import '../../mappers/story_media_mapper.dart';
 import '../../models/story/story_models.dart';
 import '../../services/story/media_input_service.dart';
 import '../../services/story/media_input_service_factory.dart';
+import '../../widgets/story/story_viewport.dart';
 import 'story_editor_screen.dart';
 
 class CreateStoryScreen extends StatefulWidget {
@@ -262,8 +263,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // Camera preview (mobile) or dark background (web/desktop).
-            _buildPreview(),
+            // Camera preview constrained to the same 9:16 frame used by the
+            // editor. Composition overlay controls sit outside the viewport.
+            StoryViewport(child: _buildPreview()),
 
             // Top bar: close / recording timer / flash + flip
             _buildTopBar(),

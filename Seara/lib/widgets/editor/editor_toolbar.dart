@@ -3,15 +3,16 @@ import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/editor_controller.dart';
+import '../../utils/export/export_saver.dart';
 
-/// Minimal toolbar for the story editor.
+/// Vertical toolbar positioned on the right side of the editor screen,
+/// OUTSIDE the [StoryViewport] composition frame.
 ///
-/// Provides two actions:
-/// - **Add Text** — creates a new [TextOverlay] and opens the edit modal.
-/// - **Download** — exports the canvas to a PNG file via [EditorController].
+/// Provides:
+/// - **Text** — creates a new [TextOverlay] and opens the edit modal.
+/// - **Save** — exports canvas to PNG (image stories only).
+///   Disabled with an explanatory [SnackBar] for video stories.
 class EditorToolbar extends StatelessWidget {
-  /// The [GlobalKey] of the [RepaintBoundary] wrapping the canvas.
-  /// Passed to [EditorController.exportToImage].
   final GlobalKey canvasKey;
 
   const EditorToolbar({super.key, required this.canvasKey});
@@ -20,62 +21,107 @@ class EditorToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<EditorController>();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // ── Add Text ──────────────────────────────────────────────────────
-          _ToolbarButton(
-            icon: Icons.text_fields,
-            label: 'Text',
-            onPressed: controller.isExporting
-                ? null
-                : () => context.read<EditorController>().addTextLayer(),
-          ),
+    // Determine export button state based on draft type and export status.
+    final bool isVideo = !controller.canExport;
+    final bool isBusy = controller.isExporting;
 
-          // ── Download ──────────────────────────────────────────────────────
-          _ToolbarButton(
-            icon: controller.isExporting
-                ? Icons.hourglass_top
-                : Icons.download_rounded,
-            label: controller.isExporting ? 'Saving…' : 'Save',
-            onPressed: controller.isExporting ? null : () => _export(context),
-          ),
-        ],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Add Text ────────────────────────────────────────────────────────
+        _ToolbarButton(
+          icon: Icons.text_fields,
+          label: 'Text',
+          onPressed: isBusy
+              ? null
+              : () => context.read<EditorController>().addTextLayer(),
+        ),
+
+        const SizedBox(height: 20),
+
+        // ── Save / Export ────────────────────────────────────────────────────
+        // Disabled for video stories — real video export is a future phase.
+        _ToolbarButton(
+          icon: isVideo
+              ? Icons.videocam_off_rounded
+              : isBusy
+              ? Icons.hourglass_top
+              : Icons.download_rounded,
+          label: isVideo
+              ? 'N/A'
+              : isBusy
+              ? '…'
+              : 'Save',
+          onPressed: isBusy
+              ? null
+              : isVideo
+              ? () => _showVideoExportMessage(context)
+              : () => _export(context),
+        ),
+      ],
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Export
+  // ---------------------------------------------------------------------------
 
   Future<void> _export(BuildContext context) async {
     final pixelRatio = MediaQuery.of(context).devicePixelRatio;
     final controller = context.read<EditorController>();
 
-    // Resolve the RenderRepaintBoundary synchronously before any await,
-    // so the linter and runtime never see BuildContext used across async gaps.
+    // Resolve the render object synchronously before any await.
     final boundary =
         canvasKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
-    final path = await controller.exportToImage(boundary, pixelRatio);
-
+    // Step 1: controller captures pixels → Uint8List.
+    final bytes = await controller.captureImage(boundary, pixelRatio);
     if (!context.mounted) return;
 
+    if (bytes == null) {
+      _showSnackBar(context, 'Export failed. Please try again.', isError: true);
+      return;
+    }
+
+    // Step 2: platform utility saves or downloads the bytes.
+    try {
+      final result = await saveExportedImage(bytes);
+      if (!context.mounted) return;
+      _showSnackBar(context, 'Saved: $result');
+    } catch (_) {
+      if (!context.mounted) return;
+      _showSnackBar(context, 'Could not save file.', isError: true);
+    }
+  }
+
+  void _showVideoExportMessage(BuildContext context) {
+    _showSnackBar(
+      context,
+      'Video export is not supported yet. '
+      'Text overlays are visible during playback.',
+      isError: false,
+      duration: const Duration(seconds: 4),
+    );
+  }
+
+  void _showSnackBar(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+    Duration duration = const Duration(seconds: 3),
+  }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          path != null ? 'Saved to: $path' : 'Export failed. Please try again.',
-        ),
-        backgroundColor: path != null
-            ? Colors.green.shade700
-            : Colors.red.shade700,
-        duration: const Duration(seconds: 3),
+        content: Text(message),
+        backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700,
+        duration: duration,
       ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Private toolbar button
+// Private toolbar button — icon above label, rounded card.
 // ---------------------------------------------------------------------------
 
 class _ToolbarButton extends StatelessWidget {
@@ -97,23 +143,24 @@ class _ToolbarButton extends StatelessWidget {
         opacity: onPressed == null ? 0.4 : 1.0,
         duration: const Duration(milliseconds: 200),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          width: 56,
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white12,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white24),
           ),
-          child: Row(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              Icon(icon, color: Colors.white, size: 22),
+              const SizedBox(height: 4),
               Text(
                 label,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontSize: 11,
                 ),
               ),
             ],

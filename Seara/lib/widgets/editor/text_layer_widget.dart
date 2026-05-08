@@ -10,8 +10,11 @@ import '../../models/story/text_overlay.dart';
 /// - [onScaleStart]  → snapshot current transform, mark gesture as started.
 /// - [onScaleUpdate] → update position / scale / rotation via controller.
 /// - [onScaleEnd]    → clear snapshot.
-/// - [onTap]         → open edit modal ONLY if the gesture did not move
-///                     (movement threshold: 8 logical pixels).
+/// - [onTap]         → open edit modal ONLY if no movement occurred
+///                     (threshold: 8 logical pixels).
+///
+/// Text is rendered in a [SizedBox] with a fixed [maxWidth] (80 % of canvas
+/// width) so that [TextAlign.center] and `\n` line breaks render correctly.
 class TextLayerWidget extends StatefulWidget {
   final TextOverlay layer;
   final Size canvasSize;
@@ -27,11 +30,12 @@ class TextLayerWidget extends StatefulWidget {
 }
 
 class _TextLayerWidgetState extends State<TextLayerWidget> {
-  // Gesture baseline — set on scaleStart, cleared on scaleEnd.
   _GestureBaseline? _baseline;
 
-  // Movement threshold in logical pixels.
   static const double _movementThreshold = 8.0;
+
+  /// Maximum text width: 80 % of the canvas width.
+  double get _maxWidth => widget.canvasSize.width * 0.8;
 
   EditorController get _ctrl => context.read<EditorController>();
 
@@ -40,12 +44,17 @@ class _TextLayerWidgetState extends State<TextLayerWidget> {
     final layer = widget.layer;
     final canvas = widget.canvasSize;
 
+    // De-normalise: (0.5, 0.5) → canvas centre.
     final dx = layer.x * canvas.width;
     final dy = layer.y * canvas.height;
 
+    // Anchor offsets shift the text so that (dx, dy) is the visual centre
+    // of the text block (not its top-left corner).
+    final anchorX = _maxWidth / 2;
+    final anchorY = _estimateHalfHeight(layer);
+
     return Positioned.fill(
       child: GestureDetector(
-        // Absorb events so canvas background GestureDetector is not triggered.
         behavior: HitTestBehavior.deferToChild,
         onTap: _handleTap,
         onScaleStart: _handleScaleStart,
@@ -53,17 +62,18 @@ class _TextLayerWidgetState extends State<TextLayerWidget> {
         onScaleEnd: _handleScaleEnd,
         child: Stack(
           children: [
-            // Invisible full-area hit target so only the text area is tappable.
             Positioned(
               left: dx,
               top: dy,
               child: Transform.translate(
-                offset: Offset(-_textAnchorX(layer), -_textAnchorY(layer)),
+                offset: Offset(-anchorX, -anchorY),
                 child: Transform.rotate(
                   angle: layer.rotation,
+                  // alignment: Alignment.center is the default — rotation
+                  // pivots around the centre of the text block.
                   child: Transform.scale(
                     scale: layer.scale,
-                    child: _TextContent(layer: layer),
+                    child: _TextContent(layer: layer, maxWidth: _maxWidth),
                   ),
                 ),
               ),
@@ -79,8 +89,7 @@ class _TextLayerWidgetState extends State<TextLayerWidget> {
   // ---------------------------------------------------------------------------
 
   void _handleTap() {
-    final hasMoved = _baseline?.hasMoved ?? false;
-    if (!hasMoved) {
+    if (!(_baseline?.hasMoved ?? false)) {
       _ctrl.openEditModal(widget.layer.id);
     }
   }
@@ -121,33 +130,45 @@ class _TextLayerWidgetState extends State<TextLayerWidget> {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  /// Rough half-width estimate for centring the transform origin.
-  double _textAnchorX(TextOverlay layer) =>
-      layer.fontSize * layer.content.length * 0.3;
-
-  double _textAnchorY(TextOverlay layer) => layer.fontSize * 0.5;
+  /// Estimates half the rendered text height so the anchor centres vertically.
+  ///
+  /// Uses a line-height factor of 1.2 and counts actual `\n` breaks.
+  double _estimateHalfHeight(TextOverlay layer) {
+    final lineCount = layer.content.split('\n').length;
+    return layer.fontSize * 1.2 * lineCount / 2;
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Private text content widget — separate to isolate text rebuilds.
+// Private text content widget
 // ---------------------------------------------------------------------------
 
 class _TextContent extends StatelessWidget {
   final TextOverlay layer;
 
-  const _TextContent({required this.layer});
+  /// Constrains the text to a fixed width so that:
+  /// - [TextAlign.center] takes effect.
+  /// - `\n` line breaks respect the available width.
+  final double maxWidth;
+
+  const _TextContent({required this.layer, required this.maxWidth});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      layer.content.isEmpty ? ' ' : layer.content,
-      style: TextStyle(
-        fontSize: layer.fontSize,
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-        shadows: const [
-          Shadow(blurRadius: 4, color: Colors.black54, offset: Offset(1, 1)),
-        ],
+    return SizedBox(
+      width: maxWidth,
+      child: Text(
+        layer.content.isEmpty ? ' ' : layer.content,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: layer.fontSize,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          height: 1.2,
+          shadows: const [
+            Shadow(blurRadius: 4, color: Colors.black54, offset: Offset(1, 1)),
+          ],
+        ),
       ),
     );
   }

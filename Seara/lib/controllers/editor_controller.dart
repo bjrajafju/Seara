@@ -1,11 +1,11 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../models/story/story_draft.dart';
+import '../models/story/story_type.dart';
 import '../models/story/text_overlay.dart';
 
 /// Central state manager for the story editor.
@@ -13,6 +13,10 @@ import '../models/story/text_overlay.dart';
 /// Owns the mutable [StoryDraft] working copy and all editor UI state.
 /// All clamping of transforms, positions, and font sizes is applied here —
 /// never in widgets.
+///
+/// Export returns raw [Uint8List] bytes. Saving those bytes to disk or
+/// triggering a browser download is the responsibility of the caller
+/// (see [saveExportedImage] in utils/export/).
 class EditorController extends ChangeNotifier {
   // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -44,6 +48,13 @@ class EditorController extends ChangeNotifier {
   bool get isEditModalOpen => _isEditModalOpen;
 
   bool get isExporting => _isExporting;
+
+  /// Whether the current draft supports image export via [captureImage].
+  ///
+  /// Video stories cannot be exported through [RepaintBoundary.toImage]
+  /// because Flutter cannot capture hardware video textures. Video export
+  /// requires a separate compositing pipeline (future phase).
+  bool get canExport => _draft.type != StoryType.video;
 
   /// All text layers sorted by [TextOverlay.zIndex] ascending.
   /// The last item in the list renders on top.
@@ -163,18 +174,23 @@ class EditorController extends ChangeNotifier {
 
   // ── Export ────────────────────────────────────────────────────────────────
 
-  /// Captures [boundary] and writes the result as a PNG to the temp directory.
+  /// Captures the [RepaintBoundary] and returns raw PNG bytes.
   ///
-  /// The [RenderRepaintBoundary] is resolved synchronously by the caller (UI)
-  /// before this async method is called, eliminating BuildContext-across-async
-  /// lint warnings.
+  /// The caller is responsible for saving / downloading the bytes using
+  /// [saveExportedImage] from utils/export/export_saver.dart.
+  ///
+  /// [boundary] must be resolved synchronously by the UI before this call
+  /// to avoid BuildContext-across-async-gap lint errors.
   ///
   /// [pixelRatio] must be supplied by the UI (e.g. from [MediaQuery]).
-  /// Returns the saved file path on success, null on failure.
-  Future<String?> exportToImage(
+  /// Returns null on failure.
+  Future<Uint8List?> captureImage(
     RenderRepaintBoundary? boundary,
     double pixelRatio,
   ) async {
+    // Video export is not supported in Phase 2.
+    // RenderRepaintBoundary.toImage() cannot capture hardware video textures.
+    if (!canExport) return null;
     if (boundary == null) return null;
     _isExporting = true;
     notifyListeners();
@@ -185,15 +201,7 @@ class EditorController extends ChangeNotifier {
 
       final image = await boundary.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return null;
-
-      final pngBytes = byteData.buffer.asUint8List();
-      final dir = await getTemporaryDirectory();
-      final fileName = 'story_${DateTime.now().millisecondsSinceEpoch}.png';
-      final file = File('${dir.path}/$fileName');
-      await file.writeAsBytes(pngBytes);
-
-      return file.path;
+      return byteData?.buffer.asUint8List();
     } catch (_) {
       return null;
     } finally {

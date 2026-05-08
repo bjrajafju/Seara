@@ -6,14 +6,20 @@ import '../../models/story/story_draft.dart';
 import '../../widgets/editor/editor_canvas.dart';
 import '../../widgets/editor/editor_toolbar.dart';
 import '../../widgets/editor/text_edit_modal.dart';
+import '../../widgets/story/story_viewport.dart';
 
 /// Root screen for the story editor.
 ///
-/// Receives a [StoryDraft] from the capture screen and wires up:
-/// - [EditorController] (via [ChangeNotifierProvider])
-/// - [EditorCanvas]      — the composited, exportable preview
-/// - [EditorToolbar]     — Add Text + Download
-/// - [TextEditModal]     — conditionally shown over the canvas
+/// ## Layout
+/// - [StoryViewport] constrains the canvas to the global 9:16 mobile frame,
+///   centred on larger screens against a black background.
+/// - [EditorToolbar] is positioned on the RIGHT side, OUTSIDE the viewport
+///   so the composition frame stays clean and stable.
+/// - [TextEditModal] overlays the full screen when editing text (its content
+///   is internally constrained to [StoryViewport.maxWidth]).
+///
+/// [Scaffold.resizeToAvoidBottomInset] is false so the canvas never resizes
+/// when the soft keyboard opens inside [TextEditModal].
 class StoryEditorScreen extends StatefulWidget {
   final StoryDraft draft;
 
@@ -24,10 +30,7 @@ class StoryEditorScreen extends StatefulWidget {
 }
 
 class _StoryEditorScreenState extends State<StoryEditorScreen> {
-  /// Shared [GlobalKey] for the [RepaintBoundary] in [EditorCanvas].
-  /// Passed to both the canvas (for capture) and the toolbar (for export).
   final GlobalKey _canvasKey = GlobalKey();
-
   late final EditorController _controller;
 
   @override
@@ -48,31 +51,30 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
       value: _controller,
       child: Scaffold(
         backgroundColor: Colors.black,
+        resizeToAvoidBottomInset: false,
         body: SafeArea(
           child: Consumer<EditorController>(
             builder: (context, controller, _) {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // ── Canvas (RepaintBoundary wraps everything below) ────────
-                  Positioned.fill(
-                    bottom: _toolbarHeight,
-                    child: EditorCanvas(repaintKey: _canvasKey),
-                  ),
+                  // ── 9:16 composition canvas ───────────────────────────────
+                  // StoryViewport centres and constrains — identical frame to
+                  // the camera preview and export boundary.
+                  StoryViewport(child: EditorCanvas(repaintKey: _canvasKey)),
 
-                  // ── Toolbar ───────────────────────────────────────────────
+                  // ── Right-side vertical toolbar (OUTSIDE the viewport) ─────
                   Positioned(
-                    left: 0,
-                    right: 0,
+                    right: 12,
+                    top: 0,
                     bottom: 0,
-                    height: _toolbarHeight,
-                    child: EditorToolbar(canvasKey: _canvasKey),
+                    child: Center(child: EditorToolbar(canvasKey: _canvasKey)),
                   ),
 
                   // ── Back button ───────────────────────────────────────────
                   Positioned(top: 8, left: 8, child: _BackButton()),
 
-                  // ── Text edit modal (conditional) ─────────────────────────
+                  // ── Text edit modal (OUTSIDE viewport, content constrained) ─
                   if (controller.isEditModalOpen &&
                       controller.selectedLayerId != null)
                     Positioned.fill(
@@ -88,13 +90,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
       ),
     );
   }
-
-  static const double _toolbarHeight = 72.0;
 }
-
-// ---------------------------------------------------------------------------
-// Back button
-// ---------------------------------------------------------------------------
 
 class _BackButton extends StatelessWidget {
   @override

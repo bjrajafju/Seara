@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/editor_controller.dart';
+import '../../widgets/story/story_viewport.dart';
 
 /// Full-screen overlay for editing a text layer's content and font size.
 ///
-/// Opened by [EditorController.openEditModal] and closed by
-/// [EditorController.closeEditModal] (which removes the layer if empty).
+/// The overlay itself covers the entire screen (modal barrier + keyboard area),
+/// but the editable content column is constrained to [StoryViewport.maxWidth]
+/// so the user always feels like they are typing directly into the story frame.
 ///
-/// Used for BOTH creation and editing — the same UI in both cases.
+/// Used for BOTH creation and editing — same UI in both cases.
 class TextEditModal extends StatefulWidget {
   final String layerId;
 
@@ -40,102 +42,115 @@ class _TextEditModalState extends State<TextEditModal> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Dimmed background — not dismissible by tap (Done button only).
+        // Dimmed background covering the full screen.
+        // Not dismissible by tap — explicit Done button required.
         const ModalBarrier(color: Colors.black54, dismissible: false),
 
-        // Editor panel centered on screen.
-        SafeArea(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Text input.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: TextField(
-                  controller: _textCtrl,
-                  autofocus: true,
-                  textAlign: TextAlign.center,
-                  maxLines: null,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: _fontSize,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    hintText: 'Type something…',
-                    hintStyle: TextStyle(color: Colors.white38),
-                  ),
-                  onChanged: (value) {
-                    context.read<EditorController>().updateText(
-                      widget.layerId,
-                      value,
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Font size slider.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.text_fields,
-                      color: Colors.white54,
-                      size: 18,
+        // Content column constrained to the story canvas width.
+        // Centred horizontally so it aligns with the composition frame.
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: StoryViewport.maxWidth),
+            child: SafeArea(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Text input ───────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: TextField(
+                      controller: _textCtrl,
+                      autofocus: true,
+                      textAlign: TextAlign.center,
+                      maxLines: null,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: _fontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Type something…',
+                        hintStyle: TextStyle(color: Colors.white38),
+                      ),
+                      onChanged: (value) {
+                        context.read<EditorController>().updateText(
+                          widget.layerId,
+                          value,
+                        );
+                      },
                     ),
-                    Expanded(
-                      child: Slider(
-                        value: _fontSize,
-                        min: EditorController.kMinFontSize,
-                        max: EditorController.kMaxFontSize,
-                        divisions: 42,
-                        activeColor: Colors.white,
-                        inactiveColor: Colors.white24,
-                        onChanged: (value) {
-                          setState(() => _fontSize = value);
-                          context.read<EditorController>().updateFontSize(
-                            widget.layerId,
-                            value,
-                          );
-                        },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Font size slider ──────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.text_fields,
+                          color: Colors.white54,
+                          size: 18,
+                        ),
+                        Expanded(
+                          child: Slider(
+                            value: _fontSize,
+                            min: EditorController.kMinFontSize,
+                            max: EditorController.kMaxFontSize,
+                            divisions: 42,
+                            activeColor: Colors.white,
+                            inactiveColor: Colors.white24,
+                            onChanged: (value) {
+                              setState(() => _fontSize = value);
+                              context.read<EditorController>().updateFontSize(
+                                widget.layerId,
+                                value,
+                              );
+                            },
+                          ),
+                        ),
+                        const Icon(
+                          Icons.text_fields,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Done button ───────────────────────────────────────────
+                  TextButton(
+                    onPressed: () =>
+                        context.read<EditorController>().closeEditModal(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.white24,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
                       ),
                     ),
-                    const Icon(
-                      Icons.text_fields,
-                      color: Colors.white,
-                      size: 26,
+                    child: const Text(
+                      'Done',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Done button.
-              TextButton(
-                onPressed: () =>
-                    context.read<EditorController>().closeEditModal(),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.white24,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                ),
-                child: const Text(
-                  'Done',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+
+                  const SizedBox(height: 16),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ],
