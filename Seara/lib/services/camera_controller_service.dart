@@ -11,6 +11,13 @@ class CameraControllerService {
 
   CameraController? get controller => _controller;
 
+  /// Returns true if the current camera is front-facing.
+  bool get isFrontCamera {
+    if (_cameras.isEmpty) return false;
+    return _cameras[_currentCameraIndex].lensDirection ==
+        CameraLensDirection.front;
+  }
+
   /// Initialises the first available camera. Returns true on success.
   Future<bool> initialize() async {
     try {

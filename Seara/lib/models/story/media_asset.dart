@@ -7,13 +7,14 @@ import 'dart:typed_data';
 /// Use [StreamMediaAsset] for web video, which is referenced by a temporary
 /// blob URL and should not be loaded fully into memory.
 sealed class MediaAsset {
-  const MediaAsset();
+  final bool isMirrored;
+  const MediaAsset({this.isMirrored = false});
 }
 
 /// Mobile / Windows: media is available as a persistent local file path.
 class FileMediaAsset extends MediaAsset {
   final String path;
-  const FileMediaAsset(this.path);
+  const FileMediaAsset(this.path, {super.isMirrored});
 }
 
 /// Web photos: raw bytes held in memory.
@@ -25,7 +26,11 @@ class BytesMediaAsset extends MediaAsset {
   /// MIME type, e.g. `'image/jpeg'`.
   final String mimeType;
 
-  const BytesMediaAsset({required this.bytes, required this.mimeType});
+  const BytesMediaAsset({
+    required this.bytes,
+    required this.mimeType,
+    super.isMirrored,
+  });
 }
 
 /// Web video: temporary blob URL or stream reference.
@@ -39,5 +44,9 @@ class StreamMediaAsset extends MediaAsset {
   /// MIME type, e.g. `'video/webm'`.
   final String mimeType;
 
-  const StreamMediaAsset({required this.url, required this.mimeType});
+  const StreamMediaAsset({
+    required this.url,
+    required this.mimeType,
+    super.isMirrored,
+  });
 }

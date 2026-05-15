@@ -14,27 +14,27 @@ abstract final class StoryMediaMapper {
   /// Converts [asset] to [StoryMedia].
   ///
   /// [durationSeconds] is only meaningful for video assets.
-  static StoryMedia fromAsset(
-    MediaAsset asset, {
-    double? durationSeconds,
-  }) {
+  static StoryMedia fromAsset(MediaAsset asset, {double? durationSeconds}) {
     return switch (asset) {
-      FileMediaAsset(:final path) => StoryMedia(
-          filePath: path,
-          mimeType: inferMimeType(path),
-          durationSeconds: durationSeconds,
-        ),
-      BytesMediaAsset(:final Uint8List bytes, :final mimeType) => StoryMedia(
-          filePath: '',
-          mimeType: mimeType,
-          bytes: bytes,
-          durationSeconds: durationSeconds,
-        ),
-      StreamMediaAsset(:final url, :final mimeType) => StoryMedia(
-          filePath: url,
-          mimeType: mimeType,
-          durationSeconds: durationSeconds,
-        ),
+      FileMediaAsset(:final path, :final isMirrored) => StoryMedia(
+        filePath: path,
+        mimeType: inferMimeType(path),
+        durationSeconds: durationSeconds,
+        isMirrored: isMirrored,
+      ),
+      BytesMediaAsset(:final Uint8List bytes, :final mimeType, :final isMirrored) => StoryMedia(
+        filePath: '',
+        mimeType: mimeType,
+        bytes: bytes,
+        durationSeconds: durationSeconds,
+        isMirrored: isMirrored,
+      ),
+      StreamMediaAsset(:final url, :final mimeType, :final isMirrored) => StoryMedia(
+        filePath: url,
+        mimeType: mimeType,
+        durationSeconds: durationSeconds,
+        isMirrored: isMirrored,
+      ),
     };
   }
 

@@ -62,7 +62,7 @@ class CameraWindowsMediaInputService implements MediaInputService {
   Future<MediaAsset?> capturePhoto() async {
     final xFile = await _camera.takePictureXFile();
     if (xFile == null) return null;
-    return FileMediaAsset(xFile.path);
+    return FileMediaAsset(xFile.path, isMirrored: _camera.isFrontCamera);
   }
 
   @override
@@ -72,7 +72,7 @@ class CameraWindowsMediaInputService implements MediaInputService {
   Future<MediaAsset?> stopVideoRecording() async {
     final xFile = await _camera.stopVideoRecordingXFile();
     if (xFile == null) return null;
-    return FileMediaAsset(xFile.path);
+    return FileMediaAsset(xFile.path, isMirrored: _camera.isFrontCamera);
   }
 
   /// Flash is not implemented in camera_windows — always returns false.

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../mappers/story_media_mapper.dart';
@@ -22,6 +23,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   bool _isRecording = false;
   bool _isProcessing = false;
   bool _isFlashOn = false;
+  DateTime? _recordingStartTime;
 
   Timer? _recordingTimer;
   int _recordingDuration = 0;
@@ -89,22 +91,44 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.media,
         allowMultiple: false,
+        withData: kIsWeb,
       );
-      if (!mounted) return;
+      if (!mounted || result == null || result.files.isEmpty) return;
 
-      if (result != null && result.files.single.path != null) {
-        final path = result.files.single.path!;
-        final mimeType = StoryMediaMapper.inferMimeType(path);
+      final file = result.files.first;
+
+      // Platform-safe path/bytes extraction
+      final path = kIsWeb ? null : file.path;
+      final bytes = file.bytes;
+
+      if (kIsWeb) {
+        if (bytes == null) return;
+        final mimeType =
+            file.name.toLowerCase().endsWith('.mp4') ||
+                file.name.toLowerCase().endsWith('.mov') ||
+                file.name.toLowerCase().endsWith('.webm')
+            ? 'video/mp4'
+            : 'image/jpeg';
         final isVideo = mimeType.startsWith('video/');
+
         _navigateToEditor(
           StoryDraft(
             type: isVideo ? StoryType.video : StoryType.photo,
             media: [
               StoryMediaMapper.fromAsset(
-                FileMediaAsset(path),
-                durationSeconds: isVideo ? null : null,
+                BytesMediaAsset(bytes: bytes, mimeType: mimeType),
               ),
             ],
+          ),
+        );
+      } else {
+        if (path == null) return;
+        final mimeType = StoryMediaMapper.inferMimeType(path);
+        final isVideo = mimeType.startsWith('video/');
+        _navigateToEditor(
+          StoryDraft(
+            type: isVideo ? StoryType.video : StoryType.photo,
+            media: [StoryMediaMapper.fromAsset(FileMediaAsset(path))],
           ),
         );
       }
@@ -161,7 +185,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (!mounted) return;
 
       if (success) {
-        setState(() => _isRecording = true);
+        setState(() {
+          _isRecording = true;
+          _recordingStartTime = DateTime.now();
+        });
         if (_mediaService.hasCameraPreview) {
           _startRecordingTimer();
         }
@@ -187,7 +214,19 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
     _stopRecordingTimer();
     final duration = _recordingDuration;
-    setState(() => _isRecording = false);
+
+    // Safety check: Don't stop if it was just started (less than 500ms)
+    // to avoid race conditions with quick releases or system glitches.
+    if (_recordingStartTime != null &&
+        DateTime.now().difference(_recordingStartTime!).inMilliseconds < 500) {
+      _pendingStop = true;
+      return;
+    }
+
+    setState(() {
+      _isRecording = false;
+      _recordingStartTime = null;
+    });
 
     try {
       final asset = await _mediaService.stopVideoRecording();
@@ -388,29 +427,49 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           ),
 
           // Capture button
-          GestureDetector(
-            onTap: _takePhoto,
-            onLongPressStart: (_) => _startRecording(),
-            onLongPressEnd: (_) => _stopRecording(),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: _isRecording ? Colors.red : Colors.white,
-                  width: 4,
-                ),
-              ),
-              child: Center(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: _isRecording ? 30 : 64,
-                  height: _isRecording ? 30 : 64,
-                  decoration: BoxDecoration(
+          Listener(
+            key: const ValueKey('capture_button'),
+            onPointerDown: (_) {
+              _pendingStop = false;
+            },
+            onPointerUp: (_) {
+              if (_isRecording) {
+                _stopRecording();
+              } else {
+                // If they just tapped, _stopRecording wasn't called.
+                // We'll let GestureDetector handle the tap for photo.
+              }
+            },
+            child: GestureDetector(
+              onTap: _takePhoto,
+              onLongPressStart: (_) => _startRecording(),
+              onLongPressEnd: (_) {
+                // Handled by Listener for better desktop support,
+                // but kept here for mobile/gesture consistency.
+                if (_isRecording) _stopRecording();
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
                     color: _isRecording ? Colors.red : Colors.white,
-                    borderRadius: BorderRadius.circular(_isRecording ? 8 : 32),
+                    width: 4,
+                  ),
+                ),
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: _isRecording ? 30 : 64,
+                    height: _isRecording ? 30 : 64,
+                    decoration: BoxDecoration(
+                      color: _isRecording ? Colors.red : Colors.white,
+                      borderRadius: BorderRadius.circular(
+                        _isRecording ? 8 : 32,
+                      ),
+                    ),
                   ),
                 ),
               ),

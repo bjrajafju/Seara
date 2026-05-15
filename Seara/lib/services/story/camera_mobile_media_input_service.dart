@@ -73,7 +73,7 @@ class CameraMobileMediaInputService implements MediaInputService {
   Future<MediaAsset?> capturePhoto() async {
     final xFile = await _camera.takePictureXFile();
     if (xFile == null) return null;
-    return FileMediaAsset(xFile.path);
+    return FileMediaAsset(xFile.path, isMirrored: _camera.isFrontCamera);
   }
 
   @override
@@ -83,7 +83,7 @@ class CameraMobileMediaInputService implements MediaInputService {
   Future<MediaAsset?> stopVideoRecording() async {
     final xFile = await _camera.stopVideoRecordingXFile();
     if (xFile == null) return null;
-    return FileMediaAsset(xFile.path);
+    return FileMediaAsset(xFile.path, isMirrored: _camera.isFrontCamera);
   }
 
   @override

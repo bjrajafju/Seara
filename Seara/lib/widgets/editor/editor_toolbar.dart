@@ -3,136 +3,222 @@ import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/editor_controller.dart';
+import '../../services/video_export/export_result.dart';
+import '../../services/video_export_service.dart';
 import '../../utils/export/export_saver.dart';
 
 /// Vertical toolbar positioned on the right side of the editor screen,
 /// OUTSIDE the [StoryViewport] composition frame.
 ///
 /// Provides:
-/// - **Text** — creates a new [TextOverlay] and opens the edit modal.
-/// - **Save** — exports canvas to PNG (image stories only).
-///   Disabled with an explanatory [SnackBar] for video stories.
+/// - **Text** — creates a new [TextOverlay].
+/// - **Draw** — toggles freehand drawing mode.
+/// - **Mute** — toggles video audio (video stories only).
+/// - **Export** — image PNG (image stories) or MP4 via FFmpeg (video stories).
 class EditorToolbar extends StatelessWidget {
+  /// Key for the full-composition [RepaintBoundary] (image export).
   final GlobalKey canvasKey;
 
-  const EditorToolbar({super.key, required this.canvasKey});
+  /// Key for the overlay-only [RepaintBoundary] (video export FFmpeg pipeline).
+  final GlobalKey overlayKey;
+
+  const EditorToolbar({
+    super.key,
+    required this.canvasKey,
+    required this.overlayKey,
+  });
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<EditorController>();
-
-    // Determine export button state based on draft type and export status.
-    final bool isVideo = !controller.canExport;
-    final bool isBusy = controller.isExporting;
+    final isBusy = controller.isExporting;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Add Text ────────────────────────────────────────────────────────
+        // ── Add Text (disabled in drawing mode) ──────────────────────────────
         _ToolbarButton(
           icon: Icons.text_fields,
           label: 'Text',
-          onPressed: isBusy
+          onPressed: (isBusy || controller.isDrawingMode)
               ? null
               : () => context.read<EditorController>().addTextLayer(),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
 
-        // ── Save / Export ────────────────────────────────────────────────────
-        // Disabled for video stories — real video export is a future phase.
+        // ── Draw mode toggle ─────────────────────────────────────────────────
         _ToolbarButton(
-          icon: isVideo
-              ? Icons.videocam_off_rounded
-              : isBusy
-              ? Icons.hourglass_top
-              : Icons.download_rounded,
-          label: isVideo
-              ? 'N/A'
-              : isBusy
-              ? '…'
-              : 'Save',
+          icon: Icons.edit_rounded,
+          label: controller.isDrawingMode ? 'Done' : 'Draw',
+          active: controller.isDrawingMode,
           onPressed: isBusy
               ? null
-              : isVideo
-              ? () => _showVideoExportMessage(context)
-              : () => _export(context),
+              : () => context.read<EditorController>().toggleDrawingMode(),
+        ),
+
+        // ── Mute toggle (video stories only) ─────────────────────────────────
+        if (controller.isVideoStory) ...[
+          const SizedBox(height: 12),
+          _ToolbarButton(
+            icon: controller.isMuted
+                ? Icons.volume_off_rounded
+                : Icons.volume_up_rounded,
+            label: controller.isMuted ? 'Muted' : 'Sound',
+            active: !controller.isMuted,
+            onPressed: isBusy
+                ? null
+                : () => context.read<EditorController>().toggleMute(),
+          ),
+        ],
+
+        const SizedBox(height: 20),
+
+        // ── Export ───────────────────────────────────────────────────────────
+        _ToolbarButton(
+          icon: isBusy ? Icons.hourglass_top : Icons.download_rounded,
+          label: isBusy ? '…' : 'Save',
+          onPressed: isBusy ? null : () => _onExport(context, controller),
         ),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Export
-  // ---------------------------------------------------------------------------
+  // ── Export dispatch ────────────────────────────────────────────────────────
 
-  Future<void> _export(BuildContext context) async {
+  Future<void> _onExport(
+    BuildContext context,
+    EditorController controller,
+  ) async {
+    if (controller.isVideoStory) {
+      await _exportVideo(context, controller);
+    } else {
+      await _exportImage(context, controller);
+    }
+  }
+
+  // ── Image export (Phase 1–3 pipeline, unchanged) ───────────────────────────
+
+  Future<void> _exportImage(
+    BuildContext context,
+    EditorController controller,
+  ) async {
     final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final controller = context.read<EditorController>();
 
-    // Resolve the render object synchronously before any await.
     final boundary =
         canvasKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
-    // Step 1: controller captures pixels → Uint8List.
     final bytes = await controller.captureImage(boundary, pixelRatio);
     if (!context.mounted) return;
 
     if (bytes == null) {
-      _showSnackBar(context, 'Export failed. Please try again.', isError: true);
+      _snack(context, 'Export failed. Please try again.', isError: true);
       return;
     }
 
-    // Step 2: platform utility saves or downloads the bytes.
     try {
-      final result = await saveExportedImage(bytes);
+      final path = await saveExportedImage(bytes);
       if (!context.mounted) return;
-      _showSnackBar(context, 'Saved: $result');
+      _snack(context, 'Saved: $path');
     } catch (_) {
       if (!context.mounted) return;
-      _showSnackBar(context, 'Could not save file.', isError: true);
+      _snack(context, 'Could not save file.', isError: true);
     }
   }
 
-  void _showVideoExportMessage(BuildContext context) {
-    _showSnackBar(
-      context,
-      'Video export is not supported yet. '
-      'Text overlays are visible during playback.',
-      isError: false,
-      duration: const Duration(seconds: 4),
-    );
+  // ── Video export (Phase 4 FFmpeg pipeline) ─────────────────────────────────
+
+  Future<void> _exportVideo(
+    BuildContext context,
+    EditorController controller,
+  ) async {
+    // Set exporting flag in controller for UI feedback.
+    controller.beginExporting();
+
+    try {
+      const service = VideoExportService();
+      final result = await service.exportVideo(
+        draft: controller.draft,
+        overlayKey: overlayKey,
+      );
+
+      if (!context.mounted) return;
+
+      switch (result) {
+        case ExportSuccess(:final outputPath):
+          _snack(context, 'Saved: $outputPath');
+        case ExportFailure(:final error):
+          _snack(context, 'Export failed: $error', isError: true);
+        case ExportUnsupported(:final reason):
+          _snack(
+            context,
+            reason,
+            isError: false,
+            duration: const Duration(seconds: 5),
+          );
+      }
+    } finally {
+      controller.endExporting();
+    }
   }
 
-  void _showSnackBar(
+  void _snack(
     BuildContext context,
     String message, {
     bool isError = false,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 4),
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    messenger.showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700,
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError
+            ? Colors.redAccent.shade400
+            : const Color(0xFF2E7D32),
         duration: duration,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Private toolbar button — icon above label, rounded card.
-// ---------------------------------------------------------------------------
+// ── Toolbar button ─────────────────────────────────────────────────────────
 
 class _ToolbarButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
+  final bool active;
 
   const _ToolbarButton({
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.active = false,
   });
 
   @override
@@ -142,23 +228,24 @@ class _ToolbarButton extends StatelessWidget {
       child: AnimatedOpacity(
         opacity: onPressed == null ? 0.4 : 1.0,
         duration: const Duration(milliseconds: 200),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
           width: 56,
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white12,
+            color: active ? Colors.white : Colors.white12,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24),
+            border: Border.all(color: active ? Colors.white : Colors.white24),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: Colors.white, size: 22),
+              Icon(icon, color: active ? Colors.black : Colors.white, size: 22),
               const SizedBox(height: 4),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: active ? Colors.black : Colors.white,
                   fontWeight: FontWeight.w600,
                   fontSize: 11,
                 ),

@@ -1,18 +1,16 @@
+import 'dart:io';
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../controllers/editor_controller.dart';
 import '../../models/story/story_media.dart';
 import '../../utils/media/platform_media_factory.dart';
+import 'windows_video_widget.dart';
 
 /// Renders the base media (image or video) for the story editor canvas.
-///
-/// This widget is a [StatefulWidget] so it can own the [VideoPlayerController]
-/// lifecycle — initialised once in [initState], disposed in [dispose],
-/// never re-created on rebuild.
-///
-/// Platform routing is done entirely via [StoryMedia] field inspection and
-/// the [platform_media_factory] conditional-import utility — no [Platform.*],
-/// no [kIsWeb], no direct [dart:io] imports in this file.
 class BaseMediaWidget extends StatefulWidget {
   final StoryMedia media;
 
@@ -28,16 +26,17 @@ class _BaseMediaWidgetState extends State<BaseMediaWidget> {
   @override
   void initState() {
     super.initState();
-    if (widget.media.isVideo) _initVideo();
+    if (widget.media.isVideo && !kIsWeb && !Platform.isWindows) {
+      _initVideo();
+    }
   }
+
+  Duration _lastPosition = Duration.zero;
 
   Future<void> _initVideo() async {
     final media = widget.media;
     final path = media.filePath;
 
-    // Route to the correct controller type:
-    // - blob: or http(s): URLs → networkUrl (web video, or HLS on native)
-    // - everything else         → local file via platform factory (dart:io on native only)
     final ctrl = _isRemoteUrl(path)
         ? VideoPlayerController.networkUrl(Uri.parse(path))
         : createLocalFileVideoController(path);
@@ -46,11 +45,16 @@ class _BaseMediaWidgetState extends State<BaseMediaWidget> {
 
     await ctrl.initialize();
     await ctrl.setLooping(true);
-    // Always muted in editor — final mute state is stored in StoryDraft.isMuted.
-    await ctrl.setVolume(0);
-    await ctrl.play();
 
-    // Guard against the widget being disposed during async initialization.
+    ctrl.addListener(() {
+      if (!mounted) return;
+      final current = ctrl.value.position;
+      if (current < _lastPosition) {
+        context.read<EditorController>().restartExternalAudio();
+      }
+      _lastPosition = current;
+    });
+
     if (mounted) setState(() {});
   }
 
@@ -62,62 +66,59 @@ class _BaseMediaWidgetState extends State<BaseMediaWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.media.isVideo) return _buildVideo();
-    return _buildImage();
-  }
-
-  Widget _buildVideo() {
-    final ctrl = _videoCtrl;
-    // Use the controller's own isInitialized flag — authoritative lifecycle guard.
-    if (ctrl == null || !ctrl.value.isInitialized) {
-      return const ColoredBox(color: Colors.black);
-    }
-    return FittedBox(
-      fit: BoxFit.cover,
-      clipBehavior: Clip.hardEdge,
-      child: SizedBox(
-        width: ctrl.value.size.width,
-        height: ctrl.value.size.height,
-        child: Transform.scale(
-          scaleX: -1, // Horizontal mirror
-          child: VideoPlayer(ctrl),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImage() {
     final media = widget.media;
+    Widget content;
 
-    // Web photo: BytesMediaAsset stores bytes — no platform code required.
-    if (media.bytes != null) {
-      return Image.memory(
-        media.bytes!,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
+    if (media.isVideo) {
+      if (!kIsWeb && Platform.isWindows) {
+        content = WindowsVideoWidget(path: media.filePath);
+      } else {
+        final ctrl = _videoCtrl;
+        if (ctrl == null || !ctrl.value.isInitialized) {
+          content = const Center(child: CircularProgressIndicator());
+        } else {
+          // Watch mute state from EditorController
+          final isMuted =
+              context.select((EditorController c) => c.draft.isMuted);
+          ctrl.setVolume(isMuted ? 0 : 1.0);
+
+          content = SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox(
+                width: ctrl.value.size.width,
+                height: ctrl.value.size.height,
+                child: VideoPlayer(ctrl),
+              ),
+            ),
+          );
+        }
+      }
+    } else {
+      // Image logic
+      if (media.bytes != null) {
+        content = Image.memory(media.bytes!, fit: BoxFit.cover);
+      } else {
+        content = SizedBox.expand(
+          child: _isRemoteUrl(media.filePath)
+              ? Image.network(media.filePath, fit: BoxFit.cover)
+              : buildLocalFileImage(media.filePath, BoxFit.cover),
+        );
+      }
+    }
+
+    if (media.isMirrored) {
+      return Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.rotationY(math.pi),
+        child: content,
       );
     }
 
-    if (media.filePath.isNotEmpty) {
-      // Remote / blob URL — Image.network works on all platforms.
-      if (_isRemoteUrl(media.filePath)) {
-        return Image.network(
-          media.filePath,
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-        );
-      }
-      // Local file — delegate to platform factory (dart:io on native only).
-      return buildLocalFileImage(media.filePath, BoxFit.cover);
-    }
-
-    return const ColoredBox(color: Colors.black);
+    return content;
   }
 
-  /// Returns true for URLs that must be fetched over the network
-  /// (http, https) or blob references (blob:).
   static bool _isRemoteUrl(String path) =>
       path.startsWith('http://') ||
       path.startsWith('https://') ||

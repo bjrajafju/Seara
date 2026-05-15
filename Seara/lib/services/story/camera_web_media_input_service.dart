@@ -59,7 +59,11 @@ class CameraWebMediaInputService implements MediaInputService {
     final xFile = await _camera.takePictureXFile();
     if (xFile == null) return null;
     final bytes = await xFile.readAsBytes();
-    return BytesMediaAsset(bytes: bytes, mimeType: 'image/jpeg');
+    return BytesMediaAsset(
+      bytes: bytes,
+      mimeType: 'image/jpeg',
+      isMirrored: _camera.isFrontCamera,
+    );
   }
 
   @override
@@ -71,7 +75,11 @@ class CameraWebMediaInputService implements MediaInputService {
     final xFile = await _camera.stopVideoRecordingXFile();
     if (xFile == null) return null;
     // camera_web returns a blob: URL as XFile.path for video.
-    return StreamMediaAsset(url: xFile.path, mimeType: 'video/webm');
+    return StreamMediaAsset(
+      url: xFile.path,
+      mimeType: 'video/webm',
+      isMirrored: _camera.isFrontCamera,
+    );
   }
 
   /// Flash is not exposed by the browser camera API — always returns false.

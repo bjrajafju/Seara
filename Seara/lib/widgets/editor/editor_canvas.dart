@@ -3,23 +3,36 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/editor_controller.dart';
 import 'base_media_widget.dart';
+import 'drawing_canvas_widget.dart';
 import 'text_layer_widget.dart';
 
 /// The main editor canvas.
 ///
-/// Wraps the entire composition in a [RepaintBoundary] (keyed externally for
-/// export) and renders:
-/// 1. [BaseMediaWidget] — base image or video (fills the canvas).
-/// 2. [TextLayerWidget] — one per [TextOverlay], sorted by zIndex.
+/// Renders in Z order:
+/// 1. [BaseMediaWidget]       — base image or video (z = 0, bottom).
+/// 2. [DrawingCanvasWidget]   — unified drawing overlay (z = 1).
+/// 3. [TextLayerWidget]s      — one per [TextOverlay], sorted by zIndex (top).
 ///
-/// A background [GestureDetector] deselects all layers when the user
-/// taps empty canvas space.
+/// Wraps the full composition in a [RepaintBoundary] keyed by [repaintKey]
+/// for image-story export (captures everything including media).
+///
+/// Additionally, renders an invisible [RepaintBoundary] keyed by
+/// [overlayRepaintKey] that captures ONLY the drawing + text overlays on a
+/// transparent background. This boundary is used by [VideoExportService]
+/// to generate `overlay.png` for FFmpeg composition without capturing the
+/// hardware video texture.
 class EditorCanvas extends StatelessWidget {
-  /// The [GlobalKey] to attach to the [RepaintBoundary].
-  /// Owned by [StoryEditorScreen] and shared with the export button.
+  /// Key for the full-composition boundary (image export).
   final GlobalKey repaintKey;
 
-  const EditorCanvas({super.key, required this.repaintKey});
+  /// Key for the overlay-only boundary (video export FFmpeg pipeline).
+  final GlobalKey overlayRepaintKey;
+
+  const EditorCanvas({
+    super.key,
+    required this.repaintKey,
+    required this.overlayRepaintKey,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +41,10 @@ class EditorCanvas extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
-          return _CanvasContent(canvasSize: canvasSize);
+          return _CanvasContent(
+            canvasSize: canvasSize,
+            overlayRepaintKey: overlayRepaintKey,
+          );
         },
       ),
     );
@@ -37,27 +53,61 @@ class EditorCanvas extends StatelessWidget {
 
 class _CanvasContent extends StatelessWidget {
   final Size canvasSize;
+  final GlobalKey overlayRepaintKey;
 
-  const _CanvasContent({required this.canvasSize});
+  const _CanvasContent({
+    required this.canvasSize,
+    required this.overlayRepaintKey,
+  });
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<EditorController>();
     final layers = controller.layersInZOrder;
     final media = controller.draft.media;
+    final isDrawing = controller.isDrawingMode;
 
     return GestureDetector(
-      // Tapping blank canvas deselects all layers.
-      onTap: () => context.read<EditorController>().deselectAll(),
+      onTap: isDrawing ? null : () => context.read<EditorController>().deselectAll(),
       behavior: HitTestBehavior.opaque,
       child: SizedBox.expand(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Base media — always at z = 0.
+            // ── Overlay export boundary (Hidden at the bottom) ──────────────
+            // Strategy: We use Opacity(0.01) instead of 0.0 to force Flutter 
+            // to paint the boundary (otherwise it's optimized away).
+            // By putting it at the bottom of the stack, it's effectively 
+            // covered by the video/media while still being valid for capture.
+            IgnorePointer(
+              child: Opacity(
+                opacity: 0.01,
+                child: RepaintBoundary(
+                  key: overlayRepaintKey,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const ColoredBox(color: Colors.transparent),
+                      const DrawingCanvasWidget(),
+                      for (final layer in layers)
+                        TextLayerWidget(
+                          key: ValueKey('overlay_${layer.id}'),
+                          layer: layer,
+                          canvasSize: canvasSize,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // z = 0 — Base media (covers the overlay boundary).
             if (media.isNotEmpty) BaseMediaWidget(media: media.first),
 
-            // Text layers — rendered in ascending zIndex order.
+            // z = 1 — Drawing overlay (interactive layer).
+            const DrawingCanvasWidget(),
+
+            // z = 2+ — Text layers.
             for (final layer in layers)
               TextLayerWidget(
                 key: ValueKey(layer.id),

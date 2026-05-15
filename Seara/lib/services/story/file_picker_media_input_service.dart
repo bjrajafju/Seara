@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../models/story/media_asset.dart';
 import 'media_input_service.dart';
@@ -12,21 +13,19 @@ import 'media_input_service.dart';
 ///
 /// hasCameraPreview is false, so the UI shows a static background instead.
 class FilePickerMediaInputService implements MediaInputService {
-  /// Holds the video path selected during [startVideoRecording].
-  String? _pendingVideoPath;
+  /// Holds the selected asset (path on native, bytes/blob on web).
+  MediaAsset? _pendingAsset;
 
   @override
   bool get hasCameraPreview => false;
 
   @override
   CameraPreviewData? getPreview(BuildContext context) {
-    // No live camera on this platform — UI should render its own fallback.
     return null;
   }
 
   @override
   Future<bool> initialize() async {
-    // No hardware to initialize; always succeeds.
     return true;
   }
 
@@ -35,44 +34,73 @@ class FilePickerMediaInputService implements MediaInputService {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
+      withData: kIsWeb,
     );
-    final path = result?.files.single.path;
-    return path != null ? FileMediaAsset(path) : null;
+
+    if (result == null || result.files.isEmpty) return null;
+    final file = result.files.first;
+
+    if (kIsWeb) {
+      if (file.bytes == null) return null;
+      return BytesMediaAsset(file.bytes!, 'image/jpeg');
+    } else {
+      if (file.path == null) return null;
+      return FileMediaAsset(file.path!);
+    }
   }
 
-  /// Opens the video picker immediately.
-  ///
-  /// On web/desktop there is no "hold to record" — the user picks a file.
-  /// The path is buffered so [stopVideoRecording] can return it.
-  /// Returns true if the user selected a file.
   @override
   Future<bool> startVideoRecording() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.video,
       allowMultiple: false,
+      withData: kIsWeb,
     );
-    _pendingVideoPath = result?.files.single.path;
-    return _pendingVideoPath != null;
+
+    if (result == null || result.files.isEmpty) return false;
+    final file = result.files.first;
+
+    if (kIsWeb) {
+      // For web video, we usually want a blob URL.
+      // PlatformFile.path on web IS the blob URL in some versions of file_picker,
+      // but the safer way is to check.
+      // However, Seara's StoryMedia expects a filePath or bytes.
+      // We'll store it as a FileMediaAsset if a path (blob URL) is present,
+      // or BytesMediaAsset if not.
+      if (file.bytes != null) {
+        _pendingAsset = BytesMediaAsset(file.bytes!, 'video/mp4');
+      } else {
+        // Fallback to path if bytes are null (might be a blob URL)
+        final path = file.path;
+        if (path != null) {
+          _pendingAsset = FileMediaAsset(path);
+        }
+      }
+    } else {
+      final path = file.path;
+      if (path != null) {
+        _pendingAsset = FileMediaAsset(path);
+      }
+    }
+
+    return _pendingAsset != null;
   }
 
-  /// Returns the asset buffered by [startVideoRecording].
   @override
   Future<MediaAsset?> stopVideoRecording() async {
-    final path = _pendingVideoPath;
-    _pendingVideoPath = null;
-    return path != null ? FileMediaAsset(path) : null;
+    final asset = _pendingAsset;
+    _pendingAsset = null;
+    return asset;
   }
 
-  /// Flash is not available on this platform.
   @override
   Future<bool> toggleFlash() async => false;
 
-  /// Camera switching is not available on this platform.
   @override
   Future<bool> switchCamera() async => false;
 
   @override
   Future<void> dispose() async {
-    _pendingVideoPath = null;
+    _pendingAsset = null;
   }
 }

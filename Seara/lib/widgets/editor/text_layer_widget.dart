@@ -53,32 +53,39 @@ class _TextLayerWidgetState extends State<TextLayerWidget> {
     final anchorX = _maxWidth / 2;
     final anchorY = _estimateHalfHeight(layer);
 
+    // In drawing mode, all text interaction is disabled. The Listener inside
+    // DrawingCanvasWidget owns all pointer events during that state.
+    final isDrawing = context.watch<EditorController>().isDrawingMode;
+
     return Positioned.fill(
-      child: GestureDetector(
-        behavior: HitTestBehavior.deferToChild,
-        onTap: _handleTap,
-        onScaleStart: _handleScaleStart,
-        onScaleUpdate: _handleScaleUpdate,
-        onScaleEnd: _handleScaleEnd,
-        child: Stack(
-          children: [
-            Positioned(
-              left: dx,
-              top: dy,
-              child: Transform.translate(
-                offset: Offset(-anchorX, -anchorY),
-                child: Transform.rotate(
-                  angle: layer.rotation,
-                  // alignment: Alignment.center is the default — rotation
-                  // pivots around the centre of the text block.
-                  child: Transform.scale(
-                    scale: layer.scale,
-                    child: _TextContent(layer: layer, maxWidth: _maxWidth),
+      child: IgnorePointer(
+        ignoring: isDrawing,
+        child: GestureDetector(
+          behavior: HitTestBehavior.deferToChild,
+          onTap: _handleTap,
+          onScaleStart: _handleScaleStart,
+          onScaleUpdate: _handleScaleUpdate,
+          onScaleEnd: _handleScaleEnd,
+          child: Stack(
+            children: [
+              Positioned(
+                left: dx,
+                top: dy,
+                child: Transform.translate(
+                  offset: Offset(-anchorX, -anchorY),
+                  child: Transform.rotate(
+                    angle: layer.rotation,
+                    // alignment: Alignment.center is the default — rotation
+                    // pivots around the centre of the text block.
+                    child: Transform.scale(
+                      scale: layer.scale,
+                      child: _TextContent(layer: layer, maxWidth: _maxWidth),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

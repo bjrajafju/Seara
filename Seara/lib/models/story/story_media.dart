@@ -19,11 +19,15 @@ class StoryMedia {
   /// Null on mobile / Windows where [filePath] is used instead.
   final Uint8List? bytes;
 
+  /// Whether this media should be flipped horizontally (e.g. front camera capture).
+  final bool isMirrored;
+
   const StoryMedia({
     required this.filePath,
     required this.mimeType,
     this.durationSeconds,
     this.bytes,
+    this.isMirrored = false,
   });
 
   /// Quick helper to check the media category.

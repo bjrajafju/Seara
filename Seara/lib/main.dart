@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/profile/user_list_screen.dart';
 import 'providers/auth_provider.dart';
@@ -18,6 +19,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Starts the app and wires top-level providers
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   JustAudioMediaKit.ensureInitialized();
 
   await Supabase.initialize(
