@@ -14,3 +14,7 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+Windows Setup: This project requires FFmpeg for video processing on Windows.
+Download ffmpeg.exe from FFmpeg.org
+Place the ffmpeg.exe file inside the Seara\assets\ffmpeg\ directory.
