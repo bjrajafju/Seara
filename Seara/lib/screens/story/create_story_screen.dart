@@ -23,6 +23,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   bool _isRecording = false;
   bool _isProcessing = false;
   bool _isFlashOn = false;
+  bool _isHandsFreeEnabled = false;
   DateTime? _recordingStartTime;
 
   Timer? _recordingTimer;
@@ -311,9 +312,79 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
             // Bottom bar: gallery stub / capture button
             _buildBottomBar(),
+
+            // Left Sidebar: Hands Free Toggle
+            _buildSideBar(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSideBar() {
+    return Positioned(
+      left: 16,
+      top: 0,
+      bottom: 0,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildToolButton(
+              icon: _isHandsFreeEnabled ? Icons.front_hand : Icons.pan_tool_outlined,
+              label: 'Hands Free',
+              isActive: _isHandsFreeEnabled,
+              onPressed: () {
+                if (_isRecording) return;
+                setState(() => _isHandsFreeEnabled = !_isHandsFreeEnabled);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onPressed,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: onPressed,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isActive ? Colors.yellow : Colors.black45,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isActive ? Colors.yellow : Colors.white24,
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: isActive ? Colors.black : Colors.white,
+              size: 26,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            shadows: [Shadow(blurRadius: 4, color: Colors.black)],
+          ),
+        ),
+      ],
     );
   }
 
@@ -371,7 +442,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                '00:${_recordingDuration.toString().padLeft(2, '0')}',
+                _formatDuration(_recordingDuration),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -430,24 +501,33 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           Listener(
             key: const ValueKey('capture_button'),
             onPointerDown: (_) {
-              _pendingStop = false;
+              if (!_isHandsFreeEnabled) {
+                _pendingStop = false;
+              }
             },
             onPointerUp: (_) {
-              if (_isRecording) {
+              if (!_isHandsFreeEnabled && _isRecording) {
                 _stopRecording();
-              } else {
-                // If they just tapped, _stopRecording wasn't called.
-                // We'll let GestureDetector handle the tap for photo.
               }
             },
             child: GestureDetector(
-              onTap: _takePhoto,
-              onLongPressStart: (_) => _startRecording(),
-              onLongPressEnd: (_) {
-                // Handled by Listener for better desktop support,
-                // but kept here for mobile/gesture consistency.
-                if (_isRecording) _stopRecording();
+              onTap: () {
+                if (_isHandsFreeEnabled) {
+                  if (_isRecording) {
+                    _stopRecording();
+                  } else {
+                    _startRecording();
+                  }
+                } else {
+                  _takePhoto();
+                }
               },
+              onLongPressStart: _isHandsFreeEnabled ? null : (_) => _startRecording(),
+              onLongPressEnd: _isHandsFreeEnabled
+                  ? null
+                  : (_) {
+                      if (_isRecording) _stopRecording();
+                    },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 width: 80,
@@ -455,7 +535,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: _isRecording ? Colors.red : Colors.white,
+                    color: _isRecording
+                        ? Colors.red
+                        : (_isHandsFreeEnabled ? Colors.yellow : Colors.white),
                     width: 4,
                   ),
                 ),
@@ -465,11 +547,16 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                     width: _isRecording ? 30 : 64,
                     height: _isRecording ? 30 : 64,
                     decoration: BoxDecoration(
-                      color: _isRecording ? Colors.red : Colors.white,
+                      color: _isRecording
+                          ? Colors.red
+                          : (_isHandsFreeEnabled ? Colors.yellow : Colors.white),
                       borderRadius: BorderRadius.circular(
                         _isRecording ? 8 : 32,
                       ),
                     ),
+                    child: (_isHandsFreeEnabled && !_isRecording)
+                        ? const Icon(Icons.videocam, color: Colors.black, size: 32)
+                        : null,
                   ),
                 ),
               ),
@@ -480,5 +567,11 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         ],
       ),
     );
+  }
+
+  String _formatDuration(int seconds) {
+    final mins = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 }
