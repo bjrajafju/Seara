@@ -37,6 +37,7 @@ class EditorController extends ChangeNotifier {
   String? _selectedLayerId;
   bool _isEditModalOpen = false;
   bool _isExporting = false;
+  bool _isPublishing = false;
 
   // Drawing state
   bool _isDrawingMode = false;
@@ -67,6 +68,8 @@ class EditorController extends ChangeNotifier {
   String? get selectedLayerId => _selectedLayerId;
   bool get isEditModalOpen => _isEditModalOpen;
   bool get isExporting => _isExporting;
+  bool get isPublishing => _isPublishing;
+  bool get isBusy => _isExporting || _isPublishing;
 
   // Drawing getters
   bool get isDrawingMode => _isDrawingMode;
@@ -300,6 +303,16 @@ class EditorController extends ChangeNotifier {
 
   void endExporting() {
     _isExporting = false;
+    notifyListeners();
+  }
+
+  void beginPublishing() {
+    _isPublishing = true;
+    notifyListeners();
+  }
+
+  void endPublishing() {
+    _isPublishing = false;
     notifyListeners();
   }
 
