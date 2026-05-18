@@ -48,7 +48,11 @@ class StoryEngineController extends ChangeNotifier {
   // ── Progress animation ───────────────────────────────────────────────────
   late AnimationController progressController;
 
+  bool _isReady = false;
+  bool get isReady => _isReady;
+
   // ── Pause state ──────────────────────────────────────────────────────────
+
   bool _isPaused = false;
   bool get isPaused => _isPaused;
 
@@ -67,10 +71,17 @@ class StoryEngineController extends ChangeNotifier {
 
   // ── Init ─────────────────────────────────────────────────────────────────
 
-  Future<void> init(TickerProvider vsync) async {
-    _isMuted = await AudioPreferencesService.isMuted();
+  void init(TickerProvider vsync) {
     _initProgressController(vsync);
+    _loadMuteAndActivate(vsync);
+  }
+
+  Future<void> _loadMuteAndActivate(TickerProvider vsync) async {
+    _isMuted = await AudioPreferencesService.isMuted();
+    if (_disposed) return;
     await _activateStory(vsync);
+    _isReady = true;
+    notifyListeners();
   }
 
   void _initProgressController(TickerProvider vsync) {
@@ -81,6 +92,7 @@ class StoryEngineController extends ChangeNotifier {
       }
     });
   }
+
 
   // ── Activate / preload ───────────────────────────────────────────────────
 
@@ -105,10 +117,14 @@ class StoryEngineController extends ChangeNotifier {
       final duration = await _resolveDuration(story);
       if (_disposed) return;
 
-      progressController.duration = Duration(milliseconds: (duration * 1000).toInt());
+      progressController.duration = Duration(
+        milliseconds: (duration * 1000).toInt(),
+      );
     } else {
       _activePlayer = null; // images don't need a player
-      progressController.duration = Duration(milliseconds: (story.effectiveDuration * 1000).toInt());
+      progressController.duration = Duration(
+        milliseconds: (story.effectiveDuration * 1000).toInt(),
+      );
     }
 
     progressController.reset();

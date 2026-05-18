@@ -36,10 +36,8 @@ class _StoriesRowState extends State<StoriesRow> {
         opaque: false,
         barrierColor: Colors.black,
         transitionDuration: const Duration(milliseconds: 250),
-        pageBuilder: (_, __, ___) => StoryViewerScreen(
-          users: users,
-          initialUserIndex: initialIndex,
-        ),
+        pageBuilder: (_, __, ___) =>
+            StoryViewerScreen(users: users, initialUserIndex: initialIndex),
         transitionsBuilder: (_, anim, __, child) {
           return FadeTransition(
             opacity: anim,

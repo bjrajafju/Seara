@@ -7,7 +7,13 @@ import messagesRoutes from "./routes/messagesRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import { startEphemeralCleanup } from "./services/ephemeralCleanup.js";
 
-dotenv.config();
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app = express();
 app.use(cors());

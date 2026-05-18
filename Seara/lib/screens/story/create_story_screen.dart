@@ -90,7 +90,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.media,
+        type: kIsWeb ? FileType.image : FileType.media,
         allowMultiple: false,
         withData: kIsWeb,
       );
@@ -104,17 +104,24 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
       if (kIsWeb) {
         if (bytes == null) return;
-        final mimeType =
-            file.name.toLowerCase().endsWith('.mp4') ||
-                file.name.toLowerCase().endsWith('.mov') ||
-                file.name.toLowerCase().endsWith('.webm')
-            ? 'video/mp4'
-            : 'image/jpeg';
-        final isVideo = mimeType.startsWith('video/');
+        final nameLower = file.name.toLowerCase();
+        final isVideoFile = nameLower.endsWith('.mp4') ||
+            nameLower.endsWith('.mov') ||
+            nameLower.endsWith('.webm') ||
+            nameLower.endsWith('.mkv') ||
+            nameLower.endsWith('.avi');
 
+        if (isVideoFile) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vídeos não são suportados na Web.')),
+          );
+          return;
+        }
+
+        final mimeType = StoryMediaMapper.inferMimeType(file.name);
         _navigateToEditor(
           StoryDraft(
-            type: isVideo ? StoryType.video : StoryType.photo,
+            type: StoryType.photo,
             media: [
               StoryMediaMapper.fromAsset(
                 BytesMediaAsset(bytes: bytes, mimeType: mimeType),
@@ -137,6 +144,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (mounted) setState(() => _isProcessing = false);
     }
   }
+
 
   Future<void> _handleClose() async {
     if (_isRecording) {
@@ -175,6 +183,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   bool _pendingStop = false;
 
   Future<void> _startRecording() async {
+    if (kIsWeb) return;
     if (_isProcessing || _isRecording) return;
     setState(() {
       _isProcessing = true;
@@ -206,6 +215,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   }
 
   Future<void> _stopRecording() async {
+    if (kIsWeb) return;
     if (_isProcessing) {
       _pendingStop = true;
       return;
@@ -322,6 +332,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   }
 
   Widget _buildSideBar() {
+    if (kIsWeb) return const SizedBox.shrink();
     return Positioned(
       left: 16,
       top: 0,
@@ -501,17 +512,23 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           Listener(
             key: const ValueKey('capture_button'),
             onPointerDown: (_) {
+              if (kIsWeb) return;
               if (!_isHandsFreeEnabled) {
                 _pendingStop = false;
               }
             },
             onPointerUp: (_) {
+              if (kIsWeb) return;
               if (!_isHandsFreeEnabled && _isRecording) {
                 _stopRecording();
               }
             },
             child: GestureDetector(
               onTap: () {
+                if (kIsWeb) {
+                  _takePhoto();
+                  return;
+                }
                 if (_isHandsFreeEnabled) {
                   if (_isRecording) {
                     _stopRecording();
@@ -522,8 +539,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   _takePhoto();
                 }
               },
-              onLongPressStart: _isHandsFreeEnabled ? null : (_) => _startRecording(),
-              onLongPressEnd: _isHandsFreeEnabled
+              onLongPressStart: (kIsWeb || _isHandsFreeEnabled) ? null : (_) => _startRecording(),
+              onLongPressEnd: (kIsWeb || _isHandsFreeEnabled)
                   ? null
                   : (_) {
                       if (_isRecording) _stopRecording();
@@ -537,7 +554,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   border: Border.all(
                     color: _isRecording
                         ? Colors.red
-                        : (_isHandsFreeEnabled ? Colors.yellow : Colors.white),
+                        : ((!kIsWeb && _isHandsFreeEnabled) ? Colors.yellow : Colors.white),
                     width: 4,
                   ),
                 ),
@@ -549,16 +566,17 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                     decoration: BoxDecoration(
                       color: _isRecording
                           ? Colors.red
-                          : (_isHandsFreeEnabled ? Colors.yellow : Colors.white),
+                          : ((!kIsWeb && _isHandsFreeEnabled) ? Colors.yellow : Colors.white),
                       borderRadius: BorderRadius.circular(
                         _isRecording ? 8 : 32,
                       ),
                     ),
-                    child: (_isHandsFreeEnabled && !_isRecording)
+                    child: (!kIsWeb && _isHandsFreeEnabled && !_isRecording)
                         ? const Icon(Icons.videocam, color: Colors.black, size: 32)
                         : null,
                   ),
                 ),
+
               ),
             ),
           ),

@@ -45,7 +45,8 @@ class StoryUser {
     return StoryUser(
       userId: profileJson['id'] as String,
       username: profileJson['username'] as String? ?? 'user',
-      avatarUrl: profileJson['avatar_url'] as String? ??
+      avatarUrl:
+          profileJson['avatar_url'] as String? ??
           'https://ui-avatars.com/api/?name=${profileJson['username'] ?? 'U'}',
       stories: stories,
       seenIds: seenIds,

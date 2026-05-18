@@ -67,20 +67,10 @@ class CameraWebMediaInputService implements MediaInputService {
   }
 
   @override
-  Future<bool> startVideoRecording() => _camera.startVideoRecording();
+  Future<bool> startVideoRecording() async => false;
 
-  /// Stops recording and returns the temporary blob URL for the video.
   @override
-  Future<MediaAsset?> stopVideoRecording() async {
-    final xFile = await _camera.stopVideoRecordingXFile();
-    if (xFile == null) return null;
-    // camera_web returns a blob: URL as XFile.path for video.
-    return StreamMediaAsset(
-      url: xFile.path,
-      mimeType: 'video/webm',
-      isMirrored: _camera.isFrontCamera,
-    );
-  }
+  Future<MediaAsset?> stopVideoRecording() async => null;
 
   /// Flash is not exposed by the browser camera API — always returns false.
   @override

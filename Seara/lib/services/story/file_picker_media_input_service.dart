@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../models/story/media_asset.dart';
+import '../../mappers/story_media_mapper.dart';
 import 'media_input_service.dart';
 
 /// Web / desktop fallback implementation of [MediaInputService].
@@ -42,7 +43,8 @@ class FilePickerMediaInputService implements MediaInputService {
 
     if (kIsWeb) {
       if (file.bytes == null) return null;
-      return BytesMediaAsset(file.bytes!, 'image/jpeg');
+      final mimeType = StoryMediaMapper.inferMimeType(file.name);
+      return BytesMediaAsset(bytes: file.bytes!, mimeType: mimeType);
     } else {
       if (file.path == null) return null;
       return FileMediaAsset(file.path!);
@@ -68,7 +70,7 @@ class FilePickerMediaInputService implements MediaInputService {
       // We'll store it as a FileMediaAsset if a path (blob URL) is present,
       // or BytesMediaAsset if not.
       if (file.bytes != null) {
-        _pendingAsset = BytesMediaAsset(file.bytes!, 'video/mp4');
+        _pendingAsset = BytesMediaAsset(bytes: file.bytes!, mimeType: 'video/mp4');
       } else {
         // Fallback to path if bytes are null (might be a blob URL)
         final path = file.path;

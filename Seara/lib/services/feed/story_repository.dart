@@ -23,9 +23,8 @@ class StoryRepository {
     // 1. Fetch non-expired stories with author profile data.
     final storiesResponse = await _client
         .from('stories')
-        .select('*, profiles:user_id(id, username, avatar_url)')
-        .gt('expires_at', DateTime.now().toIso8601String())
-        .neq('user_id', currentUserId) // exclude own stories for now
+        .select('*, users:user_id(id:auth_id, username, avatar_url:avatar)')
+        .gt('expires_at', DateTime.now().toUtc().toIso8601String())
         .order('created_at', ascending: true);
 
     if (storiesResponse.isEmpty) return [];
@@ -46,7 +45,7 @@ class StoryRepository {
 
     for (final row in storiesResponse) {
       final story = FeedStory.fromJson(row);
-      final profile = row['profiles'] as Map<String, dynamic>;
+      final profile = row['users'] as Map<String, dynamic>;
       byUser.putIfAbsent(story.userId, () => []).add(story);
       profiles[story.userId] = profile;
     }
@@ -60,8 +59,11 @@ class StoryRepository {
       );
     }).toList();
 
-    // 5. Sort: unseen first, then seen — each group chronologically.
+    // 5. Sort: own user first, then unseen first, then seen — each group chronologically.
     users.sort((a, b) {
+      if (a.userId == currentUserId) return -1;
+      if (b.userId == currentUserId) return 1;
+
       if (a.hasUnseen && !b.hasUnseen) return -1;
       if (!a.hasUnseen && b.hasUnseen) return 1;
       // Within same group, sort by oldest story first.
@@ -77,13 +79,10 @@ class StoryRepository {
     required String storyId,
     required String viewerId,
   }) async {
-    await _client.from('story_views').upsert(
-      {
-        'story_id': storyId,
-        'viewer_id': viewerId,
-        'viewed_at': DateTime.now().toIso8601String(),
-      },
-      onConflict: 'story_id,viewer_id',
-    );
+    await _client.from('story_views').upsert({
+      'story_id': storyId,
+      'viewer_id': viewerId,
+      'viewed_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'story_id,viewer_id');
   }
 }

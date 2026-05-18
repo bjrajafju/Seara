@@ -65,67 +65,63 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return ChangeNotifierProvider(
-      create: (_) => StoryFeedController(),
-      child: Builder(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Seara')),
-          body: _pages[_selectedIndex],
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
-              );
-            },
-            child: const Icon(Icons.add),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Seara')),
+      body: _pages[_selectedIndex],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: cs.surface,
+        selectedItemColor: cs.primary,
+        unselectedItemColor: cs.onSurface.withAlpha(120),
+        currentIndex: _selectedIndex,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
-          bottomNavigationBar: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: cs.surface,
-            selectedItemColor: cs.primary,
-            unselectedItemColor: cs.onSurface.withAlpha(120),
-            currentIndex: _selectedIndex,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_rounded),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.message_rounded),
-                label: 'Mensagens',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.flash_on_rounded),
-                label: 'Desafios',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_rounded),
-                label: 'Definições',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_rounded),
-                label: 'Perfil',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.people_rounded),
-                label: 'Listar',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.logout_rounded),
-                label: 'Logout',
-              ),
-            ],
-            onTap: (int index) async {
-              if (index == _logoutNavIndex) {
-                await _logout();
-                return;
-              }
-              setState(() => _selectedIndex = index);
-            },
+          BottomNavigationBarItem(
+            icon: Icon(Icons.message_rounded),
+            label: 'Mensagens',
           ),
-        ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.flash_on_rounded),
+            label: 'Desafios',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: 'Definições',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded),
+            label: 'Perfil',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_rounded),
+            label: 'Listar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.logout_rounded),
+            label: 'Logout',
+          ),
+        ],
+        onTap: (int index) async {
+          if (index == _logoutNavIndex) {
+            await _logout();
+            return;
+          }
+          setState(() => _selectedIndex = index);
+        },
       ),
     );
+
   }
 }

@@ -9,11 +9,7 @@ class StoryBubble extends StatelessWidget {
   final StoryUser user;
   final VoidCallback onTap;
 
-  const StoryBubble({
-    super.key,
-    required this.user,
-    required this.onTap,
-  });
+  const StoryBubble({super.key, required this.user, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -23,11 +19,7 @@ class StoryBubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildRing(),
-            const SizedBox(height: 5),
-            _buildLabel(),
-          ],
+          children: [_buildRing(), const SizedBox(height: 5), _buildLabel()],
         ),
       ),
     );
@@ -51,8 +43,9 @@ class StoryBubble extends StatelessWidget {
         padding: const EdgeInsets.all(2),
         child: CircleAvatar(
           backgroundColor: const Color(0xFF333333),
-          backgroundImage:
-              user.avatarUrl.isNotEmpty ? NetworkImage(user.avatarUrl) : null,
+          backgroundImage: user.avatarUrl.isNotEmpty
+              ? NetworkImage(user.avatarUrl)
+              : null,
           child: user.avatarUrl.isEmpty
               ? Text(
                   user.username.isNotEmpty

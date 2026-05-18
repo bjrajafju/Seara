@@ -12,10 +12,6 @@ import 'video_export/export_result.dart';
 import 'video_export/ffmpeg_command_builder.dart';
 import 'video_export/ffmpeg_executor.dart';
 import 'video_export/io_file_helper.dart';
-// Web-specific implementation (compiled only for web targets via conditional).
-import 'video_export/video_export_web_stub.dart'
-    if (dart.library.html) 'video_export/video_export_web.dart'
-    as web_export;
 import '../utils/export/export_saver.dart' as saver;
 
 /// Orchestrates the full video export pipeline.
@@ -75,20 +71,7 @@ class VideoExportService {
 
     // ── Web path ─────────────────────────────────────────────────────────────
     if (kIsWeb) {
-      final media = _videoMedia(draft);
-      if (media == null) {
-        return ExportFailure('No video source found in draft.');
-      }
-
-      // Web-native MediaRecorder handles composition in real-time.
-      // Note: External audio mixing is not currently supported on Web
-      // (degraded behavior), but the export is no longer blocked.
-
-      return web_export.exportVideoOnWeb(
-        draft: draft,
-        videoSrc: media.filePath,
-        overlayPngBytes: overlayBytes,
-      );
+      return ExportFailure('Vídeos não são suportados na Web.');
     }
 
     // ── Native path (Windows / Android / iOS / macOS) ─────────────────────

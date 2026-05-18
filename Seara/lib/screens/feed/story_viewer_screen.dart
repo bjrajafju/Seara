@@ -114,8 +114,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   Widget _buildDismissible({required Widget child}) {
     return GestureDetector(
       onVerticalDragEnd: (details) {
-        if (details.primaryVelocity != null &&
-            details.primaryVelocity! > 300) {
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
           Navigator.of(context).pop();
         }
       },

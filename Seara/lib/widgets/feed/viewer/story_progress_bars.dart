@@ -14,7 +14,11 @@ class StoryProgressBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final engine = context.watch<StoryEngineController>();
+    if (!engine.isReady) {
+      return const SizedBox(height: 2.5);
+    }
     final totalStories = engine.currentUser.stories.length;
+
     final currentIndex = engine.storyIndex;
 
     return Row(
@@ -26,8 +30,8 @@ class StoryProgressBars extends StatelessWidget {
               state: i < currentIndex
                   ? _SegmentState.past
                   : i == currentIndex
-                      ? _SegmentState.active
-                      : _SegmentState.future,
+                  ? _SegmentState.active
+                  : _SegmentState.future,
               progressAnimation: engine.progressController,
             ),
           ),
@@ -43,10 +47,7 @@ class _StorySegment extends StatelessWidget {
   final _SegmentState state;
   final AnimationController progressAnimation;
 
-  const _StorySegment({
-    required this.state,
-    required this.progressAnimation,
-  });
+  const _StorySegment({required this.state, required this.progressAnimation});
 
   @override
   Widget build(BuildContext context) {
@@ -56,18 +57,16 @@ class _StorySegment extends StatelessWidget {
         height: 2.5,
         child: switch (state) {
           _SegmentState.past => const ColoredBox(color: Colors.white),
-          _SegmentState.future =>
-            const ColoredBox(color: Color(0x33FFFFFF)),
+          _SegmentState.future => const ColoredBox(color: Color(0x33FFFFFF)),
           _SegmentState.active => AnimatedBuilder(
-              animation: progressAnimation,
-              builder: (_, __) => LinearProgressIndicator(
-                value: progressAnimation.value,
-                backgroundColor: const Color(0x33FFFFFF),
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Colors.white),
-                minHeight: 2.5,
-              ),
+            animation: progressAnimation,
+            builder: (_, __) => LinearProgressIndicator(
+              value: progressAnimation.value,
+              backgroundColor: const Color(0x33FFFFFF),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              minHeight: 2.5,
             ),
+          ),
         },
       ),
     );

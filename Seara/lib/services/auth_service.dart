@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:seara/config/api_config.dart';
 import 'api_client.dart';
 
@@ -17,6 +18,16 @@ class AuthService {
   ) async {
     await _storage.write(key: 'access_token', value: accessToken);
     await _storage.write(key: 'refresh_token', value: refreshToken);
+    try {
+      await Supabase.instance.client.auth.setSession(refreshToken);
+    } catch (e) {
+      print("Warning: failed to set Supabase session: $e");
+    }
+  }
+
+  /// Reads the persisted refresh token
+  static Future<String?> getRefreshToken() async {
+    return await _storage.read(key: 'refresh_token');
   }
 
   /// Reads the persisted auth token
@@ -38,6 +49,9 @@ class AuthService {
   /// Clears persisted session data and logs out the user
   static Future<void> logout() async {
     await _storage.deleteAll();
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
   }
 
   /// Validates the current auth token with the backend
@@ -58,6 +72,14 @@ class AuthService {
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        final refreshToken = await getRefreshToken();
+        if (refreshToken != null) {
+          try {
+            await Supabase.instance.client.auth.setSession(refreshToken);
+          } catch (e) {
+            print("Warning: failed to restore Supabase session: $e");
+          }
+        }
         return true;
       }
 
@@ -81,7 +103,6 @@ class AuthService {
       );
 
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
         return null;
       } else {
         final data = jsonDecode(response.body);
@@ -110,6 +131,14 @@ class AuthService {
         );
 
         await saveUserId(data['user']['id']);
+
+        try {
+          await Supabase.instance.client.auth.setSession(
+            data['session']['refresh_token'],
+          );
+        } catch (e) {
+          print("Warning: failed to set Supabase session in login: $e");
+        }
 
         return null;
       } else {

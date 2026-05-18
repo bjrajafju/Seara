@@ -15,6 +15,8 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/messages/messages_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'controllers/story_feed_controller.dart';
+
 
 /// Starts the app and wires top-level providers
 void main() async {
@@ -59,7 +61,9 @@ class SearaApp extends StatelessWidget {
         ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => MessagesProvider()),
+        ChangeNotifierProvider(create: (_) => StoryFeedController()),
       ],
+
       child: Consumer2<AuthProvider, ThemeProvider>(
         builder: (context, auth, theme, _) {
           return MaterialApp(

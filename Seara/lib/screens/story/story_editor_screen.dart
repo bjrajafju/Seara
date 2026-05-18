@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/editor_controller.dart';
 import '../../controllers/story_feed_controller.dart';
 import '../../models/story/story_draft.dart';
+import '../../models/story/story_type.dart';
 import '../../services/feed/story_publish_service.dart';
 import '../../widgets/editor/audio_toolbar.dart';
 import '../../widgets/editor/drawing_toolbar.dart';
@@ -58,6 +60,11 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     if (_controller.isBusy) return;
     if (widget.draft.media.isEmpty) return;
 
+    if (kIsWeb && widget.draft.type == StoryType.video) {
+      _showError('Vídeos não são suportados na Web.');
+      return;
+    }
+
     _controller.beginPublishing();
 
     try {
@@ -75,13 +82,16 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
       // Return to home.
       Navigator.of(context).popUntil((route) => route.isFirst);
-    } on StoryPublishException catch (e) {
+    } on StoryPublishException catch (e, stackTrace) {
+      debugPrint('StoryEditorScreen: StoryPublishException occurred: ${e.message}\n$stackTrace');
       if (!mounted) return;
       _showError(e.message);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('StoryEditorScreen: Unexpected error occurred during publishing: $e\n$stackTrace');
       if (!mounted) return;
       _showError('Erro ao publicar. Tenta novamente.');
     } finally {
+
       if (mounted) _controller.endPublishing();
     }
   }
@@ -120,6 +130,79 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb && widget.draft.type == StoryType.video) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.videocam_off_rounded,
+                    color: Colors.redAccent,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Formato Não Suportado',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'A versão Web do Seara suporta apenas histórias fotográficas de momento. Para publicar vídeos, utilize a nossa aplicação nativa para Windows ou Dispositivos Móveis.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text(
+                      'Voltar',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return ChangeNotifierProvider.value(
       value: _controller,
       child: Scaffold(

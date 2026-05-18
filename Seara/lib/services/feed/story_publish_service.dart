@@ -1,12 +1,15 @@
 import 'dart:io' show File;
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+
 
 import '../../models/story/story_draft.dart';
 import '../../models/story/story_media.dart';
 import '../../models/story/story_type.dart';
+import '../upload_service.dart';
 
 /// Handles the full "publish a story" pipeline:
 ///
@@ -25,7 +28,10 @@ class StoryPublishService {
   /// Throws a [StoryPublishException] on any failure.
   Future<String> publish(StoryDraft draft) async {
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) throw StoryPublishException('Utilizador não autenticado.');
+    if (userId == null) {
+      throw StoryPublishException('Utilizador não autenticado.');
+    }
+
 
     if (draft.media.isEmpty) {
       throw StoryPublishException('Nenhuma media para publicar.');
@@ -56,26 +62,33 @@ class StoryPublishService {
   Future<String> _uploadMedia(StoryMedia media, String userId) async {
     final ext = _extensionFromMime(media.mimeType);
     final fileName = '${const Uuid().v4()}$ext';
-    final storagePath = '$userId/$fileName';
 
     final bytes = await _resolveBytes(media);
 
-    await _client.storage.from(_bucket).uploadBinary(
-      storagePath,
-      bytes,
-      fileOptions: FileOptions(
-        contentType: media.mimeType,
-        upsert: false,
-      ),
+    final result = await UploadService.uploadFile(
+      bucket: _bucket,
+      fileName: fileName,
+      fileBytes: bytes,
+      mimeType: media.mimeType,
     );
 
-    return _client.storage.from(_bucket).getPublicUrl(storagePath);
+    return result.url;
   }
 
   Future<Uint8List> _resolveBytes(StoryMedia media) async {
-    // Web: bytes are already in memory.
+    // Web: bytes are already in memory or accessible via blob URL.
     if (kIsWeb) {
       if (media.bytes != null) return media.bytes!;
+      if (media.filePath.isNotEmpty) {
+        try {
+          final response = await http.get(Uri.parse(media.filePath));
+          if (response.statusCode == 200) {
+            return response.bodyBytes;
+          }
+        } catch (e) {
+          throw StoryPublishException('Erro ao descarregar a media no browser: $e');
+        }
+      }
       throw StoryPublishException('Sem dados de media no browser.');
     }
 
@@ -90,6 +103,7 @@ class StoryPublishService {
     throw StoryPublishException('Impossível ler a media.');
   }
 
+
   // ── Insert ──────────────────────────────────────────────────────────────────
 
   Future<void> _insertStory({
@@ -99,15 +113,25 @@ class StoryPublishService {
     required double duration,
   }) async {
     final now = DateTime.now().toUtc();
-    await _client.from('stories').insert({
-      'user_id': userId,
-      'media_url': mediaUrl,
-      'type': type,
-      'duration': duration,
-      'created_at': now.toIso8601String(),
-      'expires_at': now.add(const Duration(hours: 24)).toIso8601String(),
-    });
+    try {
+      await _client.from('stories').insert({
+        'user_id': userId,
+        'media_url': mediaUrl,
+        'type': type,
+        'duration': duration,
+        'created_at': now.toIso8601String(),
+        'expires_at': now.add(const Duration(hours: 24)).toIso8601String(),
+      });
+    } on PostgrestException catch (e) {
+      debugPrint('StoryPublishService: Database insert failed: ${e.message} (${e.code})');
+      debugPrint('StoryPublishService: Details: ${e.details}, Hint: ${e.hint}');
+      throw StoryPublishException('Erro ao registar a história na base de dados: ${e.message}');
+    } catch (e) {
+      debugPrint('StoryPublishService: Unexpected database error: $e');
+      throw StoryPublishException('Erro inesperado na base de dados: $e');
+    }
   }
+
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -120,12 +144,18 @@ class StoryPublishService {
 
   String _extensionFromMime(String mime) {
     switch (mime) {
-      case 'image/jpeg': return '.jpg';
-      case 'image/png':  return '.png';
-      case 'image/webp': return '.webp';
-      case 'video/mp4':  return '.mp4';
-      case 'video/quicktime': return '.mov';
-      default:           return '.bin';
+      case 'image/jpeg':
+        return '.jpg';
+      case 'image/png':
+        return '.png';
+      case 'image/webp':
+        return '.webp';
+      case 'video/mp4':
+        return '.mp4';
+      case 'video/quicktime':
+        return '.mov';
+      default:
+        return '.bin';
     }
   }
 }
