@@ -25,12 +25,13 @@ class StoryRepository {
     try {
       final rawProfile = await _client
           .from('users')
-          .select('auth_id, username, avatar')
+          .select('id, auth_id, username, avatar')
           .eq('auth_id', currentUserId)
           .maybeSingle();
       if (rawProfile != null) {
         currentUserProfile = {
-          'id': rawProfile['auth_id'],
+          'id': rawProfile['id'],
+          'auth_id': rawProfile['auth_id'],
           'username': rawProfile['username'],
           'avatar_url': rawProfile['avatar'],
         };
@@ -42,7 +43,7 @@ class StoryRepository {
     // 2. Fetch non-expired stories with author profile data.
     final storiesResponse = await _client
         .from('stories')
-        .select('*, users:user_id(id:auth_id, username, avatar_url:avatar)')
+        .select('*, users:user_id(id, auth_id, username, avatar_url:avatar)')
         .gt('expires_at', DateTime.now().toUtc().toIso8601String())
         .order('created_at', ascending: true);
 

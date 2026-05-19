@@ -308,6 +308,7 @@ class StoryEngineController extends ChangeNotifier {
       // User still has other stories!
       final updatedUser = StoryUser(
         userId: currentUser.userId,
+        dbId: currentUser.dbId,
         username: currentUser.username,
         avatarUrl: currentUser.avatarUrl,
         stories: updatedStories,

@@ -6,6 +6,7 @@ import 'feed_story.dart';
 /// and the sort order in [StoriesRow] (unseen users appear first).
 class StoryUser {
   final String userId;
+  final int? dbId;
   final String username;
   final String avatarUrl;
 
@@ -17,6 +18,7 @@ class StoryUser {
 
   const StoryUser({
     required this.userId,
+    this.dbId,
     required this.username,
     required this.avatarUrl,
     required this.stories,
@@ -30,6 +32,7 @@ class StoryUser {
   StoryUser markSeen(String storyId) {
     return StoryUser(
       userId: userId,
+      dbId: dbId,
       username: username,
       avatarUrl: avatarUrl,
       stories: stories,
@@ -43,7 +46,8 @@ class StoryUser {
     required Set<String> seenIds,
   }) {
     return StoryUser(
-      userId: profileJson['id'] as String,
+      userId: profileJson['auth_id'] as String,
+      dbId: profileJson['id'] as int?,
       username: profileJson['username'] as String? ?? 'user',
       avatarUrl:
           profileJson['avatar_url'] as String? ??

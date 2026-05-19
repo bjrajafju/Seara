@@ -55,18 +55,6 @@ class StoryFeedController extends ChangeNotifier {
     }).toList();
     notifyListeners();
 
-    // Prevent self-views: check if the story belongs to currentUserId
-    String? ownerId;
-    for (final u in _users) {
-      if (u.stories.any((s) => s.id == storyId)) {
-        ownerId = u.userId;
-        break;
-      }
-    }
-    if (ownerId == currentUserId) {
-      return;
-    }
-
     // Fire-and-forget: persist to Supabase in the background.
     _repo.markAsSeen(storyId: storyId, viewerId: currentUserId);
   }
@@ -81,6 +69,7 @@ class StoryFeedController extends ChangeNotifier {
         updatedUsers.add(
           StoryUser(
             userId: u.userId,
+            dbId: u.dbId,
             username: u.username,
             avatarUrl: u.avatarUrl,
             stories: updatedStories,
