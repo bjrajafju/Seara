@@ -59,10 +59,13 @@ class CameraWebMediaInputService implements MediaInputService {
     final xFile = await _camera.takePictureXFile();
     if (xFile == null) return null;
     final bytes = await xFile.readAsBytes();
+
+    // Web camera plugin (camera_web) already returns front camera photos mirrored
+    // to match the screen preview, so we do not need to physically flip it or double-mirror.
     return BytesMediaAsset(
       bytes: bytes,
       mimeType: 'image/jpeg',
-      isMirrored: _camera.isFrontCamera,
+      isMirrored: false,
     );
   }
 

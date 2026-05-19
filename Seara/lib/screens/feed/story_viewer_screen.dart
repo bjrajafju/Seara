@@ -8,6 +8,7 @@ import '../../widgets/feed/viewer/story_gesture_layer.dart';
 import '../../widgets/feed/viewer/story_header.dart';
 import '../../widgets/feed/viewer/story_media_view.dart';
 import '../../widgets/feed/viewer/story_progress_bars.dart';
+import '../../widgets/story/story_viewport.dart';
 
 /// Full-screen story viewer with horizontal PageView between users.
 ///
@@ -132,30 +133,30 @@ class _StoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
+    return StoryViewport(
+      child: StoryGestureLayer(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ── Media (background) ──────────────────────────────────────────
+            const StoryMediaView(),
 
-    return StoryGestureLayer(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ── Media (background) ──────────────────────────────────────────
-          const StoryMediaView(),
-
-          // ── Top overlay: progress bars + header ─────────────────────────
-          Positioned(
-            top: topPadding + 8,
-            left: 12,
-            right: 12,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const StoryProgressBars(),
-                const SizedBox(height: 10),
-                StoryHeader(onClose: onClose),
-              ],
+            // ── Top overlay: progress bars + header ─────────────────────────
+            Positioned(
+              top: 16,
+              left: 12,
+              right: 12,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const StoryProgressBars(),
+                  const SizedBox(height: 10),
+                  StoryHeader(onClose: onClose),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

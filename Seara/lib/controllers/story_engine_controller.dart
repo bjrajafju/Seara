@@ -26,7 +26,9 @@ class StoryEngineController extends ChangeNotifier {
     required this.users,
     required this.feedController,
     required int initialUserIndex,
-  }) : _userIndex = initialUserIndex;
+  }) : _userIndex = initialUserIndex {
+    _storyIndex = _findFirstUnseenIndex(currentUser);
+  }
 
   final List<StoryUser> users;
   final StoryFeedController feedController;
@@ -93,7 +95,6 @@ class StoryEngineController extends ChangeNotifier {
     });
   }
 
-
   // ── Activate / preload ───────────────────────────────────────────────────
 
   Future<void> _activateStory(TickerProvider? vsync) async {
@@ -102,18 +103,27 @@ class StoryEngineController extends ChangeNotifier {
     final story = currentStory;
     feedController.markSeen(story.id);
 
-    // Move the pre-loaded next player into active position.
+    // Clean up previous active player instance immediately.
     _activePlayer?.dispose();
-    _activePlayer = _nextPlayer;
-    _nextPlayer = null;
+    _activePlayer = null;
 
     if (story.isVideo) {
-      // If we didn't have a preloaded player, create one now.
-      _activePlayer ??= await _buildPlayer(story.mediaUrl);
-      _activePlayer?.setVolume(_isMuted ? 0 : 100);
-      _activePlayer?.play();
+      // 1. Create a fresh player instance.
+      final player = Player();
+      _activePlayer = player;
 
-      // Wait for actual duration from metadata (with timeout fallback).
+      // 2. Notify listeners immediately so that the UI (StoryVideoPlayerWidget)
+      // can build and attach the VideoController BEFORE the player opens and plays the media.
+      notifyListeners();
+
+      // 3. Configure and open the media.
+      await player.setPlaylistMode(PlaylistMode.none);
+      await player.setVolume(_isMuted ? 0 : 100);
+      await player.open(Media(story.mediaUrl), play: !_isPaused);
+
+      if (_disposed) return;
+
+      // 4. Wait for actual duration.
       final duration = await _resolveDuration(story);
       if (_disposed) return;
 
@@ -121,7 +131,6 @@ class StoryEngineController extends ChangeNotifier {
         milliseconds: (duration * 1000).toInt(),
       );
     } else {
-      _activePlayer = null; // images don't need a player
       progressController.duration = Duration(
         milliseconds: (story.effectiveDuration * 1000).toInt(),
       );
@@ -130,19 +139,7 @@ class StoryEngineController extends ChangeNotifier {
     progressController.reset();
     if (!_isPaused) progressController.forward();
 
-    // Preload next story.
-    _preloadNext();
     notifyListeners();
-  }
-
-  Future<Player?> _buildPlayer(String url) async {
-    try {
-      final player = Player();
-      await player.open(Media(url), play: false);
-      return player;
-    } catch (_) {
-      return null;
-    }
   }
 
   /// Waits up to 500ms for the player to report a real duration.
@@ -168,14 +165,11 @@ class StoryEngineController extends ChangeNotifier {
     return result;
   }
 
-  void _preloadNext() async {
+  void _preloadNext() {
+    // Disabled background video preloading to guarantee completely stable video
+    // texture bindings and avoid race conditions or background player conflicts.
     _nextPlayer?.dispose();
     _nextPlayer = null;
-
-    final nextStory = _getNextStory();
-    if (nextStory != null && nextStory.isVideo) {
-      _nextPlayer = await _buildPlayer(nextStory.mediaUrl);
-    }
   }
 
   FeedStory? _getNextStory() {
@@ -203,7 +197,7 @@ class StoryEngineController extends ChangeNotifier {
       _activateStory(vsync);
     } else if (_userIndex < users.length - 1) {
       _userIndex++;
-      _storyIndex = 0;
+      _storyIndex = _findFirstUnseenIndex(currentUser);
       _activateStory(vsync);
     } else {
       // Last story of last user — signal close.
@@ -229,7 +223,7 @@ class StoryEngineController extends ChangeNotifier {
   void onUserPageChanged(int newUserIndex, {TickerProvider? vsync}) {
     if (_disposed || newUserIndex == _userIndex) return;
     _userIndex = newUserIndex;
-    _storyIndex = 0;
+    _storyIndex = _findFirstUnseenIndex(currentUser);
     _activateStory(vsync);
   }
 
@@ -266,6 +260,15 @@ class StoryEngineController extends ChangeNotifier {
   bool get shouldClose => _shouldClose;
 
   // ── Dispose ──────────────────────────────────────────────────────────────
+
+  int _findFirstUnseenIndex(StoryUser user) {
+    for (int i = 0; i < user.stories.length; i++) {
+      if (!user.seenIds.contains(user.stories[i].id)) {
+        return i;
+      }
+    }
+    return 0; // Fallback: all stories are seen, start at oldest (index 0)
+  }
 
   @override
   void dispose() {

@@ -57,7 +57,9 @@ export const uploadFile = async (req, res) => {
       contentType = EXTENSION_MIME_MAP[extension] ?? "application/octet-stream";
     }
 
-    console.log(`[UploadAPI] Target filePath: ${filePath}, resolved contentType: ${contentType}`);
+    console.log(
+      `[UploadAPI] Target filePath: ${filePath}, resolved contentType: ${contentType}`,
+    );
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from(bucket)

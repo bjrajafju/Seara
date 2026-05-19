@@ -70,7 +70,10 @@ class FilePickerMediaInputService implements MediaInputService {
       // We'll store it as a FileMediaAsset if a path (blob URL) is present,
       // or BytesMediaAsset if not.
       if (file.bytes != null) {
-        _pendingAsset = BytesMediaAsset(bytes: file.bytes!, mimeType: 'video/mp4');
+        _pendingAsset = BytesMediaAsset(
+          bytes: file.bytes!,
+          mimeType: 'video/mp4',
+        );
       } else {
         // Fallback to path if bytes are null (might be a blob URL)
         final path = file.path;

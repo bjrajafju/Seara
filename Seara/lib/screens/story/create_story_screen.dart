@@ -105,7 +105,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (kIsWeb) {
         if (bytes == null) return;
         final nameLower = file.name.toLowerCase();
-        final isVideoFile = nameLower.endsWith('.mp4') ||
+        final isVideoFile =
+            nameLower.endsWith('.mp4') ||
             nameLower.endsWith('.mov') ||
             nameLower.endsWith('.webm') ||
             nameLower.endsWith('.mkv') ||
@@ -144,7 +145,6 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (mounted) setState(() => _isProcessing = false);
     }
   }
-
 
   Future<void> _handleClose() async {
     if (_isRecording) {
@@ -342,7 +342,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildToolButton(
-              icon: _isHandsFreeEnabled ? Icons.front_hand : Icons.pan_tool_outlined,
+              icon: _isHandsFreeEnabled
+                  ? Icons.front_hand
+                  : Icons.pan_tool_outlined,
               label: 'Hands Free',
               isActive: _isHandsFreeEnabled,
               onPressed: () {
@@ -539,7 +541,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   _takePhoto();
                 }
               },
-              onLongPressStart: (kIsWeb || _isHandsFreeEnabled) ? null : (_) => _startRecording(),
+              onLongPressStart: (kIsWeb || _isHandsFreeEnabled)
+                  ? null
+                  : (_) => _startRecording(),
               onLongPressEnd: (kIsWeb || _isHandsFreeEnabled)
                   ? null
                   : (_) {
@@ -554,7 +558,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   border: Border.all(
                     color: _isRecording
                         ? Colors.red
-                        : ((!kIsWeb && _isHandsFreeEnabled) ? Colors.yellow : Colors.white),
+                        : ((!kIsWeb && _isHandsFreeEnabled)
+                              ? Colors.yellow
+                              : Colors.white),
                     width: 4,
                   ),
                 ),
@@ -566,17 +572,22 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                     decoration: BoxDecoration(
                       color: _isRecording
                           ? Colors.red
-                          : ((!kIsWeb && _isHandsFreeEnabled) ? Colors.yellow : Colors.white),
+                          : ((!kIsWeb && _isHandsFreeEnabled)
+                                ? Colors.yellow
+                                : Colors.white),
                       borderRadius: BorderRadius.circular(
                         _isRecording ? 8 : 32,
                       ),
                     ),
                     child: (!kIsWeb && _isHandsFreeEnabled && !_isRecording)
-                        ? const Icon(Icons.videocam, color: Colors.black, size: 32)
+                        ? const Icon(
+                            Icons.videocam,
+                            color: Colors.black,
+                            size: 32,
+                          )
                         : null,
                   ),
                 ),
-
               ),
             ),
           ),

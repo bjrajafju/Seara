@@ -40,7 +40,6 @@ class UploadService {
       ),
     );
 
-
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
 
@@ -52,7 +51,9 @@ class UploadService {
         fileName: data["file_name"] as String? ?? fileName,
       );
     } else {
-      debugPrint('UploadService: Upload failed with HTTP status code: ${response.statusCode}');
+      debugPrint(
+        'UploadService: Upload failed with HTTP status code: ${response.statusCode}',
+      );
       debugPrint('UploadService: Response body: ${response.body}');
 
       String errorMessage = "Erro ao fazer upload.";
@@ -67,6 +68,5 @@ class UploadService {
 
       throw Exception(errorMessage);
     }
-
   }
 }

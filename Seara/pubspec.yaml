@@ -66,6 +66,7 @@ dependencies:
   # FFmpeg: video compositing for Phase 4 export.
   # Supports Android, iOS, macOS. Windows uses the bundled ffmpeg.exe asset.
   ffmpeg_kit_flutter_new: ^4.1.0
+  image: ^4.8.0
 
 dev_dependencies:
   flutter_test:

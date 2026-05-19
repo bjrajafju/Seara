@@ -17,7 +17,6 @@ import 'screens/messages/messages_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'controllers/story_feed_controller.dart';
 
-
 /// Starts the app and wires top-level providers
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

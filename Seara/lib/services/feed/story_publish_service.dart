@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-
 import '../../models/story/story_draft.dart';
 import '../../models/story/story_media.dart';
 import '../../models/story/story_type.dart';
@@ -26,27 +25,51 @@ class StoryPublishService {
   ///
   /// Returns the public URL of the uploaded media on success.
   /// Throws a [StoryPublishException] on any failure.
-  Future<String> publish(StoryDraft draft) async {
+  Future<String> publish(
+    StoryDraft draft, {
+    Uint8List? renderedImageBytes,
+    String? renderedVideoPath,
+  }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
       throw StoryPublishException('Utilizador não autenticado.');
     }
 
-
     if (draft.media.isEmpty) {
       throw StoryPublishException('Nenhuma media para publicar.');
     }
 
-    final media = draft.media.first;
+    // 1. Resolve final media to upload based on final rendering
+    final StoryMedia finalMedia;
+    if (draft.type == StoryType.video) {
+      if (renderedVideoPath == null || renderedVideoPath.isEmpty) {
+        throw StoryPublishException(
+          'Ficheiro de vídeo processado não encontrado.',
+        );
+      }
+      finalMedia = StoryMedia(
+        filePath: renderedVideoPath,
+        mimeType: 'video/mp4',
+      );
+    } else {
+      if (renderedImageBytes == null) {
+        throw StoryPublishException('Imagem final não renderizada.');
+      }
+      finalMedia = StoryMedia(
+        filePath: '',
+        bytes: renderedImageBytes,
+        mimeType: 'image/png',
+      );
+    }
 
-    // 1. Upload media and get public URL.
-    final mediaUrl = await _uploadMedia(media, userId);
+    // 2. Upload media and get public URL.
+    final mediaUrl = await _uploadMedia(finalMedia, userId);
 
-    // 2. Determine story metadata.
+    // 3. Determine story metadata.
     final type = draft.type == StoryType.video ? 'video' : 'image';
-    final duration = _resolveDuration(draft, media);
+    final duration = _resolveDuration(draft, draft.media.first);
 
-    // 3. Insert into the stories table.
+    // 4. Insert into the stories table.
     await _insertStory(
       userId: userId,
       mediaUrl: mediaUrl,
@@ -86,7 +109,9 @@ class StoryPublishService {
             return response.bodyBytes;
           }
         } catch (e) {
-          throw StoryPublishException('Erro ao descarregar a media no browser: $e');
+          throw StoryPublishException(
+            'Erro ao descarregar a media no browser: $e',
+          );
         }
       }
       throw StoryPublishException('Sem dados de media no browser.');
@@ -102,7 +127,6 @@ class StoryPublishService {
 
     throw StoryPublishException('Impossível ler a media.');
   }
-
 
   // ── Insert ──────────────────────────────────────────────────────────────────
 
@@ -123,15 +147,18 @@ class StoryPublishService {
         'expires_at': now.add(const Duration(hours: 24)).toIso8601String(),
       });
     } on PostgrestException catch (e) {
-      debugPrint('StoryPublishService: Database insert failed: ${e.message} (${e.code})');
+      debugPrint(
+        'StoryPublishService: Database insert failed: ${e.message} (${e.code})',
+      );
       debugPrint('StoryPublishService: Details: ${e.details}, Hint: ${e.hint}');
-      throw StoryPublishException('Erro ao registar a história na base de dados: ${e.message}');
+      throw StoryPublishException(
+        'Erro ao registar a história na base de dados: ${e.message}',
+      );
     } catch (e) {
       debugPrint('StoryPublishService: Unexpected database error: $e');
       throw StoryPublishException('Erro inesperado na base de dados: $e');
     }
   }
-
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 

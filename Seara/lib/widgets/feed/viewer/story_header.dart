@@ -21,8 +21,9 @@ class StoryHeader extends StatelessWidget {
         CircleAvatar(
           radius: 18,
           backgroundColor: Colors.white24,
-          backgroundImage:
-              user.avatarUrl.isNotEmpty ? NetworkImage(user.avatarUrl) : null,
+          backgroundImage: user.avatarUrl.isNotEmpty
+              ? NetworkImage(user.avatarUrl)
+              : null,
           child: user.avatarUrl.isEmpty
               ? Text(
                   user.username.isNotEmpty

@@ -1,3 +1,4 @@
+import 'dart:io' show File;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -5,6 +6,7 @@ import '../../models/story/media_asset.dart';
 import '../camera_controller_service.dart';
 import 'camera_permission_service.dart';
 import 'media_input_service.dart';
+import '../../utils/media/image_flip_helper.dart';
 
 /// [CameraPermissionService] implementation for Android and iOS.
 ///
@@ -73,7 +75,21 @@ class CameraMobileMediaInputService implements MediaInputService {
   Future<MediaAsset?> capturePhoto() async {
     final xFile = await _camera.takePictureXFile();
     if (xFile == null) return null;
-    return FileMediaAsset(xFile.path, isMirrored: _camera.isFrontCamera);
+
+    if (_camera.isFrontCamera) {
+      try {
+        final file = File(xFile.path);
+        var bytes = await file.readAsBytes();
+        bytes = ImageFlipHelper.flipHorizontal(bytes, 'image/jpeg');
+        await file.writeAsBytes(bytes);
+      } catch (e) {
+        debugPrint(
+          'CameraMobileMediaInputService: Error flipping front camera photo: $e',
+        );
+      }
+    }
+
+    return FileMediaAsset(xFile.path, isMirrored: false);
   }
 
   @override

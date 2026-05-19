@@ -1,5 +1,7 @@
+import 'dart:typed_data' show Uint8List;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/editor_controller.dart';
@@ -7,6 +9,8 @@ import '../../controllers/story_feed_controller.dart';
 import '../../models/story/story_draft.dart';
 import '../../models/story/story_type.dart';
 import '../../services/feed/story_publish_service.dart';
+import '../../services/video_export_service.dart';
+import '../../services/video_export/export_result.dart';
 import '../../widgets/editor/audio_toolbar.dart';
 import '../../widgets/editor/drawing_toolbar.dart';
 import '../../widgets/editor/editor_canvas.dart';
@@ -68,7 +72,51 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     _controller.beginPublishing();
 
     try {
-      await _publishService.publish(widget.draft);
+      Uint8List? renderedImageBytes;
+      String? renderedVideoPath;
+
+      if (widget.draft.type == StoryType.video) {
+        // Video: Run the exact same video export pipeline used for download!
+        const service = VideoExportService();
+        final result = await service.exportVideo(
+          draft: _controller.draft,
+          overlayKey: _overlayKey,
+        );
+
+        switch (result) {
+          case ExportSuccess(:final outputPath):
+            renderedVideoPath = outputPath;
+          case ExportFailure(:final error):
+            throw StoryPublishException('Falha ao processar o vídeo: $error');
+          case ExportUnsupported(:final reason):
+            throw StoryPublishException(
+              'Vídeos não suportados nesta plataforma: $reason',
+            );
+        }
+      } else {
+        // Image: Run the exact same image export pipeline used for download!
+        final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+        final boundary =
+            _canvasKey.currentContext?.findRenderObject()
+                as RenderRepaintBoundary?;
+        renderedImageBytes = await _controller.captureImage(
+          boundary,
+          pixelRatio,
+        );
+
+        if (renderedImageBytes == null) {
+          throw StoryPublishException(
+            'Falha ao renderizar a imagem da história.',
+          );
+        }
+      }
+
+      // Publish with the final rendered/exported output!
+      await _publishService.publish(
+        widget.draft,
+        renderedImageBytes: renderedImageBytes,
+        renderedVideoPath: renderedVideoPath,
+      );
 
       if (!mounted) return;
 
@@ -83,15 +131,18 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
       // Return to home.
       Navigator.of(context).popUntil((route) => route.isFirst);
     } on StoryPublishException catch (e, stackTrace) {
-      debugPrint('StoryEditorScreen: StoryPublishException occurred: ${e.message}\n$stackTrace');
+      debugPrint(
+        'StoryEditorScreen: StoryPublishException occurred: ${e.message}\n$stackTrace',
+      );
       if (!mounted) return;
       _showError(e.message);
     } catch (e, stackTrace) {
-      debugPrint('StoryEditorScreen: Unexpected error occurred during publishing: $e\n$stackTrace');
+      debugPrint(
+        'StoryEditorScreen: Unexpected error occurred during publishing: $e\n$stackTrace',
+      );
       if (!mounted) return;
       _showError('Erro ao publicar. Tenta novamente.');
     } finally {
-
       if (mounted) _controller.endPublishing();
     }
   }

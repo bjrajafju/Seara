@@ -1,15 +1,20 @@
-import { createClient } from '@supabase/supabase-js'
-import dotenv from 'dotenv'
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
 
-import path from 'path'
-import { fileURLToPath } from 'url'
+import path from "path";
+import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') })
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
-console.log("[SupabaseService] Initializing Supabase client with URL:", process.env.SUPABASE_URL, "and key length:", process.env.SUPABASE_SERVICE_ROLE_KEY?.length);
+console.log(
+  "[SupabaseService] Initializing Supabase client with URL:",
+  process.env.SUPABASE_URL,
+  "and key length:",
+  process.env.SUPABASE_SERVICE_ROLE_KEY?.length,
+);
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -17,10 +22,10 @@ const supabase = createClient(
   {
     auth: {
       persistSession: false,
-      autoRefreshToken: false
-    }
-  }
-)
+      autoRefreshToken: false,
+    },
+  },
+);
 
 export const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -28,9 +33,9 @@ export const supabaseAdmin = createClient(
   {
     auth: {
       persistSession: false,
-      autoRefreshToken: false
-    }
-  }
-)
+      autoRefreshToken: false,
+    },
+  },
+);
 
-export default supabase
+export default supabase;
