@@ -20,16 +20,33 @@ class StoryRepository {
     final currentUserId = _client.auth.currentUser?.id;
     if (currentUserId == null) return [];
 
-    // 1. Fetch non-expired stories with author profile data.
+    // 1. Fetch current user profile first to ensure we always have their info
+    Map<String, dynamic>? currentUserProfile;
+    try {
+      final rawProfile = await _client
+          .from('users')
+          .select('auth_id, username, avatar')
+          .eq('auth_id', currentUserId)
+          .maybeSingle();
+      if (rawProfile != null) {
+        currentUserProfile = {
+          'id': rawProfile['auth_id'],
+          'username': rawProfile['username'],
+          'avatar_url': rawProfile['avatar'],
+        };
+      }
+    } catch (e) {
+      // Non-blocking fallback
+    }
+
+    // 2. Fetch non-expired stories with author profile data.
     final storiesResponse = await _client
         .from('stories')
         .select('*, users:user_id(id:auth_id, username, avatar_url:avatar)')
         .gt('expires_at', DateTime.now().toUtc().toIso8601String())
         .order('created_at', ascending: true);
 
-    if (storiesResponse.isEmpty) return [];
-
-    // 2. Fetch which story IDs the current user has already seen.
+    // 3. Fetch which story IDs the current user has already seen.
     final viewsResponse = await _client
         .from('story_views')
         .select('story_id')
@@ -39,7 +56,7 @@ class StoryRepository {
       for (final row in viewsResponse) row['story_id'] as String,
     };
 
-    // 3. Group stories by user_id.
+    // 4. Group stories by user_id.
     final Map<String, List<FeedStory>> byUser = {};
     final Map<String, Map<String, dynamic>> profiles = {};
 
@@ -50,7 +67,13 @@ class StoryRepository {
       profiles[story.userId] = profile;
     }
 
-    // 4. Build StoryUser list.
+    // Ensure current user is in the profiles map even if they have no active stories
+    if (currentUserProfile != null) {
+      profiles.putIfAbsent(currentUserId, () => currentUserProfile!);
+      byUser.putIfAbsent(currentUserId, () => []);
+    }
+
+    // 5. Build StoryUser list.
     final users = byUser.entries.map((entry) {
       return StoryUser.fromJson(
         profileJson: profiles[entry.key]!,
@@ -59,7 +82,7 @@ class StoryRepository {
       );
     }).toList();
 
-    // 5. Sort: own user first, then unseen first, then seen — each group chronologically.
+    // 6. Sort: own user first, then unseen first, then seen — each group chronologically.
     users.sort((a, b) {
       if (a.userId == currentUserId) return -1;
       if (b.userId == currentUserId) return 1;
@@ -67,7 +90,10 @@ class StoryRepository {
       if (a.hasUnseen && !b.hasUnseen) return -1;
       if (!a.hasUnseen && b.hasUnseen) return 1;
       // Within same group, sort by oldest story first.
-      return a.stories.first.createdAt.compareTo(b.stories.first.createdAt);
+      if (a.stories.isNotEmpty && b.stories.isNotEmpty) {
+        return a.stories.first.createdAt.compareTo(b.stories.first.createdAt);
+      }
+      return 0;
     });
 
     return users;

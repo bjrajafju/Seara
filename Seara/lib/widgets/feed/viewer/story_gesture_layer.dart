@@ -25,7 +25,7 @@ class StoryGestureLayer extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTapUp: (details) {
         final screenWidth = MediaQuery.of(context).size.width;
-        if (details.globalPosition.dx < screenWidth * 0.30) {
+        if (details.globalPosition.dx < screenWidth * 0.50) {
           engine.previous();
         } else {
           engine.next();

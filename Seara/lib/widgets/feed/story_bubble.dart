@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/feed/story_user.dart';
 
@@ -26,47 +27,74 @@ class StoryBubble extends StatelessWidget {
   }
 
   Widget _buildRing() {
-    return Container(
-      width: 68,
-      height: 68,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: user.hasUnseen ? _unseenGradient : null,
-        color: user.hasUnseen ? null : const Color(0xFF8E8E8E),
-      ),
-      padding: const EdgeInsets.all(2.5), // ring thickness
-      child: Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black, // separator between ring and avatar
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isOwnEmptyStory =
+        user.userId == currentUserId && user.stories.isEmpty;
+
+    return Stack(
+      children: [
+        Container(
+          width: 68,
+          height: 68,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: user.hasUnseen ? _unseenGradient : null,
+            color: user.hasUnseen ? null : const Color(0xFF8E8E8E),
+          ),
+          padding: const EdgeInsets.all(2.5), // ring thickness
+          child: Container(
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.black, // separator between ring and avatar
+            ),
+            padding: const EdgeInsets.all(2),
+            child: CircleAvatar(
+              backgroundColor: const Color(0xFF333333),
+              backgroundImage: user.avatarUrl.isNotEmpty
+                  ? NetworkImage(user.avatarUrl)
+                  : null,
+              child: user.avatarUrl.isEmpty
+                  ? Text(
+                      user.username.isNotEmpty
+                          ? user.username[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
+            ),
+          ),
         ),
-        padding: const EdgeInsets.all(2),
-        child: CircleAvatar(
-          backgroundColor: const Color(0xFF333333),
-          backgroundImage: user.avatarUrl.isNotEmpty
-              ? NetworkImage(user.avatarUrl)
-              : null,
-          child: user.avatarUrl.isEmpty
-              ? Text(
-                  user.username.isNotEmpty
-                      ? user.username[0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              : null,
-        ),
-      ),
+        if (isOwnEmptyStory)
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.blueAccent,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black, width: 2),
+              ),
+              padding: const EdgeInsets.all(3),
+              child: const Icon(Icons.add, color: Colors.white, size: 14),
+            ),
+          ),
+      ],
     );
   }
 
   Widget _buildLabel() {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final displayName = user.userId == currentUserId
+        ? 'O teu story'
+        : user.username;
+
     return SizedBox(
       width: 68,
       child: Text(
-        user.username,
+        displayName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,

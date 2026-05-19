@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/story_feed_controller.dart';
 import '../../models/feed/story_user.dart';
 import '../../screens/feed/story_viewer_screen.dart';
+import '../../screens/story/create_story_screen.dart';
 import 'story_bubble.dart';
 
 /// Horizontal scrollable row of [StoryBubble] items.
@@ -31,13 +32,26 @@ class _StoriesRowState extends State<StoriesRow> {
   }
 
   void _openViewer(List<StoryUser> users, int initialIndex) {
+    final tappedUser = users[initialIndex];
+    if (tappedUser.stories.isEmpty) {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CreateStoryScreen()));
+      return;
+    }
+
+    final usersWithStories = users.where((u) => u.stories.isNotEmpty).toList();
+    final newInitialIndex = usersWithStories.indexOf(tappedUser);
+
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.black,
         transitionDuration: const Duration(milliseconds: 250),
-        pageBuilder: (_, __, ___) =>
-            StoryViewerScreen(users: users, initialUserIndex: initialIndex),
+        pageBuilder: (_, __, ___) => StoryViewerScreen(
+          users: usersWithStories,
+          initialUserIndex: newInitialIndex,
+        ),
         transitionsBuilder: (_, anim, __, child) {
           return FadeTransition(
             opacity: anim,

@@ -23,10 +23,11 @@ import 'story_feed_controller.dart';
 /// The engine decides what happens — no UI widget calls navigation directly.
 class StoryEngineController extends ChangeNotifier {
   StoryEngineController({
-    required this.users,
+    required List<StoryUser> users,
     required this.feedController,
     required int initialUserIndex,
-  }) : _userIndex = initialUserIndex {
+  }) : _userIndex = initialUserIndex,
+       users = List.from(users) {
     _storyIndex = _findFirstUnseenIndex(currentUser);
   }
 
@@ -212,18 +213,29 @@ class StoryEngineController extends ChangeNotifier {
 
     if (_storyIndex > 0) {
       _storyIndex--;
+      _activateStory(vsync);
     } else if (_userIndex > 0) {
       _userIndex--;
-      _storyIndex = currentUser.stories.length - 1;
+      _storyIndex = _findLastUnseenIndex(currentUser);
+      _activateStory(vsync);
+    } else {
+      // Already at first story of first user, reset progress to 0.
+      progressController.reset();
+      _activePlayer?.seek(Duration.zero);
+      if (!_isPaused) progressController.forward();
     }
-    _activateStory(vsync);
   }
 
   /// Called when the PageView has animated to a new user index externally.
   void onUserPageChanged(int newUserIndex, {TickerProvider? vsync}) {
     if (_disposed || newUserIndex == _userIndex) return;
+    final goingBack = newUserIndex < _userIndex;
     _userIndex = newUserIndex;
-    _storyIndex = _findFirstUnseenIndex(currentUser);
+    if (goingBack) {
+      _storyIndex = _findLastUnseenIndex(currentUser);
+    } else {
+      _storyIndex = _findFirstUnseenIndex(currentUser);
+    }
     _activateStory(vsync);
   }
 
@@ -268,6 +280,65 @@ class StoryEngineController extends ChangeNotifier {
       }
     }
     return 0; // Fallback: all stories are seen, start at oldest (index 0)
+  }
+
+  int _findLastUnseenIndex(StoryUser user) {
+    for (int i = user.stories.length - 1; i >= 0; i--) {
+      if (!user.seenIds.contains(user.stories[i].id)) {
+        return i;
+      }
+    }
+    return user.stories.length -
+        1; // Fallback: all stories are seen, start at last story (index length - 1)
+  }
+
+  /// Handles navigation transitions after a story is successfully deleted.
+  Future<void> handleStoryDeleted(String storyId) async {
+    if (_disposed) return;
+
+    // 1. Call feedController to remove it from memory
+    feedController.removeStory(storyId);
+
+    // 2. Remove story from our local engine user stories list
+    final updatedStories = currentUser.stories
+        .where((s) => s.id != storyId)
+        .toList();
+
+    if (updatedStories.isNotEmpty) {
+      // User still has other stories!
+      final updatedUser = StoryUser(
+        userId: currentUser.userId,
+        username: currentUser.username,
+        avatarUrl: currentUser.avatarUrl,
+        stories: updatedStories,
+        seenIds: currentUser.seenIds,
+      );
+      users[_userIndex] = updatedUser;
+
+      // Clamp the story index if we were on the last one
+      if (_storyIndex >= updatedStories.length) {
+        _storyIndex = updatedStories.length - 1;
+      }
+
+      // Re-activate story playback
+      await _activateStory(null);
+    } else {
+      // User has no stories left!
+      users.removeAt(_userIndex);
+
+      if (users.isEmpty) {
+        // No users left in viewer, trigger close transition
+        _shouldClose = true;
+        notifyListeners();
+      } else {
+        // Transition to next user
+        if (_userIndex >= users.length) {
+          _userIndex = users.length - 1;
+        }
+        _storyIndex = _findFirstUnseenIndex(currentUser);
+        await _activateStory(null);
+      }
+    }
   }
 
   @override

@@ -1,13 +1,18 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../controllers/story_engine_controller.dart';
 import '../../controllers/story_feed_controller.dart';
+import '../../models/feed/feed_story.dart';
 import '../../models/feed/story_user.dart';
 import '../../widgets/feed/viewer/story_gesture_layer.dart';
 import '../../widgets/feed/viewer/story_header.dart';
 import '../../widgets/feed/viewer/story_media_view.dart';
 import '../../widgets/feed/viewer/story_progress_bars.dart';
+import '../../widgets/feed/viewer/story_viewers_sheet.dart';
 import '../../widgets/story/story_viewport.dart';
 
 /// Full-screen story viewer with horizontal PageView between users.
@@ -96,6 +101,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         body: _buildDismissible(
           child: PageView.builder(
             controller: _pageController,
+            scrollBehavior: const MaterialScrollBehavior().copyWith(
+              dragDevices: {
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse,
+                PointerDeviceKind.trackpad,
+                PointerDeviceKind.stylus,
+              },
+            ),
             itemCount: widget.users.length,
             onPageChanged: (index) {
               // PageView is the owner of swipe navigation — signal engine.
@@ -133,6 +146,11 @@ class _StoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final engine = context.watch<StoryEngineController>();
+    final story = engine.currentStory;
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isOwnStory = story.userId == currentUserId;
+
     return StoryViewport(
       child: StoryGestureLayer(
         child: Stack(
@@ -155,9 +173,61 @@ class _StoryPage extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Bottom overlay: management button for own stories ────────────
+            if (isOwnStory)
+              Positioned(
+                bottom: 16,
+                left: 12,
+                child: Material(
+                  color: Colors.transparent,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.more_horiz,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black45,
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                    onPressed: () =>
+                        _showManagementSheet(context, engine, story),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  void _showManagementSheet(
+    BuildContext context,
+    StoryEngineController engine,
+    FeedStory story,
+  ) async {
+    engine.pause();
+
+    final wasDeleted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => StoryViewersSheet(
+        storyId: story.id,
+        mediaUrl: story.mediaUrl,
+        engine: engine,
+      ),
+    );
+
+    if (wasDeleted == true) {
+      await engine.handleStoryDeleted(story.id);
+    } else {
+      engine.resume();
+    }
   }
 }
