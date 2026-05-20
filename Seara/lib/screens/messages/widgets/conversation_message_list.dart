@@ -1,16 +1,15 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:seara/models/conversation_model.dart';
 import 'package:seara/models/link_preview_model.dart';
 import 'package:seara/models/message_model.dart';
 import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/messages/image_lightbox_screen.dart';
-import 'package:seara/screens/messages/video_lightbox_screen.dart';
 import 'package:seara/screens/messages/widgets/audio_message_widget.dart';
 import 'package:seara/screens/messages/widgets/link_preview_card.dart';
 import 'package:seara/screens/messages/widgets/message_bubble_wrapper.dart';
+import 'package:seara/screens/messages/widgets/video_thumbnail_widget.dart';
 import 'package:seara/services/link_preview_service.dart';
 import 'package:seara/utils/conversation_theme_helper.dart';
 import 'package:seara/utils/message_helpers.dart';
@@ -596,9 +595,11 @@ class ConversationMessageList extends StatelessWidget {
           ),
         );
       case AttachmentType.video:
-        return _VideoThumbnailWidget(
+        return VideoThumbnailWidget(
           url: message.attachment!,
           fileName: message.attachmentName,
+          width: 220,
+          height: 124,
         );
       case AttachmentType.audio:
         return AudioMessageWidget(
@@ -890,8 +891,9 @@ class ConversationMessageList extends StatelessWidget {
 
   String _replyPreviewText(ReplyPreview reply) {
     // Use fallback text from backend if message is unavailable
-    if (reply.isUnavailable)
+    if (reply.isUnavailable) {
       return reply.fallbackText ?? 'Mensagem indisponível';
+    }
 
     // Use body if available
     if ((reply.body ?? '').trim().isNotEmpty) return reply.body!.trim();
@@ -944,72 +946,3 @@ class ConversationMessageList extends StatelessWidget {
   }
 }
 
-class _VideoThumbnailWidget extends StatelessWidget {
-  const _VideoThumbnailWidget({required this.url, this.fileName});
-
-  final String url;
-  final String? fileName;
-
-  void _openLightbox(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Theme.of(context).colorScheme.scrim,
-        pageBuilder: (_, __, ___) =>
-            VideoLightboxScreen(videoUrl: url, fileName: fileName),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return GestureDetector(
-      onTap: () => _openLightbox(context),
-      child: Container(
-        width: 220,
-        height: 124,
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cs.scrim.withAlpha(140),
-              ),
-              child: Icon(
-                Icons.play_arrow_rounded,
-                color: cs.onInverseSurface,
-                size: 34,
-              ),
-            ),
-            if (fileName != null)
-              Positioned(
-                bottom: 8,
-                left: 8,
-                right: 8,
-                child: Text(
-                  fileName!,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: cs.onSurface.withAlpha(200),
-                    fontSize: 11,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}

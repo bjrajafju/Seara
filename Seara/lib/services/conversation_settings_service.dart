@@ -221,8 +221,12 @@ class ConversationSettingsService {
     final response = await ApiClient.get(uri);
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((m) => Message.fromJson(m)).toList();
+      final dynamic data = jsonDecode(response.body);
+      final messagesJson = _extractList(data, key: 'messages');
+      return messagesJson
+          .whereType<Map>()
+          .map((m) => Message.fromJson(Map<String, dynamic>.from(m)))
+          .toList();
     } else {
       throw Exception("Erro ao pesquisar mensagens.");
     }
@@ -243,10 +247,25 @@ class ConversationSettingsService {
     final response = await ApiClient.get(uri);
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.cast<Map<String, dynamic>>();
+      final dynamic data = jsonDecode(response.body);
+      final mediaJson = _extractList(data, key: 'items');
+      return mediaJson
+          .whereType<Map>()
+          .map((m) => Map<String, dynamic>.from(m))
+          .toList();
     } else {
       throw Exception("Erro ao obter media partilhada.");
     }
+  }
+
+  static List<dynamic> _extractList(dynamic data, {required String key}) {
+    if (data is List) return data;
+    if (data is Map) {
+      final keyed = data[key];
+      if (keyed is List) return keyed;
+      if (data['data'] is List) return data['data'] as List<dynamic>;
+      if (data['results'] is List) return data['results'] as List<dynamic>;
+    }
+    return const [];
   }
 }

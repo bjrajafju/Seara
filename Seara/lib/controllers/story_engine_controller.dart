@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
 
 import '../models/feed/feed_story.dart';
 import '../models/feed/story_user.dart';
 import '../services/feed/audio_preferences_service.dart';
+import '../services/feed/story_preload_service.dart';
 import 'story_feed_controller.dart';
 
 /// The SINGLE source of truth for all viewer state and navigation.
@@ -64,11 +64,12 @@ class StoryEngineController extends ChangeNotifier {
   bool get isMuted => _isMuted;
 
   // ── Video controllers ────────────────────────────────────────────────────
-  // RULE: Only ACTIVE (index N) and NEXT (index N+1) may hold a Player.
-  Player? _activePlayer;
-  Player? _nextPlayer;
+  // RULE: Keep the active story and near neighbours warm only.
+  final StoryPreloadService _preloadService = StoryPreloadService();
+  StoryPreloadedVideo? _activeVideo;
+  int _activationSerial = 0;
 
-  Player? get activePlayer => _activePlayer;
+  StoryPreloadedVideo? get activeVideo => _activeVideo;
 
   bool _disposed = false;
 
@@ -101,32 +102,30 @@ class StoryEngineController extends ChangeNotifier {
   Future<void> _activateStory(TickerProvider? vsync) async {
     if (_disposed) return;
 
+    if (_activeVideo != null) {
+      _activeVideo!.player.pause().catchError((_) {});
+    }
+
+    final activationSerial = ++_activationSerial;
     final story = currentStory;
     feedController.markSeen(story.id);
 
-    // Clean up previous active player instance immediately.
-    _activePlayer?.dispose();
-    _activePlayer = null;
+    _activeVideo = null;
 
     if (story.isVideo) {
-      // 1. Create a fresh player instance.
-      final player = Player();
-      _activePlayer = player;
-
-      // 2. Notify listeners immediately so that the UI (StoryVideoPlayerWidget)
-      // can build and attach the VideoController BEFORE the player opens and plays the media.
+      _activeVideo = _preloadService.getVideo(story.id);
       notifyListeners();
 
-      // 3. Configure and open the media.
-      await player.setPlaylistMode(PlaylistMode.none);
-      await player.setVolume(_isMuted ? 0 : 100);
-      await player.open(Media(story.mediaUrl), play: !_isPaused);
+      _activeVideo = await _preloadService.activateVideo(
+        story,
+        isMuted: _isMuted,
+        shouldPlay: !_isPaused,
+      );
 
-      if (_disposed) return;
+      if (_disposed || activationSerial != _activationSerial) return;
 
-      // 4. Wait for actual duration.
       final duration = await _resolveDuration(story);
-      if (_disposed) return;
+      if (_disposed || activationSerial != _activationSerial) return;
 
       progressController.duration = Duration(
         milliseconds: (duration * 1000).toInt(),
@@ -140,13 +139,32 @@ class StoryEngineController extends ChangeNotifier {
     progressController.reset();
     if (!_isPaused) progressController.forward();
 
+    _preloadService.preloadAround(
+      users: users,
+      userIndex: _userIndex,
+      storyIndex: _storyIndex,
+    );
     notifyListeners();
+  }
+
+  Future<void> ensureActiveVideoPlayback(StoryPreloadedVideo video) async {
+    if (_disposed || _isPaused || _activeVideo != video) return;
+    await video.ensurePlayingAfterAttach();
+    if (_disposed || _isPaused || _activeVideo != video) return;
+    if (!progressController.isAnimating) {
+      progressController.forward();
+    }
   }
 
   /// Waits up to 500ms for the player to report a real duration.
   /// Falls back to [FeedStory.effectiveDuration] if not available.
   Future<double> _resolveDuration(FeedStory story) async {
-    if (_activePlayer == null) return story.effectiveDuration;
+    if (_activeVideo == null) return story.effectiveDuration;
+
+    final cachedDuration = _activeVideo!.player.state.duration;
+    if (cachedDuration.inMilliseconds > 0) {
+      return cachedDuration.inSeconds.toDouble();
+    }
 
     final completer = Completer<double>();
     StreamSubscription? sub;
@@ -154,7 +172,7 @@ class StoryEngineController extends ChangeNotifier {
       if (!completer.isCompleted) completer.complete(story.effectiveDuration);
     });
 
-    sub = _activePlayer!.stream.duration.listen((dur) {
+    sub = _activeVideo!.player.stream.duration.listen((dur) {
       if (dur.inMilliseconds > 0 && !completer.isCompleted) {
         completer.complete(dur.inSeconds.toDouble());
       }
@@ -164,23 +182,6 @@ class StoryEngineController extends ChangeNotifier {
     timeout.cancel();
     await sub.cancel();
     return result;
-  }
-
-  void _preloadNext() {
-    // Disabled background video preloading to guarantee completely stable video
-    // texture bindings and avoid race conditions or background player conflicts.
-    _nextPlayer?.dispose();
-    _nextPlayer = null;
-  }
-
-  FeedStory? _getNextStory() {
-    if (_storyIndex < currentUser.stories.length - 1) {
-      return currentUser.stories[_storyIndex + 1];
-    }
-    if (_userIndex < users.length - 1) {
-      return users[_userIndex + 1].stories.first;
-    }
-    return null;
   }
 
   // ── Story finished ───────────────────────────────────────────────────────
@@ -221,7 +222,7 @@ class StoryEngineController extends ChangeNotifier {
     } else {
       // Already at first story of first user, reset progress to 0.
       progressController.reset();
-      _activePlayer?.seek(Duration.zero);
+      _activeVideo?.player.seek(Duration.zero);
       if (!_isPaused) progressController.forward();
     }
   }
@@ -245,7 +246,7 @@ class StoryEngineController extends ChangeNotifier {
     if (_isPaused) return;
     _isPaused = true;
     progressController.stop();
-    _activePlayer?.pause();
+    _activeVideo?.player.pause();
     notifyListeners();
   }
 
@@ -253,7 +254,7 @@ class StoryEngineController extends ChangeNotifier {
     if (!_isPaused) return;
     _isPaused = false;
     progressController.forward();
-    _activePlayer?.play();
+    _activeVideo?.player.play();
     notifyListeners();
   }
 
@@ -261,7 +262,7 @@ class StoryEngineController extends ChangeNotifier {
 
   void toggleMute() {
     _isMuted = !_isMuted;
-    _activePlayer?.setVolume(_isMuted ? 0 : 100);
+    _activeVideo?.player.setVolume(_isMuted ? 0 : 100);
     AudioPreferencesService.setMuted(_isMuted);
     notifyListeners();
   }
@@ -346,10 +347,8 @@ class StoryEngineController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     progressController.dispose();
-    _activePlayer?.dispose();
-    _nextPlayer?.dispose();
-    _activePlayer = null;
-    _nextPlayer = null;
+    _preloadService.dispose();
+    _activeVideo = null;
     super.dispose();
   }
 }

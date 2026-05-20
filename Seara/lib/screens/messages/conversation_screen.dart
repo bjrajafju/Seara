@@ -4,8 +4,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:seara/services/api_client.dart' as http;
-
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -25,7 +23,7 @@ import 'widgets/conversation_message_list.dart';
 import 'widgets/message_input_bar.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 
-import 'download_helper_stub.dart'
+import 'download_helper_io.dart'
     if (dart.library.html) 'download_helper_web.dart';
 
 class ConversationScreen extends StatefulWidget {
@@ -1063,22 +1061,18 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
     if (confirmed != true || !mounted) return;
 
-    if (kIsWeb) {
-      downloadFile(url, fileName);
-    } else {
-      try {
-        final response = await http.ApiClient.get(Uri.parse(url));
-        if (response.statusCode == 200 && mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('"$fileName" descarregado.')));
-        }
-      } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Erro ao fazer download.')),
-          );
-        }
+    try {
+      await downloadFile(url, fileName);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('"$fileName" descarregado.')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao fazer download.')),
+        );
       }
     }
   }

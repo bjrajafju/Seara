@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 
 import '../../../controllers/story_engine_controller.dart';
 import '../../../models/feed/feed_story.dart';
+import '../../../services/feed/story_preload_service.dart';
 
 /// Renders the active story media — either a full-screen image or a video.
 ///
@@ -17,19 +18,19 @@ class StoryMediaView extends StatelessWidget {
   Widget build(BuildContext context) {
     final engine = context.watch<StoryEngineController>();
     final story = engine.currentStory;
-    final player = engine.activePlayer;
+    final video = engine.activeVideo;
 
     return SizedBox.expand(
-      child: story.isVideo ? _buildVideo(story, player) : _buildImage(story),
+      child: story.isVideo ? _buildVideo(story, video) : _buildImage(story),
     );
   }
 
-  Widget _buildVideo(FeedStory story, Player? player) {
-    if (player == null) {
-      return _loadingBox();
+  Widget _buildVideo(FeedStory story, StoryPreloadedVideo? video) {
+    if (video == null) {
+      return _videoPlaceholder();
     }
 
-    return StoryVideoPlayerWidget(key: ValueKey(player), player: player);
+    return StoryVideoPlayerWidget(key: ValueKey(video.story.id), video: video);
   }
 
   Widget _buildImage(FeedStory story) {
@@ -44,18 +45,19 @@ class StoryMediaView extends StatelessWidget {
     );
   }
 
-  Widget _loadingBox() {
-    return const ColoredBox(
-      color: Colors.black,
-      child: Center(
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.white54,
-          ),
+  Widget _loadingBox() => _videoPlaceholder();
+
+  Widget _videoPlaceholder() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF151515), Color(0xFF050505)],
         ),
+      ),
+      child: const Center(
+        child: Icon(Icons.play_circle_outline, color: Colors.white24, size: 54),
       ),
     );
   }
@@ -74,35 +76,80 @@ class StoryMediaView extends StatelessWidget {
   }
 }
 
-/// Dedicated stateful widget to manage the lifecycle of a [VideoController].
+/// Dedicated stateful widget to render a cached [VideoController].
 ///
-/// By separating this widget, the [VideoController] is created exactly once
-/// in [initState] and disposed when the widget is unmounted, avoiding texture
-/// allocation race conditions on player transitions.
+/// The video stays mounted underneath the placeholder so media_kit can render
+/// the first frame. The placeholder is removed only after that frame arrives.
 class StoryVideoPlayerWidget extends StatefulWidget {
-  final Player player;
+  final StoryPreloadedVideo video;
 
-  const StoryVideoPlayerWidget({super.key, required this.player});
+  const StoryVideoPlayerWidget({super.key, required this.video});
 
   @override
   State<StoryVideoPlayerWidget> createState() => _StoryVideoPlayerWidgetState();
 }
 
 class _StoryVideoPlayerWidgetState extends State<StoryVideoPlayerWidget> {
-  late final VideoController _videoController;
+  bool _firstFrameReady = false;
 
   @override
   void initState() {
     super.initState();
-    _videoController = VideoController(widget.player);
+    _firstFrameReady = widget.video.isFirstFrameReady;
+    widget.video.controller.waitUntilFirstFrameRendered.then((_) {
+      if (!mounted) return;
+      widget.video.markFirstFrameReady();
+      setState(() => _firstFrameReady = true);
+    });
+
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<StoryEngineController>().ensureActiveVideoPlayback(
+          widget.video,
+        );
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Video(
-      controller: _videoController,
-      controls: NoVideoControls,
-      fit: BoxFit.cover,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Video(
+          controller: widget.video.controller,
+          controls: NoVideoControls,
+          fit: BoxFit.cover,
+        ),
+        if (!_firstFrameReady)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _firstFrameReady ? 0 : 1,
+                duration: const Duration(milliseconds: 120),
+                child: const _StoryVideoPlaceholder(),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _StoryVideoPlaceholder extends StatelessWidget {
+  const _StoryVideoPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF151515), Color(0xFF050505)],
+        ),
+      ),
     );
   }
 }

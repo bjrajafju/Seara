@@ -1,8 +1,7 @@
-import 'dart:html' as html;
 import 'dart:js' as js;
 
 /// Downloads and saves the requested file
-void downloadFile(String url, String fileName) {
+Future<void> downloadFile(String url, String fileName) async {
   js.context.callMethod('eval', [
     '''
     (function() {

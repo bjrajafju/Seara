@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/story_feed_controller.dart';
+import '../../models/feed/feed_story.dart';
 import '../../models/feed/story_user.dart';
 import '../../screens/feed/story_viewer_screen.dart';
 import '../../screens/story/create_story_screen.dart';
+import '../../services/feed/story_preload_service.dart';
 import 'story_bubble.dart';
 
 /// Horizontal scrollable row of [StoryBubble] items.
@@ -42,6 +46,15 @@ class _StoriesRowState extends State<StoriesRow> {
 
     final usersWithStories = users.where((u) => u.stories.isNotEmpty).toList();
     final newInitialIndex = usersWithStories.indexOf(tappedUser);
+    final initialStory = _initialStoryFor(tappedUser);
+    if (initialStory != null && initialStory.isVideo) {
+      unawaited(
+        StoryPreloadService.instance.preloadVideo(
+          initialStory,
+          priority: StoryPreloadPriority.high,
+        ),
+      );
+    }
 
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -65,6 +78,13 @@ class _StoriesRowState extends State<StoriesRow> {
         },
       ),
     );
+  }
+
+  FeedStory? _initialStoryFor(StoryUser user) {
+    for (final story in user.stories) {
+      if (!user.seenIds.contains(story.id)) return story;
+    }
+    return user.stories.isEmpty ? null : user.stories.first;
   }
 
   @override

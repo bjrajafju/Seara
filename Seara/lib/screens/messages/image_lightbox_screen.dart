@@ -1,8 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:seara/services/api_client.dart' as http;
 
-import 'download_helper_stub.dart'
+import 'download_helper_io.dart'
     if (dart.library.html) 'download_helper_web.dart';
 
 class ImageLightboxScreen extends StatefulWidget {
@@ -24,10 +22,11 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
     setState(() => _isDownloading = true);
 
     try {
-      if (kIsWeb) {
-        downloadFile(widget.imageUrl, widget.fileName ?? 'imagem.jpg');
-      } else {
-        await _downloadMobile();
+      await downloadFile(widget.imageUrl, widget.fileName ?? 'imagem.jpg');
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(const SnackBar(content: Text('Download concluído.')));
       }
     } catch (_) {
       if (mounted) {
@@ -37,17 +36,6 @@ class _ImageLightboxScreenState extends State<ImageLightboxScreen> {
       }
     } finally {
       if (mounted) setState(() => _isDownloading = false);
-    }
-  }
-
-  /// Download mobile
-  Future<void> _downloadMobile() async {
-    final response = await http.ApiClient.get(Uri.parse(widget.imageUrl));
-    if (response.statusCode != 200) throw Exception('Falha no download.');
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Download concluído.')));
     }
   }
 

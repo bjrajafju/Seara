@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:seara/models/link_preview_model.dart';
 import 'package:seara/screens/messages/image_lightbox_screen.dart';
-import 'package:seara/screens/messages/video_lightbox_screen.dart';
 import 'package:seara/screens/messages/widgets/link_preview_card.dart';
+import 'package:seara/screens/messages/widgets/video_thumbnail_widget.dart';
 import 'package:seara/services/conversation_settings_service.dart';
 import 'package:seara/services/link_preview_service.dart';
 import 'package:seara/utils/message_helpers.dart';
@@ -187,44 +187,26 @@ class _ConversationMediaGridState extends State<ConversationMediaGrid>
             'video',
           );
           final url = item['attachment'] ?? '';
+          if (isVideo) {
+            return VideoThumbnailWidget(
+              url: url,
+              fileName: item['attachment_name'],
+              borderRadius: BorderRadius.zero,
+              playIconSize: 36,
+            );
+          }
           return GestureDetector(
-            onTap: () {
-              if (isVideo) {
-                _openVideoPlayer(context, url);
-              } else {
-                _openImageViewer(context, url);
-              }
-            },
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: Icon(
-                      Icons.broken_image_rounded,
-                      color: theme.colorScheme.onSurface.withAlpha(80),
-                    ),
-                  ),
+            onTap: () => _openImageViewer(context, url),
+            child: Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: theme.colorScheme.surfaceContainerHighest,
+                child: Icon(
+                  Icons.broken_image_rounded,
+                  color: theme.colorScheme.onSurface.withAlpha(80),
                 ),
-                if (isVideo)
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.scrim.withAlpha(140),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.play_arrow_rounded,
-                        color: theme.colorScheme.onInverseSurface,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
           );
         },
@@ -367,18 +349,6 @@ class _ConversationMediaGridState extends State<ConversationMediaGrid>
     );
   }
 
-  void _openVideoPlayer(BuildContext context, String url) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Theme.of(context).colorScheme.scrim,
-        pageBuilder: (_, __, ___) => VideoLightboxScreen(videoUrl: url),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
-  }
 
   Future<void> _confirmDownload(
     BuildContext context,
