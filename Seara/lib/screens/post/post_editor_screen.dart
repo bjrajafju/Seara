@@ -30,12 +30,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   final _previewKey = GlobalKey();
 
   PostCropTransform _crop = PostCropTransform.identity;
-  double _frameScale = 1.0; // Scale of the crop frame (max 1.0)
   PostDraft? _frozenDraft;
   bool _isPublishing = false;
-
-
-
 
   @override
   void dispose() {
@@ -64,9 +60,6 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       _frozenDraft = null;
     });
   }
-
-  // Store the initial crop when starting a pinch gesture
-  late PostCropTransform _initialCrop;
 
   void _zoomBy(double delta) {
     setState(() {
@@ -137,7 +130,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     final draft = _frozenDraft;
     return Scaffold(
       backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           fit: StackFit.expand,
@@ -174,66 +167,15 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 56),
           child: Stack(
             children: [
-              // Frame with scalable container and resize handle
-              GestureDetector(
-                onScaleStart: (details) {
-                  _initialCrop = _crop;
-                },
-                onScaleUpdate: (details) {
-                  setState(() {
-                    // Update scale based on pinch gesture
-                    double newScale = (_initialCrop.scale * details.scale).clamp(PostCropTransform.minScale, PostCropTransform.maxScale);
-                    // Compute offset deltas normalized to screen size
-                    final size = MediaQuery.of(context).size;
-                    double dx = details.focalPointDelta.dx / size.width;
-                    double dy = details.focalPointDelta.dy / size.height;
-                    double maxOffset = (newScale - 1) / 2;
-                    double newOffsetX = (_initialCrop.offsetX + dx).clamp(-maxOffset, maxOffset);
-                    double newOffsetY = (_initialCrop.offsetY + dy).clamp(-maxOffset, maxOffset);
-                    _crop = PostCropTransform(scale: newScale, offsetX: newOffsetX, offsetY: newOffsetY).clamped();
-                  });
-                },
-                child: Transform.scale(
-                  scale: _frameScale,
-                  alignment: Alignment.center,
-                  child: Stack(
-                    children: [
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white54, width: 1.2),
-                        ),
-                        child: PostMediaFrame(
-                          source: widget.source,
-                          crop: _crop,
-                          editable: true,
-                          onCropChanged: (crop) => setState(() => _crop = crop),
-                        ),
-                      ),
-                      // Resize handle at bottom‑right corner
-                      Positioned(
-                        right: 4,
-                        bottom: 4,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onPanUpdate: (details) {
-                            setState(() {
-                              // Reduce frame size with vertical drag, clamp between 0.5 and 1.0
-                              _frameScale = (_frameScale - details.delta.dy / 200).clamp(0.5, 1.0);
-                            });
-                          },
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: Colors.white70,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Icon(Icons.open_in_full, size: 16, color: Colors.black),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white54, width: 1.2),
+                ),
+                child: PostMediaFrame(
+                  source: widget.source,
+                  crop: _crop,
+                  editable: true,
+                  onCropChanged: (crop) => setState(() => _crop = crop),
                 ),
               ),
               const Positioned.fill(
