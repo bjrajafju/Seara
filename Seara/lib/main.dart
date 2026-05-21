@@ -8,6 +8,7 @@ import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/profile/user_list_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/auth_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -15,6 +16,7 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/messages/messages_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'controllers/post_feed_controller.dart';
 import 'controllers/story_feed_controller.dart';
 
 /// Starts the app and wires top-level providers
@@ -37,6 +39,14 @@ void main() async {
   await themeProvider.init();
 
   final authProvider = AuthProvider();
+  authProvider.addListener(() async {
+    if (authProvider.isLoggedIn) {
+      final userId = await AuthService.getUserId();
+      await themeProvider.loadThemeForUser(userId);
+    } else if (!authProvider.isLoggedIn && !authProvider.isChecking) {
+      await themeProvider.loadThemeForUser(null);
+    }
+  });
   await authProvider.checkSession();
 
   runApp(SearaApp(themeProvider: themeProvider, authProvider: authProvider));
@@ -61,6 +71,7 @@ class SearaApp extends StatelessWidget {
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => MessagesProvider()),
         ChangeNotifierProvider(create: (_) => StoryFeedController()),
+        ChangeNotifierProvider(create: (_) => PostFeedController()),
       ],
 
       child: Consumer2<AuthProvider, ThemeProvider>(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
 //// To add a new theme:
@@ -92,15 +93,42 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeData get currentTheme => themes[_activeId] ?? AppTheme.dark;
 
+  AppThemeId get _defaultTheme {
+    try {
+      final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      return brightness == Brightness.dark ? AppThemeId.dark : AppThemeId.light;
+    } catch (_) {
+      return AppThemeId.dark;
+    }
+  }
+
   /// Initializes local dependencies and startup state
   Future<void> init() async {
+    final userId = await AuthService.getUserId();
+    await loadThemeForUser(userId);
+  }
+
+  /// Loads the theme for the current authenticated user, or defaults to system theme
+  Future<void> loadThemeForUser(int? userId) async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_prefKey);
-    if (saved != null) {
-      _activeId = AppThemeId.values.firstWhere(
-        (e) => e.name == saved,
-        orElse: () => AppThemeId.dark,
-      );
+    AppThemeId targetId;
+    if (userId != null) {
+      final key = '${_prefKey}_$userId';
+      final saved = prefs.getString(key);
+      if (saved != null) {
+        targetId = AppThemeId.values.firstWhere(
+          (e) => e.name == saved,
+          orElse: () => _defaultTheme,
+        );
+      } else {
+        targetId = _defaultTheme;
+      }
+    } else {
+      targetId = _defaultTheme;
+    }
+
+    if (_activeId != targetId) {
+      _activeId = targetId;
       notifyListeners();
     }
   }
@@ -111,6 +139,11 @@ class ThemeProvider extends ChangeNotifier {
     _activeId = id;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefKey, id.name);
+    final userId = await AuthService.getUserId();
+    if (userId != null) {
+      await prefs.setString('${_prefKey}_$userId', id.name);
+    } else {
+      await prefs.setString(_prefKey, id.name);
+    }
   }
 }

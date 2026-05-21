@@ -62,13 +62,8 @@ class AuthService {
         return false;
       }
 
-      final userId = await getUserId();
-      if (userId == null) {
-        return false;
-      }
-
       final response = await ApiClient.get(
-        Uri.parse('${ApiConfig.baseUrl}/profile/$userId'),
+        Uri.parse('${ApiConfig.baseUrl}/profile/me'),
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {

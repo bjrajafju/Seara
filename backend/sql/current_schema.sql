@@ -166,27 +166,37 @@ CREATE TABLE public.pinned_messages (
   CONSTRAINT pinned_messages_pinned_by_fkey FOREIGN KEY (pinned_by) REFERENCES public.users(id),
   CONSTRAINT pinned_messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id)
 );
-CREATE TABLE public.post_media (
-  id bigint NOT NULL DEFAULT nextval('post_media_id_seq'::regclass),
-  post_id bigint NOT NULL,
-  media_type text NOT NULL CHECK (media_type = ANY (ARRAY['image'::text, 'video'::text, 'audio'::text])),
-  file_path text NOT NULL,
-  order integer NOT NULL DEFAULT 0,
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT post_media_pkey PRIMARY KEY (id),
-  CONSTRAINT post_media_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id)
+CREATE TABLE public.post_comments (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  post_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT post_comments_pkey PRIMARY KEY (id),
+  CONSTRAINT post_comments_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id),
+  CONSTRAINT post_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id)
+);
+CREATE TABLE public.post_likes (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  post_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT post_likes_pkey PRIMARY KEY (id),
+  CONSTRAINT post_likes_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id),
+  CONSTRAINT post_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id)
 );
 CREATE TABLE public.posts (
-  id bigint NOT NULL DEFAULT nextval('posts_id_seq'::regclass),
-  user_id bigint NOT NULL,
-  description text,
-  location text,
-  audio_path text,
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  media_url text NOT NULL,
+  media_type text NOT NULL CHECK (media_type = ANY (ARRAY['image'::text, 'video'::text])),
+  caption text,
+  thumbnail_url text,
+  crop jsonb NOT NULL DEFAULT '{"scale": 1, "offsetX": 0, "offsetY": 0}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT posts_pkey PRIMARY KEY (id),
-  CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id)
 );
 CREATE TABLE public.sessions (
   id text NOT NULL,
@@ -197,6 +207,26 @@ CREATE TABLE public.sessions (
   last_activity integer NOT NULL,
   CONSTRAINT sessions_pkey PRIMARY KEY (id),
   CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.stories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  media_url text NOT NULL,
+  type text NOT NULL CHECK (type = ANY (ARRAY['image'::text, 'video'::text])),
+  duration double precision DEFAULT 6.0,
+  created_at timestamp with time zone DEFAULT now(),
+  expires_at timestamp with time zone DEFAULT (now() + '24:00:00'::interval),
+  CONSTRAINT stories_pkey PRIMARY KEY (id),
+  CONSTRAINT stories_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id)
+);
+CREATE TABLE public.story_views (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  story_id uuid NOT NULL,
+  viewer_id uuid NOT NULL,
+  viewed_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT story_views_pkey PRIMARY KEY (id),
+  CONSTRAINT story_views_story_id_fkey FOREIGN KEY (story_id) REFERENCES public.stories(id),
+  CONSTRAINT story_views_viewer_id_fkey FOREIGN KEY (viewer_id) REFERENCES public.users(auth_id)
 );
 CREATE TABLE public.submissaos (
   id bigint NOT NULL DEFAULT nextval('submissaos_id_seq'::regclass),

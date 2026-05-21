@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "../services/supabase.js";
 
-const ALLOWED_BUCKETS = ["avatars", "attachments", "groups", "stories"];
+const ALLOWED_BUCKETS = ["avatars", "attachments", "groups", "stories", "posts"];
 
 /// Resolves content type from file extension when needed.
 /// Handles uploads sent as application/octet-stream.
@@ -50,7 +50,14 @@ export const uploadFile = async (req, res) => {
     const timestamp = Date.now();
     const originalName = req.file.originalname || "file";
     const extension = originalName.split(".").pop()?.toLowerCase() || "bin";
-    const filePath = `${timestamp}.${extension}`;
+    const safeOriginalName = originalName.replace(/\\/g, "/");
+    const requestedPath = safeOriginalName.includes("/")
+      ? safeOriginalName
+      : `${timestamp}.${extension}`;
+    const filePath =
+      bucket === "posts"
+        ? `${req.user.id}/${requestedPath.replace(/^\/+/, "")}`
+        : requestedPath;
 
     let contentType = req.file.mimetype;
     if (contentType === "application/octet-stream") {

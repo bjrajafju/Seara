@@ -5,16 +5,38 @@ import { filterSystemUsers } from "../utils/helpers.js";
 export const getProfile = async (req, res) => {
     try {
         const userId = req.params.userId;
+        const isOwnProfile = !userId || userId === "me";
 
-        const { data, error } = await supabase
-            .from("profiles_view")
-            .select("*")
-            .eq("id", userId)
-            .single();
+        const query = supabase
+            .from("users")
+            .select("id, username, name, bio, avatar, auth_id");
+
+        const { data, error } = isOwnProfile
+            ? await query.eq("auth_id", req.user.id).maybeSingle()
+            : await query.eq("id", userId).maybeSingle();
 
         if (error || !data) {
             return res.status(404).json({ error: "Utilizador não encontrado" });
         }
+
+        const [
+            { count: postsCount },
+            { count: followersCount },
+            { count: followingCount },
+        ] = await Promise.all([
+            supabase
+                .from("posts")
+                .select("id", { count: "exact", head: true })
+                .eq("user_id", data.auth_id),
+            supabase
+                .from("followers")
+                .select("id", { count: "exact", head: true })
+                .eq("user_id", data.id),
+            supabase
+                .from("followers")
+                .select("id", { count: "exact", head: true })
+                .eq("follower_id", data.id),
+        ]);
 
         return res.json({
             id: data.id,
@@ -22,9 +44,9 @@ export const getProfile = async (req, res) => {
             name: data.name,
             bio: data.bio,
             avatar_url: data.avatar,
-            posts_count: data.posts_count,
-            followers_count: data.followers_count,
-            following_count: data.following_count,
+            posts_count: postsCount ?? 0,
+            followers_count: followersCount ?? 0,
+            following_count: followingCount ?? 0,
         });
     } catch (err) {
         console.error(err);
