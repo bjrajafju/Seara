@@ -63,4 +63,40 @@ class PostFeedController extends ChangeNotifier {
     _posts.insert(0, post);
     notifyListeners();
   }
+
+  Future<void> toggleLike(String postId) async {
+    final index = _posts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+
+    final post = _posts[index];
+    final wasLiked = post.isLiked;
+    final newLikeCount = wasLiked ? post.likeCount - 1 : post.likeCount + 1;
+    final updatedPost = post.copyWith(
+      isLiked: !wasLiked,
+      likeCount: newLikeCount < 0 ? 0 : newLikeCount,
+    );
+
+    // Optimistic update
+    _posts[index] = updatedPost;
+    notifyListeners();
+
+    try {
+      await _repository.toggleLike(postId, !wasLiked);
+    } catch (e) {
+      // Revert on error
+      final revertIndex = _posts.indexWhere((p) => p.id == postId);
+      if (revertIndex != -1) {
+        _posts[revertIndex] = post;
+        notifyListeners();
+      }
+    }
+  }
+
+  void incrementCommentCount(String postId) {
+    final index = _posts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+    final post = _posts[index];
+    _posts[index] = post.copyWith(commentCount: post.commentCount + 1);
+    notifyListeners();
+  }
 }

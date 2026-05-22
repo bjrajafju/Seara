@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Manages the global mute preference for story video playback.
@@ -8,6 +8,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// - Persists across app sessions via SharedPreferences.
 class AudioPreferencesService {
   static const _key = 'story_muted';
+
+  static final ValueNotifier<bool> isMutedNotifier = ValueNotifier<bool>(kIsWeb);
+
+  /// Initializes the notifier with stored preference.
+  static Future<void> init() async {
+    final muted = await isMuted();
+    isMutedNotifier.value = muted;
+  }
 
   /// Returns the stored mute preference.
   /// Falls back to [true] on Web, [false] on native.
@@ -24,5 +32,6 @@ class AudioPreferencesService {
   static Future<void> setMuted(bool muted) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_key, muted);
+    isMutedNotifier.value = muted;
   }
 }

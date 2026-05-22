@@ -18,12 +18,15 @@ import 'screens/messages/messages_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'controllers/post_feed_controller.dart';
 import 'controllers/story_feed_controller.dart';
+import 'services/feed/audio_preferences_service.dart';
 
 /// Starts the app and wires top-level providers
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   JustAudioMediaKit.ensureInitialized();
+
+  await AudioPreferencesService.init();
 
   await Supabase.initialize(
     url: 'https://nzxmjazsegtsmsdqnisq.supabase.co',

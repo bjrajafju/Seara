@@ -14,6 +14,9 @@ class FeedPost {
     required this.avatarUrl,
     this.caption,
     this.thumbnailUrl,
+    this.likeCount = 0,
+    this.isLiked = false,
+    this.commentCount = 0,
   });
 
   final String id;
@@ -27,13 +30,59 @@ class FeedPost {
   final DateTime updatedAt;
   final String username;
   final String avatarUrl;
+  final int likeCount;
+  final bool isLiked;
+  final int commentCount;
 
   bool get isVideo => mediaType.isVideo;
   bool get isImage => mediaType.isImage;
 
-  factory FeedPost.fromJson(Map<String, dynamic> json) {
+  FeedPost copyWith({
+    String? id,
+    String? userId,
+    String? mediaUrl,
+    PostMediaType? mediaType,
+    String? caption,
+    String? thumbnailUrl,
+    PostCropTransform? crop,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? username,
+    String? avatarUrl,
+    int? likeCount,
+    bool? isLiked,
+    int? commentCount,
+  }) {
+    return FeedPost(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      mediaType: mediaType ?? this.mediaType,
+      caption: caption ?? this.caption,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      crop: crop ?? this.crop,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      username: username ?? this.username,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      likeCount: likeCount ?? this.likeCount,
+      isLiked: isLiked ?? this.isLiked,
+      commentCount: commentCount ?? this.commentCount,
+    );
+  }
+
+  factory FeedPost.fromJson(Map<String, dynamic> json, [String? currentUserId]) {
     final user = json['users'] as Map<String, dynamic>?;
     final username = user?['username'] as String? ?? 'user';
+
+    final likesList = json['post_likes'] as List<dynamic>? ?? [];
+    final commentsList = json['post_comments'] as List<dynamic>? ?? [];
+
+    final isLiked = currentUserId != null &&
+        likesList.any((like) => like['user_id'] == currentUserId);
+    final likeCount = likesList.length;
+    final commentCount = commentsList.length;
+
     return FeedPost(
       id: json['id'] as String,
       userId: json['user_id'] as String,
@@ -47,10 +96,12 @@ class FeedPost {
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       username: username,
-      avatarUrl:
-          user?['avatar_url'] as String? ??
+      avatarUrl: user?['avatar_url'] as String? ??
           user?['avatar'] as String? ??
           'https://ui-avatars.com/api/?name=$username',
+      likeCount: likeCount,
+      isLiked: isLiked,
+      commentCount: commentCount,
     );
   }
 }

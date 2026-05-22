@@ -11,15 +11,16 @@ class PostRepository {
   Future<List<FeedPost>> fetchPosts({int limit = 12, DateTime? before}) async {
     var query = _client
         .from('posts')
-        .select('*, users:user_id(username, avatar_url:avatar)');
+        .select('*, users:user_id(username, avatar_url:avatar), post_likes(user_id), post_comments(id)');
 
     if (before != null) {
       query = query.lt('created_at', before.toUtc().toIso8601String());
     }
 
+    final currentUserId = _client.auth.currentUser?.id;
     final rows = await query.order('created_at', ascending: false).limit(limit);
     return rows
-        .map((row) => FeedPost.fromJson(Map<String, dynamic>.from(row)))
+        .map((row) => FeedPost.fromJson(Map<String, dynamic>.from(row), currentUserId))
         .toList();
   }
 
@@ -45,10 +46,29 @@ class PostRepository {
           'thumbnail_url': thumbnailUrl,
           'crop': crop,
         })
-        .select('*, users:user_id(username, avatar_url:avatar)')
+        .select('*, users:user_id(username, avatar_url:avatar), post_likes(user_id), post_comments(id)')
         .single();
 
-    return FeedPost.fromJson(Map<String, dynamic>.from(row));
+    return FeedPost.fromJson(Map<String, dynamic>.from(row), userId);
+  }
+
+  Future<void> toggleLike(String postId, bool liked) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw const PostRepositoryException('Utilizador não autenticado.');
+    }
+
+    if (liked) {
+      await _client.from('post_likes').insert({
+        'post_id': postId,
+        'user_id': userId,
+      });
+    } else {
+      await _client.from('post_likes').delete().match({
+        'post_id': postId,
+        'user_id': userId,
+      });
+    }
   }
 }
 
