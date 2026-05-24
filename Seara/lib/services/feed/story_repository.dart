@@ -16,7 +16,7 @@ class StoryRepository {
   /// profile, grouped into [StoryUser] objects.
   ///
   /// Returns users sorted: unseen first (chronologically), seen last.
-  Future<List<StoryUser>> fetchFeedUsers() async {
+  Future<List<StoryUser>> fetchFeedUsers({List<String>? allowedUserIds}) async {
     final currentUserId = _client.auth.currentUser?.id;
     if (currentUserId == null) return [];
 
@@ -41,11 +41,22 @@ class StoryRepository {
     }
 
     // 2. Fetch non-expired stories with author profile data.
-    final storiesResponse = await _client
+    var query = _client
         .from('stories')
         .select('*, users:user_id(id, auth_id, username, avatar_url:avatar)')
-        .gt('expires_at', DateTime.now().toUtc().toIso8601String())
-        .order('created_at', ascending: true);
+        .gt('expires_at', DateTime.now().toUtc().toIso8601String());
+
+    if (allowedUserIds != null) {
+      if (allowedUserIds.isEmpty) {
+        // Se a lista estiver vazia (não deveria acontecer se logado),
+        // mas por segurança filtramos por um ID inexistente.
+        query = query.eq('user_id', '00000000-0000-0000-0000-000000000000');
+      } else {
+        query = query.inFilter('user_id', allowedUserIds);
+      }
+    }
+
+    final storiesResponse = await query.order('created_at', ascending: true);
 
     // 3. Fetch which story IDs the current user has already seen.
     final viewsResponse = await _client
@@ -111,5 +122,19 @@ class StoryRepository {
       'viewer_id': viewerId,
       'viewed_at': DateTime.now().toUtc().toIso8601String(),
     }, onConflict: 'story_id,viewer_id');
+  }
+
+  Future<List<String>> getFollowingAuthIds(int myBigIntId) async {
+    final response = await _client
+        .from('followers')
+        .select('users:user_id(auth_id)')
+        .eq('follower_id', myBigIntId);
+
+    final List<String> ids = [];
+    for (var row in response as List) {
+      final authId = row['users']?['auth_id'];
+      if (authId != null) ids.add(authId as String);
+    }
+    return ids;
   }
 }

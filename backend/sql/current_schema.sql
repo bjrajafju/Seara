@@ -247,5 +247,6 @@ CREATE TABLE public.users (
   is_private boolean NOT NULL DEFAULT false,
   auth_id uuid NOT NULL UNIQUE,
   username text NOT NULL UNIQUE,
+  theme text NOT NULL DEFAULT 'light',
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );

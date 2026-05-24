@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/feed/story_user.dart';
+import '../services/auth_service.dart';
 import '../services/feed/story_repository.dart';
 
 /// Data-layer only controller.
@@ -14,9 +17,17 @@ import '../services/feed/story_repository.dart';
 /// This controller does NOT manage viewer navigation or playback.
 /// That is the exclusive responsibility of [StoryEngineController].
 class StoryFeedController extends ChangeNotifier {
+  StoryFeedController() {
+    _setupFollowSubscription();
+  }
+
   final _repo = StoryRepository();
 
   List<StoryUser> _users = [];
+  List<String> _allowedUserIds = [];
+  StreamSubscription? _followSubscription;
+  int? _currentSubscribedUserId;
+
   bool _isLoading = false;
   String? _error;
 
@@ -25,19 +36,80 @@ class StoryFeedController extends ChangeNotifier {
   String? get error => _error;
 
   /// Fetches stories. Call on first mount and on pull-to-refresh.
-  Future<void> fetch() async {
+  Future<void> fetch({bool refresh = false, bool clear = true}) async {
+    if (_isLoading) return;
+
+    if (_followSubscription == null) {
+      _setupFollowSubscription();
+    }
+
     _isLoading = true;
     _error = null;
+    if (refresh && clear) {
+      _users = [];
+    }
     notifyListeners();
 
     try {
-      _users = await _repo.fetchFeedUsers();
+      if (refresh || _allowedUserIds.isEmpty) {
+        await _refreshAllowedUsers();
+      }
+
+      _users = await _repo.fetchFeedUsers(allowedUserIds: _allowedUserIds);
     } catch (e) {
       _error = e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _refreshAllowedUsers() async {
+    final currentAuthId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentAuthId == null) {
+      _allowedUserIds = [];
+      return;
+    }
+
+    final myBigIntId = await AuthService.getUserId();
+    if (myBigIntId == null) {
+      _allowedUserIds = [currentAuthId];
+      return;
+    }
+
+    try {
+      final following = await _repo.getFollowingAuthIds(myBigIntId);
+      _allowedUserIds = [currentAuthId, ...following];
+    } catch (e) {
+      debugPrint('Error refreshing allowed users for stories: $e');
+      _allowedUserIds = [currentAuthId];
+    }
+  }
+
+  void _setupFollowSubscription() async {
+    final myBigIntId = await AuthService.getUserId();
+
+    if (myBigIntId == _currentSubscribedUserId && _followSubscription != null) {
+      return;
+    }
+
+    await _followSubscription?.cancel();
+    _currentSubscribedUserId = myBigIntId;
+
+    if (myBigIntId == null) {
+      _followSubscription = null;
+      return;
+    }
+
+    _followSubscription = Supabase.instance.client
+        .from('followers')
+        .stream(primaryKey: ['id'])
+        .eq('follower_id', myBigIntId)
+        .listen((_) async {
+          await _refreshAllowedUsers();
+          // Silently refresh stories when social graph changes
+          fetch(refresh: true, clear: false);
+        });
   }
 
   /// Marks [storyId] as seen — optimistic local update + async Supabase write.
@@ -80,5 +152,11 @@ class StoryFeedController extends ChangeNotifier {
     }
     _users = updatedUsers;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _followSubscription?.cancel();
+    super.dispose();
   }
 }

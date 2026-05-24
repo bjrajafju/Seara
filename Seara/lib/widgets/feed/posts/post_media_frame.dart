@@ -61,6 +61,7 @@ class PostMediaFrame extends StatelessWidget {
           source: source,
           thumbnailUrl: thumbnailUrl,
           autoplayVideo: autoplayVideo,
+          isFullFrame: isFullFrame,
         );
 
         if (!clamped.isBaked) {
@@ -128,12 +129,14 @@ class _PostMediaContent extends StatefulWidget {
     required this.source,
     required this.autoplayVideo,
     this.thumbnailUrl,
+    this.isFullFrame = false,
   });
 
   final String postId;
   final PostMediaSource source;
   final bool autoplayVideo;
   final String? thumbnailUrl;
+  final bool isFullFrame;
 
   @override
   State<_PostMediaContent> createState() => _PostMediaContentState();
@@ -150,6 +153,16 @@ class _PostMediaContentState extends State<_PostMediaContent>
     WidgetsBinding.instance.addObserver(this);
     AudioPreferencesService.isMutedNotifier.addListener(_onMuteChanged);
     PostPlaybackCoordinator().addListener(_onCoordinatorUpdate);
+
+    // Force visibility report for full-frame media (editor/preview)
+    // to ensure immediate activation without waiting for VisibilityDetector events,
+    // which can be delayed on Web/Windows until user interaction.
+    if (widget.isFullFrame) {
+      PostPlaybackCoordinator().reportVisibility(
+        widget.postId,
+        PostPlaybackMetrics(visibleFraction: 1.0, distanceToCenter: 0.0),
+      );
+    }
   }
 
   @override
@@ -163,7 +176,14 @@ class _PostMediaContentState extends State<_PostMediaContent>
       }
       _video?.dispose();
       _video = null;
-      if (PostPlaybackCoordinator().isVisible(widget.postId)) {
+      if (PostPlaybackCoordinator().isVisible(widget.postId) ||
+          widget.isFullFrame) {
+        if (widget.isFullFrame) {
+          PostPlaybackCoordinator().reportVisibility(
+            widget.postId,
+            PostPlaybackMetrics(visibleFraction: 1.0, distanceToCenter: 0.0),
+          );
+        }
         _initVideoIfNeeded();
       }
     }
@@ -277,6 +297,7 @@ class _PostMediaContentState extends State<_PostMediaContent>
               _updatePlaybackState();
             },
             child: Video(
+              key: ValueKey(video),
               controller: video.controller,
               controls: NoVideoControls,
               fit: BoxFit.cover,
@@ -336,7 +357,7 @@ class PostVideoController {
     );
   }
 
-  static const _firstFrameTimeout = Duration(milliseconds: 700);
+  static const _firstFrameTimeout = Duration(milliseconds: 1500);
 
   final String _effectiveSource;
   String? _webBlobUrl;

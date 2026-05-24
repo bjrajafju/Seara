@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +9,6 @@ import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/profile/user_list_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
-import 'services/auth_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -44,8 +44,7 @@ void main() async {
   final authProvider = AuthProvider();
   authProvider.addListener(() async {
     if (authProvider.isLoggedIn) {
-      final userId = await AuthService.getUserId();
-      await themeProvider.loadThemeForUser(userId);
+      await themeProvider.loadThemeForCurrentUser();
     } else if (!authProvider.isLoggedIn && !authProvider.isChecking) {
       await themeProvider.loadThemeForUser(null);
     }
@@ -82,6 +81,13 @@ class SearaApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'SEARA',
+            scrollBehavior: const MaterialScrollBehavior().copyWith(
+              dragDevices: {
+                ui.PointerDeviceKind.touch,
+                ui.PointerDeviceKind.mouse,
+                ui.PointerDeviceKind.trackpad,
+              },
+            ),
             themeMode: ThemeMode.light,
             theme: theme.currentTheme,
             home: auth.isChecking

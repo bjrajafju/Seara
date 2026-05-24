@@ -11,7 +11,7 @@ class CommentRepository {
   Future<List<PostComment>> fetchComments(String postId) async {
     final rows = await _client
         .from('post_comments')
-        .select('*, users:user_id(username, avatar_url:avatar)')
+        .select('*, users:user_id(id, username, avatar_url:avatar)')
         .eq('post_id', postId)
         .order('created_at', ascending: true);
 
@@ -33,7 +33,7 @@ class CommentRepository {
           'user_id': userId,
           'content': content.trim(),
         })
-        .select('*, users:user_id(username, avatar_url:avatar)')
+        .select('*, users:user_id(id, username, avatar_url:avatar)')
         .single();
 
     return PostComment.fromJson(Map<String, dynamic>.from(row));

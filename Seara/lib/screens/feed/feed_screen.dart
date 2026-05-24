@@ -41,7 +41,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Future<void> _refresh() async {
     await Future.wait([
-      context.read<StoryFeedController>().fetch(),
+      context.read<StoryFeedController>().fetch(refresh: true),
       context.read<PostFeedController>().fetch(refresh: true),
     ]);
   }
@@ -56,6 +56,9 @@ class _FeedScreenState extends State<FeedScreen> {
         onRefresh: _refresh,
         child: CustomScrollView(
           controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           slivers: const [
             SliverToBoxAdapter(child: _FeedHeader()),
             SliverToBoxAdapter(

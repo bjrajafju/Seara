@@ -7,6 +7,7 @@ import '../../../models/feed/feed_post.dart';
 import '../../../models/feed/post_media_source.dart';
 import '../../../services/feed/audio_preferences_service.dart';
 import '../../../utils/time_helper.dart';
+import '../../../utils/navigation_helper.dart';
 import 'post_comments_sheet.dart';
 import 'post_media_frame.dart';
 
@@ -141,19 +142,30 @@ class PostCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundImage: NetworkImage(post.avatarUrl),
-                    backgroundColor: theme.colorScheme.onSurface.withOpacity(
-                      0.1,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    post.username,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => NavigationHelper.openProfile(context, post.userDbId),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundImage: NetworkImage(post.avatarUrl),
+                            backgroundColor: theme.colorScheme.onSurface.withOpacity(
+                              0.1,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            post.username,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -294,9 +306,18 @@ class PostCard extends StatelessWidget {
                     Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(
-                            text: '${post.username} ',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: GestureDetector(
+                              onTap: () => NavigationHelper.openProfile(context, post.userDbId),
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: Text(
+                                  '${post.username} ',
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
                           ),
                           TextSpan(text: post.caption!.trim()),
                         ],

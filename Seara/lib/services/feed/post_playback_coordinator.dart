@@ -44,7 +44,12 @@ class PostPlaybackCoordinator extends ChangeNotifier {
   Timer? _updateTimer;
   void _scheduleUpdate() {
     _updateTimer?.cancel();
-    _updateTimer = Timer(const Duration(milliseconds: 50), _updateActiveVideo);
+    // Immediate update if no video is currently active to avoid loading delays
+    if (_activePostId == null) {
+      _updateActiveVideo();
+    } else {
+      _updateTimer = Timer(const Duration(milliseconds: 50), _updateActiveVideo);
+    }
   }
 
   void _updateActiveVideo() {

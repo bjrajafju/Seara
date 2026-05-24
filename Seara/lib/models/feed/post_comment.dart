@@ -3,6 +3,7 @@ class PostComment {
     required this.id,
     required this.postId,
     required this.userId,
+    this.userDbId,
     required this.content,
     required this.createdAt,
     required this.username,
@@ -12,6 +13,7 @@ class PostComment {
   final int id;
   final String postId;
   final String userId;
+  final int? userDbId;
   final String content;
   final DateTime createdAt;
   final String username;
@@ -24,6 +26,7 @@ class PostComment {
       id: json['id'] as int,
       postId: json['post_id'] as String,
       userId: json['user_id'] as String,
+      userDbId: user?['id'] as int?,
       content: json['content'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       username: username,

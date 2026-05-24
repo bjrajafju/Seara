@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../services/user_repository.dart';
 
 //// To add a new theme:
 ////  1. Add a new value here.
@@ -88,6 +88,10 @@ class ThemeProvider extends ChangeNotifier {
   };
 
   AppThemeId _activeId = AppThemeId.dark;
+  final UserRepository _userRepository;
+
+  ThemeProvider({UserRepository? userRepository})
+      : _userRepository = userRepository ?? UserRepository();
 
   AppThemeId get activeId => _activeId;
 
@@ -104,27 +108,40 @@ class ThemeProvider extends ChangeNotifier {
 
   /// Initializes local dependencies and startup state
   Future<void> init() async {
-    final userId = await AuthService.getUserId();
-    await loadThemeForUser(userId);
+    await loadThemeForCurrentUser();
   }
 
-  /// Loads the theme for the current authenticated user, or defaults to system theme
-  Future<void> loadThemeForUser(int? userId) async {
+  /// Loads the theme for the currently authenticated user
+  Future<void> loadThemeForCurrentUser() async {
+    await loadThemeForUser(_userRepository.currentAuthId);
+  }
+
+  /// Loads the theme for a specific user ID, or defaults to system theme
+  Future<void> loadThemeForUser(String? userId) async {
     final prefs = await SharedPreferences.getInstance();
-    AppThemeId targetId;
+    AppThemeId targetId = _defaultTheme;
+
+    // 1. Try to get from database first if user is logged in
     if (userId != null) {
-      final key = '${_prefKey}_$userId';
-      final saved = prefs.getString(key);
-      if (saved != null) {
-        targetId = AppThemeId.values.firstWhere(
-          (e) => e.name == saved,
-          orElse: () => _defaultTheme,
-        );
+      final dbTheme = await _userRepository.getUserTheme(userId);
+      if (dbTheme != null) {
+        targetId = _parseThemeId(dbTheme);
+        // Sync to local cache
+        await prefs.setString('${_prefKey}_$userId', targetId.name);
       } else {
-        targetId = _defaultTheme;
+        // 2. Fallback to local cache if DB fails or is empty
+        final key = '${_prefKey}_$userId';
+        final saved = prefs.getString(key);
+        if (saved != null) {
+          targetId = _parseThemeId(saved);
+        }
       }
     } else {
-      targetId = _defaultTheme;
+      // Not logged in, use global local cache
+      final saved = prefs.getString(_prefKey);
+      if (saved != null) {
+        targetId = _parseThemeId(saved);
+      }
     }
 
     if (_activeId != targetId) {
@@ -133,15 +150,27 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
+  AppThemeId _parseThemeId(String name) {
+    return AppThemeId.values.firstWhere(
+      (e) => e.name == name,
+      orElse: () => _defaultTheme,
+    );
+  }
+
   /// Set theme
   Future<void> setTheme(AppThemeId id) async {
     if (_activeId == id) return;
     _activeId = id;
     notifyListeners();
+    
     final prefs = await SharedPreferences.getInstance();
-    final userId = await AuthService.getUserId();
-    if (userId != null) {
-      await prefs.setString('${_prefKey}_$userId', id.name);
+    final authId = _userRepository.currentAuthId;
+    
+    if (authId != null) {
+      // Update DB (async)
+      _userRepository.setUserTheme(authId, id.name);
+      // Update local cache
+      await prefs.setString('${_prefKey}_$authId', id.name);
     } else {
       await prefs.setString(_prefKey, id.name);
     }

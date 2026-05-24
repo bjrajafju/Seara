@@ -8,12 +8,25 @@ class PostRepository {
 
   final SupabaseClient _client;
 
-  Future<List<FeedPost>> fetchPosts({int limit = 12, DateTime? before}) async {
+  Future<List<FeedPost>> fetchPosts({
+    int limit = 12,
+    DateTime? before,
+    List<String>? allowedUserIds,
+  }) async {
     var query = _client
         .from('posts')
         .select(
-          '*, users:user_id(username, avatar_url:avatar), post_likes(user_id), post_comments(id)',
+          '*, users:user_id(id, username, avatar_url:avatar), post_likes(user_id), post_comments(id)',
         );
+
+    if (allowedUserIds != null) {
+      if (allowedUserIds.isEmpty) {
+        // Se a lista estiver vazia (e.g. não logado), forçamos um filtro que não retorne nada
+        query = query.eq('user_id', '00000000-0000-0000-0000-000000000000');
+      } else {
+        query = query.inFilter('user_id', allowedUserIds);
+      }
+    }
 
     if (before != null) {
       query = query.lt('created_at', before.toUtc().toIso8601String());
@@ -52,7 +65,7 @@ class PostRepository {
           'crop': crop,
         })
         .select(
-          '*, users:user_id(username, avatar_url:avatar), post_likes(user_id), post_comments(id)',
+          '*, users:user_id(id, username, avatar_url:avatar), post_likes(user_id), post_comments(id)',
         )
         .single();
 
@@ -90,6 +103,20 @@ class PostRepository {
       'id': postId,
       'user_id': userId,
     });
+  }
+
+  Future<List<String>> getFollowingAuthIds(int myBigIntId) async {
+    final response = await _client
+        .from('followers')
+        .select('users:user_id(auth_id)')
+        .eq('follower_id', myBigIntId);
+
+    final List<String> ids = [];
+    for (var row in response as List) {
+      final authId = row['users']?['auth_id'];
+      if (authId != null) ids.add(authId as String);
+    }
+    return ids;
   }
 }
 

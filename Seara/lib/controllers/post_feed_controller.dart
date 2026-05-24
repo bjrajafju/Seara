@@ -1,14 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/feed/feed_post.dart';
+import '../services/auth_service.dart';
 import '../services/feed/post_repository.dart';
 
 class PostFeedController extends ChangeNotifier {
   PostFeedController({PostRepository? repository})
-    : _repository = repository ?? PostRepository();
+    : _repository = repository ?? PostRepository() {
+    _setupFollowSubscription();
+  }
 
   final PostRepository _repository;
   final List<FeedPost> _posts = [];
+  List<String> _allowedUserIds = [];
+  StreamSubscription? _followSubscription;
+  int? _currentSubscribedUserId;
 
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -23,12 +32,23 @@ class PostFeedController extends ChangeNotifier {
 
   Future<void> fetch({bool refresh = false}) async {
     if (_isLoading) return;
+
+    if (_followSubscription == null) {
+      _setupFollowSubscription();
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final posts = await _repository.fetchPosts();
+      if (refresh || _allowedUserIds.isEmpty) {
+        await _refreshAllowedUsers();
+      }
+
+      final posts = await _repository.fetchPosts(
+        allowedUserIds: _allowedUserIds,
+      );
       _posts
         ..clear()
         ..addAll(posts);
@@ -47,7 +67,10 @@ class PostFeedController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final posts = await _repository.fetchPosts(before: _posts.last.createdAt);
+      final posts = await _repository.fetchPosts(
+        before: _posts.last.createdAt,
+        allowedUserIds: _allowedUserIds,
+      );
       _posts.addAll(posts);
       _hasMore = posts.length >= 12;
     } catch (e) {
@@ -56,6 +79,54 @@ class PostFeedController extends ChangeNotifier {
       _isLoadingMore = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _refreshAllowedUsers() async {
+    final currentAuthId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentAuthId == null) {
+      _allowedUserIds = [];
+      return;
+    }
+
+    final myBigIntId = await AuthService.getUserId();
+    if (myBigIntId == null) {
+      _allowedUserIds = [currentAuthId];
+      return;
+    }
+
+    try {
+      final following = await _repository.getFollowingAuthIds(myBigIntId);
+      _allowedUserIds = [currentAuthId, ...following];
+    } catch (e) {
+      debugPrint('Error refreshing allowed users: $e');
+      _allowedUserIds = [currentAuthId];
+    }
+  }
+
+  void _setupFollowSubscription() async {
+    final myBigIntId = await AuthService.getUserId();
+
+    if (myBigIntId == _currentSubscribedUserId && _followSubscription != null) {
+      return;
+    }
+
+    await _followSubscription?.cancel();
+    _currentSubscribedUserId = myBigIntId;
+
+    if (myBigIntId == null) {
+      _followSubscription = null;
+      return;
+    }
+
+    _followSubscription = Supabase.instance.client
+        .from('followers')
+        .stream(primaryKey: ['id'])
+        .eq('follower_id', myBigIntId)
+        .listen((_) async {
+          await _refreshAllowedUsers();
+          // Silently refresh the feed when social graph changes
+          fetch(refresh: true);
+        });
   }
 
   void insertAtTop(FeedPost post) {
@@ -120,5 +191,11 @@ class PostFeedController extends ChangeNotifier {
     final post = _posts[index];
     _posts[index] = post.copyWith(commentCount: post.commentCount + 1);
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _followSubscription?.cancel();
+    super.dispose();
   }
 }

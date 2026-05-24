@@ -5,6 +5,7 @@ class FeedPost {
   const FeedPost({
     required this.id,
     required this.userId,
+    this.userDbId,
     required this.mediaUrl,
     required this.mediaType,
     required this.crop,
@@ -21,6 +22,7 @@ class FeedPost {
 
   final String id;
   final String userId;
+  final int? userDbId;
   final String mediaUrl;
   final PostMediaType mediaType;
   final String? caption;
@@ -40,6 +42,7 @@ class FeedPost {
   FeedPost copyWith({
     String? id,
     String? userId,
+    int? userDbId,
     String? mediaUrl,
     PostMediaType? mediaType,
     String? caption,
@@ -56,6 +59,7 @@ class FeedPost {
     return FeedPost(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      userDbId: userDbId ?? this.userDbId,
       mediaUrl: mediaUrl ?? this.mediaUrl,
       mediaType: mediaType ?? this.mediaType,
       caption: caption ?? this.caption,
@@ -86,6 +90,7 @@ class FeedPost {
     return FeedPost(
       id: json['id'] as String,
       userId: json['user_id'] as String,
+      userDbId: user?['id'] as int?,
       mediaUrl: json['media_url'] as String,
       mediaType: json['media_type'] == 'video'
           ? PostMediaType.video

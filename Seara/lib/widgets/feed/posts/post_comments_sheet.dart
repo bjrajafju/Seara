@@ -7,6 +7,7 @@ import '../../../models/feed/feed_post.dart';
 import '../../../models/feed/post_comment.dart';
 import '../../../services/feed/comment_repository.dart';
 import '../../../utils/time_helper.dart';
+import '../../../utils/navigation_helper.dart';
 
 class PostCommentsSheet extends StatefulWidget {
   const PostCommentsSheet({
@@ -184,10 +185,16 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                CircleAvatar(
-                                  radius: 16,
-                                  backgroundImage: NetworkImage(comment.avatarUrl),
-                                  backgroundColor: Colors.white12,
+                                GestureDetector(
+                                  onTap: () => NavigationHelper.openProfile(context, comment.userDbId),
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: CircleAvatar(
+                                      radius: 16,
+                                      backgroundImage: NetworkImage(comment.avatarUrl),
+                                      backgroundColor: Colors.white12,
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -197,10 +204,19 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                                       Text.rich(
                                         TextSpan(
                                           children: [
-                                            TextSpan(
-                                              text: '${comment.username} ',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
+                                            WidgetSpan(
+                                              alignment: PlaceholderAlignment.middle,
+                                              child: GestureDetector(
+                                                onTap: () => NavigationHelper.openProfile(context, comment.userDbId),
+                                                child: MouseRegion(
+                                                  cursor: SystemMouseCursors.click,
+                                                  child: Text(
+                                                    '${comment.username} ',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                             TextSpan(text: comment.content),

@@ -2,6 +2,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:seara/providers/theme_provider.dart';
+import 'package:seara/services/user_repository.dart';
+
+class MockUserRepository extends UserRepository {
+  final Map<String, String> _themes = {};
+  String? _currentUserId;
+
+  @override
+  String? get currentAuthId => _currentUserId;
+
+  void setMockUserId(String? id) => _currentUserId = id;
+
+  @override
+  Future<String?> getUserTheme(String authId) async {
+    return _themes[authId];
+  }
+
+  @override
+  Future<void> setUserTheme(String authId, String theme) async {
+    _themes[authId] = theme;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +55,8 @@ void main() {
     // 1. Setup mock SharedPreferences
     SharedPreferences.setMockInitialValues({});
 
-    final provider = ThemeProvider();
+    final mockRepo = MockUserRepository();
+    final provider = ThemeProvider(userRepository: mockRepo);
 
     // Default theme check
     expect(provider.activeId, AppThemeId.dark);
@@ -54,9 +76,10 @@ void main() {
     TestWidgetsFlutterBinding.instance.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     await provider.loadThemeForUser(null);
 
-    // 3. User A logs in (userId = 123)
+    // 3. User A logs in (userId = '123')
     // By default, they should have default theme since no preference is saved
-    await provider.loadThemeForUser(123);
+    mockRepo.setMockUserId('123');
+    await provider.loadThemeForUser('123');
     expect(provider.activeId, AppThemeId.dark);
 
     // Set User A's theme to Ocean and save it
@@ -66,11 +89,13 @@ void main() {
 
     // 4. Logout User A (userId = null)
     secureStorageData.remove('user_id');
+    mockRepo.setMockUserId(null);
     await provider.loadThemeForUser(null);
     expect(provider.activeId, AppThemeId.dark); // Reverts to fallback
 
-    // 5. User B logs in (userId = 456)
-    await provider.loadThemeForUser(456);
+    // 5. User B logs in (userId = '456')
+    mockRepo.setMockUserId('456');
+    await provider.loadThemeForUser('456');
     expect(provider.activeId, AppThemeId.dark); // Starts with fallback
 
     // Set User B's theme to Sakura
@@ -80,16 +105,19 @@ void main() {
 
     // 6. Switch back to User A
     secureStorageData['user_id'] = '123';
-    await provider.loadThemeForUser(123);
+    mockRepo.setMockUserId('123');
+    await provider.loadThemeForUser('123');
     expect(provider.activeId, AppThemeId.ocean); // User A's theme is restored!
 
     // 7. Switch back to User B
     secureStorageData['user_id'] = '456';
-    await provider.loadThemeForUser(456);
+    mockRepo.setMockUserId('456');
+    await provider.loadThemeForUser('456');
     expect(provider.activeId, AppThemeId.sakura); // User B's theme is restored!
 
     // 8. Logout User B
     secureStorageData.remove('user_id');
+    mockRepo.setMockUserId(null);
     await provider.loadThemeForUser(null);
     expect(provider.activeId, AppThemeId.dark); // Reverts back to fallback
   });
