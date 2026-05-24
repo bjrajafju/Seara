@@ -3,8 +3,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../models/feed/post_media_source.dart';
-import '../../utils/media/blob_url_helper.dart'
-    if (dart.library.html) '../../utils/media/blob_url_helper_web.dart';
 import 'post_editor_screen.dart';
 
 class CreatePostScreen extends StatefulWidget {
@@ -16,13 +14,6 @@ class CreatePostScreen extends StatefulWidget {
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
   bool _isPicking = false;
-  String? _blobUrl;
-
-  @override
-  void dispose() {
-    revokeBlobUrl(_blobUrl);
-    super.dispose();
-  }
 
   Future<void> _pickFile() async {
     if (_isPicking) return;
@@ -49,17 +40,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final mimeType = _inferMimeType(file.name);
       final isVideo = mimeType.startsWith('video/');
       final bytes = file.bytes;
-      String? previewUrl;
 
-      if (kIsWeb) {
-        if (bytes == null) {
-          _showError('Não foi possível ler o ficheiro no browser.');
-          return;
-        }
-        if (isVideo) {
-          _blobUrl = createBlobUrl(bytes);
-          previewUrl = _blobUrl;
-        }
+      if (kIsWeb && bytes == null) {
+        _showError('Não foi possível ler o ficheiro no browser.');
+        return;
       }
 
       final path = kIsWeb ? null : file.path;
@@ -74,7 +58,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         fileName: file.name,
         path: path,
         bytes: bytes,
-        previewUrl: previewUrl,
       );
 
       await Navigator.of(context).pushReplacement(

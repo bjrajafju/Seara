@@ -92,6 +92,28 @@ class PostFeedController extends ChangeNotifier {
     }
   }
 
+  Future<void> deletePost(String postId) async {
+    final index = _posts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+
+    final post = _posts[index];
+
+    // Optimistic update
+    _posts.removeAt(index);
+    notifyListeners();
+
+    try {
+      await _repository.deletePost(postId);
+    } catch (e) {
+      // Revert on error if the post was not already removed/replaced
+      if (!_posts.any((p) => p.id == postId)) {
+        _posts.insert(index < _posts.length ? index : _posts.length, post);
+        notifyListeners();
+      }
+      rethrow;
+    }
+  }
+
   void incrementCommentCount(String postId) {
     final index = _posts.indexWhere((p) => p.id == postId);
     if (index == -1) return;

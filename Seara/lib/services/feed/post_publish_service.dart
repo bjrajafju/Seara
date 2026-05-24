@@ -36,7 +36,7 @@ class PostPublishService {
     String? uploadedThumbnailUrl;
 
     try {
-      final mediaBytes = draft.source.isImage
+      final mediaBytes = draft.source.isImage && !draft.crop.isBaked
           ? await _renderCroppedImage(draft)
           : await _resolveSourceBytes(draft.source);
 
@@ -66,14 +66,21 @@ class PostPublishService {
         )).url;
       }
 
+      final finalCrop = draft.source.isImage
+          ? draft.crop.clamped().copyWith(
+              scale: 1.0,
+              offsetX: 0.0,
+              offsetY: 0.0,
+              isBaked: true,
+            )
+          : draft.crop.clamped();
+
       return await _repository.insertPost(
         mediaUrl: uploadedMediaUrl,
         mediaType: draft.source.type.wireName,
         caption: draft.caption,
         thumbnailUrl: uploadedThumbnailUrl,
-        crop: draft.source.isImage
-            ? PostCropTransform.identity.toJson()
-            : draft.crop.clamped().toJson(),
+        crop: finalCrop.toJson(),
       );
     } catch (e) {
       await _cleanupUploaded(uploadedThumbnailUrl);
@@ -90,18 +97,24 @@ class PostPublishService {
       throw const PostPublishException('Imagem inválida.');
     }
 
-    final crop = _sourceCropRect(decoded.width, decoded.height, draft.crop);
+    final cropRect = _sourceCropRect(decoded.width, decoded.height, draft.crop);
     final cropped = img.copyCrop(
       decoded,
-      x: crop.x,
-      y: crop.y,
-      width: crop.width,
-      height: crop.height,
+      x: cropRect.x,
+      y: cropRect.y,
+      width: cropRect.width,
+      height: cropRect.height,
     );
+
+    // Maintain aspect ratio of the crop when resizing.
+    // Use _targetWidth as the reference width.
+    final targetW = _targetWidth;
+    final targetH = (targetW * (cropped.height / cropped.width)).round();
+
     final resized = img.copyResize(
       cropped,
-      width: _targetWidth,
-      height: _targetHeight,
+      width: targetW,
+      height: targetH,
       interpolation: img.Interpolation.average,
     );
     return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
@@ -129,19 +142,42 @@ class PostPublishService {
     }
 
     final cropState = transform.clamped();
-    final cropW = baseW / cropState.scale;
-    final cropH = baseH / cropState.scale;
-    final centerX = baseX + baseW / 2 - cropState.offsetX * cropW;
-    final centerY = baseY + baseH / 2 - cropState.offsetY * cropH;
 
-    final x = (centerX - cropW / 2).clamp(0, sourceWidth - cropW).round();
-    final y = (centerY - cropH / 2).clamp(0, sourceHeight - cropH).round();
+    // cw, ch are dimensions relative to the 9:16 frame
+    final cw = cropState.cropRight - cropState.cropLeft;
+    final ch = cropState.cropBottom - cropState.cropTop;
+    final cropCenterX = (cropState.cropLeft + cropState.cropRight) / 2;
+    final cropCenterY = (cropState.cropTop + cropState.cropBottom) / 2;
+
+    // Viewport size in base 9:16 frame
+    final viewportW = baseW * cw;
+    final viewportH = baseH * ch;
+
+    // Actual crop size on original image depends on scale (zoom)
+    final cropW = viewportW / cropState.scale;
+    final cropH = viewportH / cropState.scale;
+
+    // Center in original image coordinates
+    final centerX =
+        baseX +
+        baseW * cropCenterX -
+        cropState.offsetX * (baseW / cropState.scale);
+    final centerY =
+        baseY +
+        baseH * cropCenterY -
+        cropState.offsetY * (baseH / cropState.scale);
+
+    final x = (centerX - cropW / 2).round();
+    final y = (centerY - cropH / 2).round();
+
+    final safeX = x.clamp(0, sourceWidth - 1);
+    final safeY = y.clamp(0, sourceHeight - 1);
 
     return _CropRect(
-      x: x,
-      y: y,
-      width: cropW.round().clamp(1, sourceWidth - x),
-      height: cropH.round().clamp(1, sourceHeight - y),
+      x: safeX,
+      y: safeY,
+      width: cropW.round().clamp(1, sourceWidth - safeX),
+      height: cropH.round().clamp(1, sourceHeight - safeY),
     );
   }
 

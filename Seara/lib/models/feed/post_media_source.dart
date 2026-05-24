@@ -32,6 +32,24 @@ class PostMediaSource {
   bool get isImage => type.isImage;
 
   String get displaySource => previewUrl ?? path ?? '';
+
+  PostMediaSource copyWith({
+    PostMediaType? type,
+    String? mimeType,
+    String? fileName,
+    String? path,
+    Uint8List? bytes,
+    String? previewUrl,
+  }) {
+    return PostMediaSource(
+      type: type ?? this.type,
+      mimeType: mimeType ?? this.mimeType,
+      fileName: fileName ?? this.fileName,
+      path: path ?? this.path,
+      bytes: bytes ?? this.bytes,
+      previewUrl: previewUrl ?? this.previewUrl,
+    );
+  }
 }
 
 class PostDraft {

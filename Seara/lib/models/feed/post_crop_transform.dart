@@ -9,6 +9,7 @@ class PostCropTransform {
     this.cropTop = 0,
     this.cropRight = 1,
     this.cropBottom = 1,
+    this.isBaked = false,
   });
 
   final double scale;
@@ -20,6 +21,9 @@ class PostCropTransform {
   final double cropTop;
   final double cropRight;
   final double cropBottom;
+
+  /// Whether the media bytes are already cropped to the frame.
+  final bool isBaked;
 
   static const identity = PostCropTransform();
   static const double maxScale = 4;
@@ -35,6 +39,7 @@ class PostCropTransform {
     double? cropTop,
     double? cropRight,
     double? cropBottom,
+    bool? isBaked,
   }) {
     return PostCropTransform(
       scale: scale ?? this.scale,
@@ -44,6 +49,7 @@ class PostCropTransform {
       cropTop: cropTop ?? this.cropTop,
       cropRight: cropRight ?? this.cropRight,
       cropBottom: cropBottom ?? this.cropBottom,
+      isBaked: isBaked ?? this.isBaked,
     );
   }
 
@@ -74,6 +80,7 @@ class PostCropTransform {
       cropTop: ct,
       cropRight: cr,
       cropBottom: cb,
+      isBaked: isBaked,
     );
   }
 
@@ -86,6 +93,7 @@ class PostCropTransform {
       'cropTop': cropTop,
       'cropRight': cropRight,
       'cropBottom': cropBottom,
+      'is_baked': isBaked,
     };
   }
 
@@ -99,6 +107,7 @@ class PostCropTransform {
       cropTop: (json['cropTop'] as num?)?.toDouble() ?? 0,
       cropRight: (json['cropRight'] as num?)?.toDouble() ?? 1,
       cropBottom: (json['cropBottom'] as num?)?.toDouble() ?? 1,
+      isBaked: json['is_baked'] as bool? ?? false,
     );
   }
 }

@@ -1,72 +1,136 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import '../../../models/feed/post_crop_transform.dart';
 import '../../../models/feed/post_media_source.dart';
 import '../../../services/feed/audio_preferences_service.dart';
+import '../../../services/feed/post_playback_coordinator.dart';
 import '../../../utils/media/platform_media_factory.dart';
+import '../../../utils/media/blob_url_helper.dart'
+    if (dart.library.html) '../../../utils/media/blob_url_helper_web.dart';
 
 class PostMediaFrame extends StatelessWidget {
   const PostMediaFrame({
     super.key,
+    required this.postId,
     required this.source,
     required this.crop,
     this.thumbnailUrl,
     this.autoplayVideo = true,
+    this.isFullFrame = false,
   });
 
+  final String postId;
   final PostMediaSource source;
   final PostCropTransform crop;
   final String? thumbnailUrl;
   final bool autoplayVideo;
+  final bool isFullFrame;
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 9 / 16,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final frameSize = Size(constraints.maxWidth, constraints.maxHeight);
-          final clamped = crop.clamped();
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Transform.translate(
-                  offset: Offset(
-                    clamped.offsetX * frameSize.width,
-                    clamped.offsetY * frameSize.height,
-                  ),
-                  child: Transform.scale(
-                    scale: clamped.scale,
-                    child: _PostMediaContent(
-                      source: source,
-                      thumbnailUrl: thumbnailUrl,
-                      autoplayVideo: autoplayVideo,
-                    ),
-                  ),
-                ),
-              ],
+    final clamped = crop.clamped();
+    final cw = clamped.cropWidth;
+    final ch = clamped.cropHeight;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final parentWidth = constraints.maxWidth;
+        // The base frame is always 9:16 relative to the parent width
+        final baseWidth = parentWidth;
+        final baseHeight = parentWidth * 16 / 9;
+
+        final widgetWidth = isFullFrame ? baseWidth : baseWidth * cw;
+        final widgetHeight = isFullFrame ? baseHeight : baseHeight * ch;
+
+        final cropCenterX = isFullFrame
+            ? 0.5
+            : (clamped.cropLeft + clamped.cropRight) / 2;
+        final cropCenterY = isFullFrame
+            ? 0.5
+            : (clamped.cropTop + clamped.cropBottom) / 2;
+
+        Widget content = _PostMediaContent(
+          postId: postId,
+          source: source,
+          thumbnailUrl: thumbnailUrl,
+          autoplayVideo: autoplayVideo,
+        );
+
+        if (!clamped.isBaked) {
+          content = Transform.scale(
+            scale: clamped.scale,
+            child: Transform.translate(
+              offset: Offset(
+                (clamped.offsetX - (cropCenterX - 0.5)) * baseWidth,
+                (clamped.offsetY - (cropCenterY - 0.5)) * baseHeight,
+              ),
+              child: content,
             ),
           );
-        },
-      ),
+          content = OverflowBox(
+            alignment: Alignment.center,
+            minWidth: baseWidth,
+            maxWidth: baseWidth,
+            minHeight: baseHeight,
+            maxHeight: baseHeight,
+            child: content,
+          );
+        }
+
+        return VisibilityDetector(
+          key: ValueKey('post_vis_$postId'),
+          onVisibilityChanged: (info) {
+            if (info.visibleFraction > 0.05) {
+              final RenderBox? box = context.findRenderObject() as RenderBox?;
+              if (box != null && box.hasSize) {
+                final position = box.localToGlobal(Offset.zero);
+                final widgetCenter = position.dy + box.size.height / 2;
+                final viewportHeight = MediaQuery.of(context).size.height;
+                final viewportCenter = viewportHeight / 2;
+                final distance = (widgetCenter - viewportCenter).abs();
+
+                PostPlaybackCoordinator().reportVisibility(
+                  postId,
+                  PostPlaybackMetrics(
+                    visibleFraction: info.visibleFraction,
+                    distanceToCenter: distance,
+                  ),
+                );
+              }
+            } else {
+              PostPlaybackCoordinator().unregister(postId);
+            }
+          },
+          child: SizedBox(
+            width: widgetWidth,
+            height: widgetHeight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: content,
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
 class _PostMediaContent extends StatefulWidget {
   const _PostMediaContent({
+    required this.postId,
     required this.source,
     required this.autoplayVideo,
     this.thumbnailUrl,
   });
 
+  final String postId;
   final PostMediaSource source;
   final bool autoplayVideo;
   final String? thumbnailUrl;
@@ -78,61 +142,110 @@ class _PostMediaContent extends StatefulWidget {
 class _PostMediaContentState extends State<_PostMediaContent>
     with WidgetsBindingObserver {
   PostVideoController? _video;
+  bool _isUserHolding = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initVideoIfNeeded();
     AudioPreferencesService.isMutedNotifier.addListener(_onMuteChanged);
+    PostPlaybackCoordinator().addListener(_onCoordinatorUpdate);
   }
 
   @override
   void didUpdateWidget(covariant _PostMediaContent oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.source.displaySource != widget.source.displaySource ||
-        oldWidget.autoplayVideo != widget.autoplayVideo) {
+        oldWidget.autoplayVideo != widget.autoplayVideo ||
+        oldWidget.postId != widget.postId) {
+      if (oldWidget.postId != widget.postId) {
+        PostPlaybackCoordinator().unregister(oldWidget.postId);
+      }
       _video?.dispose();
       _video = null;
-      _initVideoIfNeeded();
+      if (PostPlaybackCoordinator().isVisible(widget.postId)) {
+        _initVideoIfNeeded();
+      }
     }
+  }
+
+  void _onCoordinatorUpdate() {
+    if (!mounted) return;
+
+    final isVisible = PostPlaybackCoordinator().isVisible(widget.postId);
+    if (isVisible && _video == null) {
+      _initVideoIfNeeded();
+    } else if (!isVisible && _video != null) {
+      _video?.dispose();
+      _video = null;
+      setState(() {});
+    }
+
+    _updatePlaybackState();
   }
 
   void _onMuteChanged() {
     if (!mounted) return;
     final isMuted = AudioPreferencesService.isMutedNotifier.value;
     _video?.player.setVolume(isMuted ? 0 : 100);
-    setState(() {});
   }
 
   void _initVideoIfNeeded() {
-    if (!widget.source.isVideo) return;
+    if (!widget.source.isVideo || _video != null) return;
+
     final video = PostVideoController(
       source: widget.source.displaySource,
-      autoplay: widget.autoplayVideo,
+      webBytes: widget.source.bytes,
+      autoplay: false,
       isMuted: AudioPreferencesService.isMutedNotifier.value,
     );
     _video = video;
+
+    // Use a listener to mark first frame ready instead of waitUntilFirstFrameRendered
+    // to avoid potential hangs.
     video.controller.waitUntilFirstFrameRendered.then((_) {
-      video.markFirstFrameReady();
-      if (mounted) setState(() {});
+      if (mounted && _video == video) {
+        video.markFirstFrameReady();
+        setState(() {});
+      }
     });
+
     unawaited(
       video.warmUpAndMaybePlay().then((_) {
-        if (mounted) setState(() {});
+        if (mounted && _video == video) {
+          setState(() {});
+          _updatePlaybackState();
+        }
       }),
     );
   }
 
+  void _updatePlaybackState() {
+    if (_video == null) return;
+
+    final isActive = PostPlaybackCoordinator().activePostId == widget.postId;
+    final shouldPlay = isActive && widget.autoplayVideo && !_isUserHolding;
+
+    if (shouldPlay) {
+      unawaited(_video?.ensurePlayingAfterAttach());
+    } else {
+      unawaited(_video?.player.pause());
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && widget.autoplayVideo) {
-      unawaited(_video?.ensurePlayingAfterAttach());
+    if (state == AppLifecycleState.resumed) {
+      _updatePlaybackState();
+    } else {
+      unawaited(_video?.player.pause());
     }
   }
 
   @override
   void dispose() {
+    PostPlaybackCoordinator().unregister(widget.postId);
+    PostPlaybackCoordinator().removeListener(_onCoordinatorUpdate);
     AudioPreferencesService.isMutedNotifier.removeListener(_onMuteChanged);
     WidgetsBinding.instance.removeObserver(this);
     _video?.dispose();
@@ -151,9 +264,17 @@ class _PostMediaContentState extends State<_PostMediaContent>
       children: [
         if (video != null)
           GestureDetector(
-            onTap: () {
-              final currentMuted = AudioPreferencesService.isMutedNotifier.value;
-              AudioPreferencesService.setMuted(!currentMuted);
+            onLongPressStart: (_) {
+              _isUserHolding = true;
+              _updatePlaybackState();
+            },
+            onLongPressEnd: (_) {
+              _isUserHolding = false;
+              _updatePlaybackState();
+            },
+            onLongPressCancel: () {
+              _isUserHolding = false;
+              _updatePlaybackState();
             },
             child: Video(
               controller: video.controller,
@@ -166,43 +287,6 @@ class _PostMediaContentState extends State<_PostMediaContent>
           Image.network(widget.thumbnailUrl!, fit: BoxFit.cover),
         if (!(video?.firstFrameReady ?? false) && widget.thumbnailUrl == null)
           const _PostVideoPlaceholder(),
-
-        // Mute state scale & fade micro-animation overlay in the center
-        if (video != null && video.firstFrameReady)
-          Center(
-            child: ValueListenableBuilder<bool>(
-              valueListenable: AudioPreferencesService.isMutedNotifier,
-              builder: (context, isMuted, _) {
-                return _MuteOverlayIcon(isMuted: isMuted);
-              },
-            ),
-          ),
-
-        // Mute toggle icon in the bottom-left corner of the video media
-        if (video != null && video.firstFrameReady)
-          Positioned(
-            left: 12,
-            bottom: 12,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: AudioPreferencesService.isMutedNotifier,
-              builder: (context, isMuted, _) {
-                return GestureDetector(
-                  onTap: () {
-                    AudioPreferencesService.setMuted(!isMuted);
-                  },
-                  child: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.black54,
-                    child: Icon(
-                      isMuted ? Icons.volume_off : Icons.volume_up,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
       ],
     );
   }
@@ -221,17 +305,41 @@ class _PostMediaContentState extends State<_PostMediaContent>
 }
 
 class PostVideoController {
-  PostVideoController({
-    required this.source,
+  PostVideoController._({
+    required String effectiveSource,
+    String? webBlobUrl,
     required this.autoplay,
     required this.isMuted,
-  }) : player = Player() {
+  }) : player = Player(),
+       _effectiveSource = effectiveSource,
+       _webBlobUrl = webBlobUrl {
     controller = VideoController(player);
+  }
+
+  factory PostVideoController({
+    required String source,
+    Uint8List? webBytes,
+    required bool autoplay,
+    required bool isMuted,
+  }) {
+    String? blobUrl;
+    String effective = source;
+    if (kIsWeb && webBytes != null) {
+      blobUrl = createBlobUrl(webBytes);
+      effective = blobUrl!;
+    }
+    return PostVideoController._(
+      effectiveSource: effective,
+      webBlobUrl: blobUrl,
+      autoplay: autoplay,
+      isMuted: isMuted,
+    );
   }
 
   static const _firstFrameTimeout = Duration(milliseconds: 700);
 
-  final String source;
+  final String _effectiveSource;
+  String? _webBlobUrl;
   final bool autoplay;
   final bool isMuted;
   final Player player;
@@ -251,9 +359,9 @@ class PostVideoController {
 
   Future<void> _runWarmUp() async {
     try {
-      await player.setPlaylistMode(PlaylistMode.none);
+      await player.setPlaylistMode(PlaylistMode.loop);
       await player.setVolume(isMuted ? 0 : 100);
-      await player.open(Media(source), play: false);
+      await player.open(Media(_effectiveSource), play: false);
       if (_disposed) return;
 
       await player.play();
@@ -281,6 +389,8 @@ class PostVideoController {
 
   Future<void> ensurePlayingAfterAttach() async {
     if (_disposed) return;
+    await warmUpAndMaybePlay();
+    if (_disposed) return;
     final currentlyMuted = AudioPreferencesService.isMutedNotifier.value;
     await player.setVolume(currentlyMuted ? 0 : 100);
     if (player.state.completed) {
@@ -300,6 +410,9 @@ class PostVideoController {
   void dispose() {
     _disposed = true;
     unawaited(player.dispose());
+    if (_webBlobUrl != null) {
+      revokeBlobUrl(_webBlobUrl);
+    }
   }
 }
 
@@ -319,92 +432,6 @@ class _PostVideoPlaceholder extends StatelessWidget {
       child: const Center(
         child: Icon(Icons.play_circle_outline, color: Colors.white30, size: 52),
       ),
-    );
-  }
-}
-
-class _MuteOverlayIcon extends StatefulWidget {
-  const _MuteOverlayIcon({required this.isMuted});
-  final bool isMuted;
-
-  @override
-  State<_MuteOverlayIcon> createState() => _MuteOverlayIconState();
-}
-
-class _MuteOverlayIconState extends State<_MuteOverlayIcon>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<double> _opacityAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-
-    _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 0.5, end: 1.1).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 40,
-      ),
-      TweenSequenceItem(tween: Tween(begin: 1.1, end: 1.0), weight: 20),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 40),
-    ]).animate(_controller);
-
-    _opacityAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: 0.9).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 20,
-      ),
-      TweenSequenceItem(tween: ConstantTween(0.9), weight: 50),
-      TweenSequenceItem(
-        tween: Tween(begin: 0.9, end: 0.0).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 30,
-      ),
-    ]).animate(_controller);
-
-    _controller.forward();
-  }
-
-  @override
-  void didUpdateWidget(covariant _MuteOverlayIcon oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.isMuted != widget.isMuted) {
-      _controller.forward(from: 0.0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        if (_opacityAnimation.value == 0.0) return const SizedBox.shrink();
-        return Opacity(
-          opacity: _opacityAnimation.value,
-          child: Transform.scale(
-            scale: _scaleAnimation.value,
-            child: CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.black54,
-              child: Icon(
-                widget.isMuted ? Icons.volume_off : Icons.volume_up,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

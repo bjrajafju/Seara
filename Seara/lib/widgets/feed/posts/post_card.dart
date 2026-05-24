@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../controllers/post_feed_controller.dart';
 import '../../../models/feed/feed_post.dart';
@@ -35,9 +36,77 @@ class PostCard extends StatelessWidget {
     );
   }
 
+  void _showPostOptionsMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text(
+                'Eliminar post',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDeletion(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Cancelar'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeletion(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar este post?'),
+        content: const Text('Esta ação não pode ser revertida.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              try {
+                await context.read<PostFeedController>().deletePost(post.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Post eliminado')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erro ao eliminar post: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isOwner = post.userId == currentUserId;
+
     final source = PostMediaSource(
       type: post.mediaType,
       mimeType: post.isVideo ? 'video/mp4' : 'image/jpeg',
@@ -47,18 +116,23 @@ class PostCard extends StatelessWidget {
 
     final width = MediaQuery.of(context).size.width;
     double cardWidth;
+    double bottomMargin;
+
     if (width >= 1024) {
       cardWidth = 470; // ~1/3 screen width
+      bottomMargin = 80;
     } else if (width >= 600) {
       cardWidth = 550; // tablet width
+      bottomMargin = 48;
     } else {
       cardWidth = width; // full width on mobile
+      bottomMargin = 32;
     }
 
     return Center(
       child: Container(
         width: cardWidth,
-        margin: const EdgeInsets.only(bottom: 24),
+        margin: EdgeInsets.only(bottom: bottomMargin),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -70,7 +144,9 @@ class PostCard extends StatelessWidget {
                   CircleAvatar(
                     radius: 18,
                     backgroundImage: NetworkImage(post.avatarUrl),
-                    backgroundColor: theme.colorScheme.onSurface.withOpacity(0.1),
+                    backgroundColor: theme.colorScheme.onSurface.withOpacity(
+                      0.1,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
@@ -94,16 +170,64 @@ class PostCard extends StatelessWidget {
                       color: theme.colorScheme.onSurface.withOpacity(0.55),
                     ),
                   ),
+                  if (isOwner) ...[
+                    const Spacer(),
+                    if (width >= 1024)
+                      PopupMenuButton<String>(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        icon: Icon(
+                          Icons.more_horiz,
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                        onSelected: (value) {
+                          if (value == 'delete') {
+                            _confirmDeletion(context);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Eliminar post',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      IconButton(
+                        icon: Icon(
+                          Icons.more_horiz,
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                        onPressed: () => _showPostOptionsMenu(context),
+                      ),
+                  ],
                 ],
               ),
             ),
 
             // Media
-            PostMediaFrame(
-              source: source,
-              crop: post.crop,
-              thumbnailUrl: post.thumbnailUrl,
-              autoplayVideo: post.isVideo,
+            Center(
+              child: PostMediaFrame(
+                postId: post.id,
+                source: source,
+                crop: post.crop,
+                thumbnailUrl: post.thumbnailUrl,
+                autoplayVideo: post.isVideo,
+              ),
             ),
 
             // Actions row
@@ -114,7 +238,9 @@ class PostCard extends StatelessWidget {
                   IconButton(
                     icon: Icon(
                       post.isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: post.isLiked ? Colors.red : theme.colorScheme.onSurface,
+                      color: post.isLiked
+                          ? Colors.red
+                          : theme.colorScheme.onSurface,
                     ),
                     onPressed: () {
                       context.read<PostFeedController>().toggleLike(post.id);
@@ -154,13 +280,16 @@ class PostCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    post.likeCount == 1 ? '1 gosto' : '${post.likeCount} gostos',
+                    post.likeCount == 1
+                        ? '1 gosto'
+                        : '${post.likeCount} gostos',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (post.caption != null && post.caption!.trim().isNotEmpty) ...[
+                  if (post.caption != null &&
+                      post.caption!.trim().isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text.rich(
                       TextSpan(

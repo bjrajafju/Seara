@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:image/image.dart' as img;
@@ -12,8 +13,6 @@ import '../../controllers/post_feed_controller.dart';
 import '../../models/feed/post_crop_transform.dart';
 import '../../models/feed/post_media_source.dart';
 import '../../services/feed/post_publish_service.dart';
-import '../../utils/media/blob_url_helper.dart'
-    if (dart.library.html) '../../utils/media/blob_url_helper_web.dart';
 import '../../widgets/feed/posts/post_media_frame.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -33,6 +32,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   final _publishService = PostPublishService();
   final _captionController = TextEditingController();
   final _previewKey = GlobalKey();
+  final _exportKey = GlobalKey();
 
   // ── crop state ────────────────────────────────────────────
   PostCropTransform _crop = PostCropTransform.identity;
@@ -49,9 +49,6 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   @override
   void dispose() {
     _captionController.dispose();
-    if (widget.source.previewUrl?.startsWith('blob:') == true) {
-      revokeBlobUrl(widget.source.previewUrl);
-    }
     super.dispose();
   }
 
@@ -79,7 +76,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   void _zoomBy(double delta) {
     setState(() {
       _crop = _crop
-          .copyWith(scale: (_crop.scale + delta).clamp(1.0, PostCropTransform.maxScale))
+          .copyWith(
+            scale: (_crop.scale + delta).clamp(1.0, PostCropTransform.maxScale),
+          )
           .clamped();
     });
   }
@@ -92,12 +91,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   void _onScaleUpdate(ScaleUpdateDetails d, Size containerSize) {
     final startCrop = _gestureStartCrop;
-    final newScale = (startCrop.scale * d.scale)
-        .clamp(1.0, PostCropTransform.maxScale);
+    final newScale = (startCrop.scale * d.scale).clamp(
+      1.0,
+      PostCropTransform.maxScale,
+    );
 
     // Pan: delta of focal point in normalised container coords
-    final dX = (d.localFocalPoint.dx - _gestureFocalStart.dx) / containerSize.width;
-    final dY = (d.localFocalPoint.dy - _gestureFocalStart.dy) / containerSize.height;
+    final dX =
+        (d.localFocalPoint.dx - _gestureFocalStart.dx) / containerSize.width;
+    final dY =
+        (d.localFocalPoint.dy - _gestureFocalStart.dy) / containerSize.height;
 
     setState(() {
       _crop = PostCropTransform(
@@ -134,10 +137,33 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     setState(() => _isPublishing = true);
 
     try {
-      final thumbnailBytes =
-          frozen.source.isVideo ? await _captureVideoThumbnail() : null;
+      PostDraft draftToPublish = frozen.copyWith(
+        caption: _captionController.text,
+      );
+
+      // On Web, we capture the cropped image from UI to ensure consistency
+      // with what the user sees, avoiding any discrepancies in CPU-side cropping.
+      if (kIsWeb && frozen.source.isImage) {
+        final croppedBytes = await _captureFromUI();
+        if (croppedBytes != null) {
+          draftToPublish = draftToPublish.copyWith(
+            source: frozen.source.copyWith(bytes: croppedBytes),
+            crop: frozen.crop.copyWith(
+              scale: 1.0,
+              offsetX: 0.0,
+              offsetY: 0.0,
+              isBaked: true,
+            ),
+          );
+        }
+      }
+
+      final thumbnailBytes = frozen.source.isVideo
+          ? await _captureFromUI()
+          : null;
+
       final post = await _publishService.publish(
-        frozen.copyWith(caption: _captionController.text),
+        draftToPublish,
         videoThumbnailBytes: thumbnailBytes,
       );
       if (!mounted) return;
@@ -158,19 +184,25 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
-  Future<Uint8List?> _captureVideoThumbnail() async {
+  Future<Uint8List?> _captureFromUI() async {
     try {
-      await Future<void>.delayed(const Duration(milliseconds: 180));
-      final boundary = _previewKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      // Small delay to ensure the rendering is ready, especially for videos
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      final boundary =
+          _exportKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) return null;
-      final image = await boundary.toImage(pixelRatio: 1.5);
+
+      // Use a higher pixel ratio on web for better quality
+      final image = await boundary.toImage(pixelRatio: kIsWeb ? 2.5 : 1.5);
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       final pngBytes = data?.buffer.asUint8List();
       if (pngBytes == null) return null;
+
       final decoded = img.decodePng(pngBytes);
       if (decoded == null) return null;
-      return Uint8List.fromList(img.encodeJpg(decoded, quality: 82));
+      return Uint8List.fromList(img.encodeJpg(decoded, quality: 85));
     } catch (_) {
       return null;
     }
@@ -196,6 +228,19 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           fit: StackFit.expand,
           children: [
             if (draft == null) _buildEditor() else _buildFinalPreview(draft),
+            // Hidden high-quality export widget
+            if (draft != null)
+              Offstage(
+                child: Center(
+                  child: RepaintBoundary(
+                    key: _exportKey,
+                    child: PostCropExportWidget(
+                      source: draft.source,
+                      crop: draft.crop,
+                    ),
+                  ),
+                ),
+              ),
             // ── top bar ──────────────────────────────────
             Positioned(
               top: 0,
@@ -204,7 +249,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               child: _TopBar(
                 isPreview: _isPreview,
                 isPublishing: _isPublishing,
-                onClose: _isPreview ? _backToEdit : () => Navigator.pop(context),
+                onClose: _isPreview
+                    ? _backToEdit
+                    : () => Navigator.pop(context),
                 onAction: _isPreview ? _publish : _next,
               ),
             ),
@@ -220,33 +267,36 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       children: [
         const SizedBox(height: 56), // reserve space for top bar
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Fit 9:16 frame within available space
-              final availW = constraints.maxWidth;
-              final availH = constraints.maxHeight;
-              double frameW, frameH;
-              if (availW / availH > 9 / 16) {
-                frameH = availH;
-                frameW = frameH * 9 / 16;
-              } else {
-                frameW = availW;
-                frameH = frameW * 16 / 9;
-              }
-              return Center(
-                child: SizedBox(
-                  width: frameW,
-                  height: frameH,
-                  child: _MediaEditArea(
-                    source: widget.source,
-                    crop: _crop,
-                    onScaleStart: _onScaleStart,
-                    onScaleUpdate: _onScaleUpdate,
-                    onCropFrameChanged: _onCropFrameChanged,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Fit 9:16 frame within available space
+                final availW = constraints.maxWidth;
+                final availH = constraints.maxHeight;
+                double frameW, frameH;
+                if (availW / availH > 9 / 16) {
+                  frameH = availH;
+                  frameW = frameH * 9 / 16;
+                } else {
+                  frameW = availW;
+                  frameH = frameW * 16 / 9;
+                }
+                return Center(
+                  child: SizedBox(
+                    width: frameW,
+                    height: frameH,
+                    child: _MediaEditArea(
+                      source: widget.source,
+                      crop: _crop,
+                      onScaleStart: _onScaleStart,
+                      onScaleUpdate: _onScaleUpdate,
+                      onCropFrameChanged: _onCropFrameChanged,
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
         // ── zoom controls ────────────────────────────────
@@ -254,7 +304,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: Row(
             children: [
-              _ZoomButton(icon: Icons.remove_rounded, onTap: () => _zoomBy(-0.15)),
+              _ZoomButton(
+                icon: Icons.remove_rounded,
+                onTap: () => _zoomBy(-0.15),
+              ),
               const SizedBox(width: 12),
               _ZoomButton(icon: Icons.add_rounded, onTap: () => _zoomBy(0.15)),
               const SizedBox(width: 12),
@@ -280,33 +333,38 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       children: [
         const SizedBox(height: 56),
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final availW = constraints.maxWidth;
-              final availH = constraints.maxHeight;
-              double frameW, frameH;
-              if (availW / availH > 9 / 16) {
-                frameH = availH;
-                frameW = frameH * 9 / 16;
-              } else {
-                frameW = availW;
-                frameH = frameW * 16 / 9;
-              }
-              return Center(
-                child: SizedBox(
-                  width: frameW,
-                  height: frameH,
-                  child: RepaintBoundary(
-                    key: _previewKey,
-                    child: PostMediaFrame(
-                      source: draft.source,
-                      crop: draft.crop,
-                      autoplayVideo: true,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final availW = constraints.maxWidth;
+                final availH = constraints.maxHeight;
+                double frameW, frameH;
+                if (availW / availH > 9 / 16) {
+                  frameH = availH;
+                  frameW = frameH * 9 / 16;
+                } else {
+                  frameW = availW;
+                  frameH = frameW * 16 / 9;
+                }
+                return Center(
+                  child: SizedBox(
+                    width: frameW,
+                    child: Center(
+                      child: RepaintBoundary(
+                        key: _previewKey,
+                        child: PostMediaFrame(
+                          postId: 'preview_${draft.source.displaySource}',
+                          source: draft.source,
+                          crop: draft.crop,
+                          autoplayVideo: true,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
         // caption field – respects keyboard inset
@@ -363,7 +421,10 @@ class _MediaEditArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cropFrame = Rect.fromLTRB(
-      crop.cropLeft, crop.cropTop, crop.cropRight, crop.cropBottom,
+      crop.cropLeft,
+      crop.cropTop,
+      crop.cropRight,
+      crop.cropBottom,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -377,7 +438,12 @@ class _MediaEditArea extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 onScaleStart: (d) => onScaleStart(d, containerSize),
                 onScaleUpdate: (d) => onScaleUpdate(d, containerSize),
-                child: PostMediaFrame(source: source, crop: crop),
+                child: PostMediaFrame(
+                  postId: 'editor_${source.displaySource}',
+                  source: source,
+                  crop: crop,
+                  isFullFrame: true,
+                ),
               ),
               // ── dimmed overlay + dashed border ───────
               IgnorePointer(
@@ -447,7 +513,13 @@ class _CropHandles extends StatelessWidget {
     );
   }
 
-  Widget _handle(double x, double y, Set<_HandleEdge> edges, double W, double H) {
+  Widget _handle(
+    double x,
+    double y,
+    Set<_HandleEdge> edges,
+    double W,
+    double H,
+  ) {
     final isCorner = edges.length > 1;
     return Positioned(
       left: x - _hitSize / 2,
@@ -642,6 +714,40 @@ class _ZoomButton extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         minimumSize: const Size(40, 40),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Export-specific widget for high-quality capture
+// ─────────────────────────────────────────────────────────────
+
+class PostCropExportWidget extends StatelessWidget {
+  const PostCropExportWidget({
+    super.key,
+    required this.source,
+    required this.crop,
+  });
+
+  final PostMediaSource source;
+  final PostCropTransform crop;
+
+  @override
+  Widget build(BuildContext context) {
+    // We target a base width of 1080 for high resolution capture.
+    // PostMediaFrame uses the parent width to calculate its 9:16 base.
+    return Center(
+      child: SizedBox(
+        width: 1080,
+        height: 1920,
+        child: PostMediaFrame(
+          postId: 'export',
+          source: source,
+          crop: crop,
+          autoplayVideo: true,
+          isFullFrame: false,
+        ),
       ),
     );
   }

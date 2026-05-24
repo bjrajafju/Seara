@@ -11,7 +11,9 @@ class PostRepository {
   Future<List<FeedPost>> fetchPosts({int limit = 12, DateTime? before}) async {
     var query = _client
         .from('posts')
-        .select('*, users:user_id(username, avatar_url:avatar), post_likes(user_id), post_comments(id)');
+        .select(
+          '*, users:user_id(username, avatar_url:avatar), post_likes(user_id), post_comments(id)',
+        );
 
     if (before != null) {
       query = query.lt('created_at', before.toUtc().toIso8601String());
@@ -20,7 +22,10 @@ class PostRepository {
     final currentUserId = _client.auth.currentUser?.id;
     final rows = await query.order('created_at', ascending: false).limit(limit);
     return rows
-        .map((row) => FeedPost.fromJson(Map<String, dynamic>.from(row), currentUserId))
+        .map(
+          (row) =>
+              FeedPost.fromJson(Map<String, dynamic>.from(row), currentUserId),
+        )
         .toList();
   }
 
@@ -46,7 +51,9 @@ class PostRepository {
           'thumbnail_url': thumbnailUrl,
           'crop': crop,
         })
-        .select('*, users:user_id(username, avatar_url:avatar), post_likes(user_id), post_comments(id)')
+        .select(
+          '*, users:user_id(username, avatar_url:avatar), post_likes(user_id), post_comments(id)',
+        )
         .single();
 
     return FeedPost.fromJson(Map<String, dynamic>.from(row), userId);
@@ -69,6 +76,20 @@ class PostRepository {
         'user_id': userId,
       });
     }
+  }
+
+  Future<void> deletePost(String postId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw const PostRepositoryException('Utilizador não autenticado.');
+    }
+
+    // A regra de segurança do Supabase deve impedir o delete se o user_id não bater,
+    // mas o match garante que o comando seja preciso.
+    await _client.from('posts').delete().match({
+      'id': postId,
+      'user_id': userId,
+    });
   }
 }
 
