@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:app_links/app_links.dart';
@@ -12,7 +13,9 @@ class DeepLinkService with ProtocolListener {
   StreamSubscription<Uri>? _linkSubscription;
 
   DeepLinkService._() {
-    protocolHandler.addListener(this);
+    if (!kIsWeb) {
+      protocolHandler.addListener(this);
+    }
   }
 
   void init(AuthProvider authProvider) async {
@@ -39,7 +42,9 @@ class DeepLinkService with ProtocolListener {
 
   void dispose() {
     _linkSubscription?.cancel();
-    protocolHandler.removeListener(this);
+    if (!kIsWeb) {
+      protocolHandler.removeListener(this);
+    }
   }
 
   @override
@@ -51,7 +56,7 @@ class DeepLinkService with ProtocolListener {
   static void handle(Uri uri, {AuthProvider? authProvider}) async {
     debugPrint('DeepLinkService: Handling URI: $uri');
     
-    // Suportar tanto o esquema customizado quanto links de localhost (Web) ou domínio real
+    // Suportar tanto o esquema customizado quanto links de domínio real
     final isSearaScheme = uri.scheme == 'seara';
     final isWebReset = uri.fragment.contains('type=recovery') || uri.queryParameters.containsKey('code');
 

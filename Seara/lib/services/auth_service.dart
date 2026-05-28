@@ -204,8 +204,7 @@ class AuthService {
     try {
       String redirectTo;
       if (kIsWeb) {
-        // Na Web, usamos o URL base atual (ex: http://localhost:59160)
-        // para garantir que volta para a mesma porta/ambiente.
+        // Na Web, usamos o URL base atual
         redirectTo = Uri.base.origin;
       } else {
         // Em Desktop e Mobile, usamos o esquema customizado.

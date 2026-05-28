@@ -38,7 +38,7 @@ class BytesMediaAsset extends MediaAsset {
 /// The URL is only valid for the lifetime of the current browser session.
 /// Intended for immediate playback or upload — not for local persistence.
 class StreamMediaAsset extends MediaAsset {
-  /// Blob URL, e.g. `blob:https://localhost:5000/...`
+  /// Blob URL, e.g. `blob:https://remote-host/...`
   final String url;
 
   /// MIME type, e.g. `'video/webm'`.
