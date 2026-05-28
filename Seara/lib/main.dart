@@ -102,39 +102,41 @@ class _SearaAppState extends State<SearaApp> {
   void initState() {
     super.initState();
 
-    _authSubscription =
-        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final AuthChangeEvent event = data.event;
-      if (event == AuthChangeEvent.passwordRecovery) {
-        // Agora o DeepLinkService trata da navegação diretamente
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (data) {
+        final AuthChangeEvent event = data.event;
+        if (event == AuthChangeEvent.passwordRecovery) {
+          // Agora o DeepLinkService trata da navegação diretamente
+          widget.authProvider.setRecovering(false);
+        } else if (event == AuthChangeEvent.signedIn) {
+          // No caso de links de recovery, o evento assinado pode vir antes ou depois
+          final bool isRecoveryInUrl =
+              kIsWeb &&
+              (Uri.base.fragment.contains('type=recovery') ||
+                  Uri.base.queryParameters.containsKey('code'));
+          if (isRecoveryInUrl) {
+            widget.authProvider.setRecovering(false);
+          }
+        } else if (event != AuthChangeEvent.initialSession) {
+          // Se houver qualquer outra mudança real (login, logout, etc),
+          // e NÃO estivermos à espera de um link de recovery na Web, limpamos o estado.
+          final bool isRecoveryInUrl =
+              kIsWeb &&
+              (Uri.base.fragment.contains('type=recovery') ||
+                  Uri.base.queryParameters.containsKey('code'));
+          if (!isRecoveryInUrl) {
+            widget.authProvider.setRecovering(false);
+          }
+        }
+      },
+      onError: (error) {
         widget.authProvider.setRecovering(false);
-      } else if (event == AuthChangeEvent.signedIn) {
-        // No caso de links de recovery, o evento assinado pode vir antes ou depois
-        final bool isRecoveryInUrl = kIsWeb && 
-            (Uri.base.fragment.contains('type=recovery') || 
-             Uri.base.queryParameters.containsKey('code'));
-        if (isRecoveryInUrl) {
-          widget.authProvider.setRecovering(false);
-        }
-      } else if (event != AuthChangeEvent.initialSession) {
-        // Se houver qualquer outra mudança real (login, logout, etc), 
-        // e NÃO estivermos à espera de um link de recovery na Web, limpamos o estado.
-        final bool isRecoveryInUrl = kIsWeb && 
-            (Uri.base.fragment.contains('type=recovery') || 
-             Uri.base.queryParameters.containsKey('code'));
-        if (!isRecoveryInUrl) {
-          widget.authProvider.setRecovering(false);
-        }
-      }
-    }, onError: (error) {
-      widget.authProvider.setRecovering(false);
-      final friendlyError = AuthErrorHandler.mapError(error);
-      ScaffoldMessenger.of(navigatorKey.currentContext!)
-          .showSnackBar(SnackBar(
-        content: Text(friendlyError),
-        backgroundColor: Colors.red,
-      ));
-    });
+        final friendlyError = AuthErrorHandler.mapError(error);
+        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+          SnackBar(content: Text(friendlyError), backgroundColor: Colors.red),
+        );
+      },
+    );
   }
 
   @override
@@ -149,7 +151,9 @@ class _SearaAppState extends State<SearaApp> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthProvider>.value(value: widget.authProvider),
-        ChangeNotifierProvider<ThemeProvider>.value(value: widget.themeProvider),
+        ChangeNotifierProvider<ThemeProvider>.value(
+          value: widget.themeProvider,
+        ),
         ChangeNotifierProvider(create: (_) => MessagesProvider()),
         ChangeNotifierProvider(create: (_) => StoryFeedController()),
         ChangeNotifierProvider(create: (_) => PostFeedController()),
@@ -160,10 +164,11 @@ class _SearaAppState extends State<SearaApp> {
           // Prioridade absoluta para o ecrã de reset se houver um link de recuperação ativo
           // Na Web, o processamento pode demorar, por isso verificamos a URL.
           // Em Desktop, o auth.isRecovering é setado pelo DeepLinkService após validar a sessão.
-          final bool isRecoveryInUrl = kIsWeb &&
+          final bool isRecoveryInUrl =
+              kIsWeb &&
               (Uri.base.fragment.contains('type=recovery') ||
                   Uri.base.queryParameters.containsKey('code'));
-          
+
           final bool shouldShowReset =
               (isRecoveryInUrl || auth.isRecovering) && !auth.recoveryHandled;
 
@@ -183,12 +188,12 @@ class _SearaAppState extends State<SearaApp> {
             home: shouldShowReset
                 ? const ResetPasswordScreen()
                 : (auth.isChecking || auth.isRecovering)
-                    ? const Scaffold(
-                        body: Center(child: CircularProgressIndicator()),
-                      )
-                    : auth.isLoggedIn
-                        ? const HomeScreen()
-                        : const LoginScreen(),
+                ? const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  )
+                : auth.isLoggedIn
+                ? const HomeScreen()
+                : const LoginScreen(),
             routes: {
               '/home': (ctx) => const HomeScreen(),
               '/profile': (ctx) => const ProfileScreen(),
@@ -219,7 +224,7 @@ Future<void> _registerWindowsProtocol() async {
       '/ve',
       '/d',
       'URL:seara Protocol',
-      '/f'
+      '/f',
     ]);
     await Process.run('reg', [
       'add',
@@ -228,7 +233,7 @@ Future<void> _registerWindowsProtocol() async {
       'URL Protocol',
       '/d',
       '',
-      '/f'
+      '/f',
     ]);
     await Process.run('reg', [
       'add',
@@ -236,7 +241,7 @@ Future<void> _registerWindowsProtocol() async {
       '/ve',
       '/d',
       '"$exePath" "%1"',
-      '/f'
+      '/f',
     ]);
   } catch (e) {
     debugPrint("Erro ao registrar protocolo Windows: $e");
@@ -247,9 +252,12 @@ Future<void> _registerWindowsProtocol() async {
 Future<bool> _handleSingleInstance(List<String> args) async {
   try {
     // Tenta conectar ao porto onde a primeira instância estaria a ouvir
-    final socket = await Socket.connect('127.0.0.1', 54321,
-        timeout: const Duration(milliseconds: 500));
-    
+    final socket = await Socket.connect(
+      '127.0.0.1',
+      54321,
+      timeout: const Duration(milliseconds: 500),
+    );
+
     // Se conectou, outra instância está ativa. Enviamos os argumentos.
     if (args.isNotEmpty) {
       socket.write(args.join(' '));
