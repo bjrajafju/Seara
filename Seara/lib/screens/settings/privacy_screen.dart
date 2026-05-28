@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'themes_screen.dart';
+import 'change_password_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+class PrivacyScreen extends StatelessWidget {
+  const PrivacyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -11,59 +11,30 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Definições'),
+        title: const Text('Privacidade'),
         centerTitle: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         children: [
-          _buildSectionTitle(context, 'Personalização'),
+          _buildSectionTitle(context, 'Segurança da conta'),
           _buildSettingsGroup(
             context,
             [
               _buildSettingsTile(
                 context,
-                title: 'Temas',
-                icon: Icons.palette_outlined,
-                onTap: () => Navigator.pushNamed(context, '/themes'),
-                isLast: true,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 32),
-
-          _buildSectionTitle(context, 'Conta'),
-          _buildSettingsGroup(
-            context,
-            [
-              _buildSettingsTile(
-                context,
-                title: 'Perfil',
-                icon: Icons.person_outline_rounded,
-                onTap: () => Navigator.pushNamed(context, '/profile'),
-                isLast: true,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 32),
-
-          _buildSectionTitle(context, 'Segurança'),
-          _buildSettingsGroup(
-            context,
-            [
-              _buildSettingsTile(
-                context,
-                title: 'Privacidade',
-                icon: Icons.lock_outline_rounded,
-                onTap: () => Navigator.pushNamed(context, '/privacy'),
-              ),
-              _buildSettingsTile(
-                context,
-                title: 'Notificações',
-                icon: Icons.notifications_none_rounded,
-                onTap: () {}, // TODO: Implementar
+                title: 'Alterar password',
+                icon: Icons.key_outlined,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+                  );
+                },
                 isLast: true,
               ),
             ],

@@ -80,8 +80,13 @@ class _CallScreenState extends State<CallScreen>
   @override
   /// Builds the widget tree for this view
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: cs.brightness == Brightness.dark 
+          ? const Color(0xFF1A1A2E) // Mantemos a cor de "espaço" em dark
+          : cs.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -97,7 +102,7 @@ class _CallScreenState extends State<CallScreen>
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: _isConnecting
-                            ? Colors.white.withAlpha(60)
+                            ? cs.onSurface.withAlpha(60)
                             : Colors.green.withAlpha(100),
                         width: 3,
                       ),
@@ -105,7 +110,7 @@ class _CallScreenState extends State<CallScreen>
                     child: CircleAvatar(
                       radius: 60,
                       backgroundImage: NetworkImage(widget.avatarUrl),
-                      backgroundColor: Colors.grey.shade800,
+                      backgroundColor: cs.surfaceContainerHighest,
                     ),
                   ),
                 );
@@ -114,8 +119,8 @@ class _CallScreenState extends State<CallScreen>
             const SizedBox(height: 24),
             Text(
               widget.conversationName,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: cs.onSurface,
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
               ),
@@ -128,7 +133,7 @@ class _CallScreenState extends State<CallScreen>
                   ? 'Videochamada · $_formattedTime'
                   : 'Chamada de voz · $_formattedTime',
               style: TextStyle(
-                color: Colors.white.withAlpha(180),
+                color: cs.onSurface.withAlpha(180),
                 fontSize: 14,
               ),
             ),
@@ -139,12 +144,14 @@ class _CallScreenState extends State<CallScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildControlButton(
+                    cs,
                     icon: _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
                     label: _isMuted ? 'Ativar' : 'Silenciar',
                     isActive: _isMuted,
                     onTap: () => setState(() => _isMuted = !_isMuted),
                   ),
                   _buildControlButton(
+                    cs,
                     icon: _isSpeaker
                         ? Icons.volume_up_rounded
                         : Icons.volume_down_rounded,
@@ -154,6 +161,7 @@ class _CallScreenState extends State<CallScreen>
                   ),
                   if (widget.isVideo)
                     _buildControlButton(
+                      cs,
                       icon: _isCameraOff
                           ? Icons.videocam_off_rounded
                           : Icons.videocam_rounded,
@@ -170,20 +178,20 @@ class _CallScreenState extends State<CallScreen>
               child: Container(
                 width: 72,
                 height: 72,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
+                decoration: BoxDecoration(
+                  color: cs.error,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.red,
+                      color: cs.error.withOpacity(0.5),
                       blurRadius: 20,
                       spreadRadius: -4,
                     ),
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.call_end_rounded,
-                  color: Colors.white,
+                  color: cs.onError,
                   size: 32,
                 ),
               ),
@@ -192,7 +200,7 @@ class _CallScreenState extends State<CallScreen>
             Text(
               'Terminar',
               style: TextStyle(
-                color: Colors.white.withAlpha(150),
+                color: cs.onSurface.withAlpha(150),
                 fontSize: 12,
               ),
             ),
@@ -203,7 +211,8 @@ class _CallScreenState extends State<CallScreen>
     );
   }
 
-  Widget _buildControlButton({
+  Widget _buildControlButton(
+    ColorScheme cs, {
     required IconData icon,
     required String label,
     required bool isActive,
@@ -220,23 +229,23 @@ class _CallScreenState extends State<CallScreen>
             height: 56,
             decoration: BoxDecoration(
               color: isActive
-                  ? Colors.white.withAlpha(30)
-                  : Colors.white.withAlpha(15),
+                  ? cs.primary.withAlpha(40)
+                  : cs.onSurface.withAlpha(15),
               shape: BoxShape.circle,
               border: isActive
-                  ? Border.all(color: Colors.white.withAlpha(60), width: 1)
+                  ? Border.all(color: cs.primary.withAlpha(80), width: 1)
                   : null,
             ),
             child: Icon(
               icon,
-              color: isActive ? Colors.white : Colors.white.withAlpha(200),
+              color: isActive ? cs.primary : cs.onSurface.withAlpha(200),
               size: 26,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             label,
-            style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 11),
+            style: TextStyle(color: cs.onSurface.withAlpha(150), fontSize: 11),
           ),
         ],
       ),

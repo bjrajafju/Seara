@@ -352,16 +352,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
         label: 'Pesquisar',
         onTap: () => _openSearch(),
       ),
-      ConversationQuickActionItem(
-        icon: Icons.call_rounded,
-        label: 'Voz',
-        onTap: () => _startCall(isVideo: false),
-      ),
-      ConversationQuickActionItem(
-        icon: Icons.videocam_rounded,
-        label: 'Vídeo',
-        onTap: () => _startCall(isVideo: true),
-      ),
     ];
     return ConversationQuickActions(actions: actions);
   }

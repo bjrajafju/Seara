@@ -28,10 +28,10 @@ class _PostsListState extends State<PostsList> {
     return Consumer<PostFeedController>(
       builder: (context, controller, _) {
         if (controller.isLoading && controller.posts.isEmpty) {
-          return const SliverFillRemaining(
+          return SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
-              child: CircularProgressIndicator(color: Colors.white),
+              child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
             ),
           );
         }
@@ -44,7 +44,7 @@ class _PostsListState extends State<PostsList> {
                 'Não foi possível carregar os posts.',
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.white54),
+                ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           );
@@ -58,7 +58,7 @@ class _PostsListState extends State<PostsList> {
                 'Ainda não há posts.',
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.white54),
+                ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           );
@@ -70,11 +70,11 @@ class _PostsListState extends State<PostsList> {
           itemCount: itemCount,
           itemBuilder: (context, index) {
             if (index >= controller.posts.length) {
-              return const Padding(
-                padding: EdgeInsets.all(24),
+              return Padding(
+                padding: const EdgeInsets.all(24),
                 child: Center(
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.primary,
                     strokeWidth: 2,
                   ),
                 ),

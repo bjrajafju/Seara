@@ -30,32 +30,38 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
   }
 
   Future<void> _confirmDelete() async {
+    final theme = Theme.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1C1E),
-        title: const Text(
+        backgroundColor: theme.colorScheme.surface,
+        title: Text(
           'Eliminar story?',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
-        content: const Text(
+        content: Text(
           'Esta ação não pode ser desfeita.',
-          style: TextStyle(color: Colors.white70),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(
+            child: Text(
               'Cancelar',
-              style: TextStyle(color: Colors.white54),
+              style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(
+            child: Text(
               'Eliminar',
               style: TextStyle(
-                color: Colors.redAccent,
+                color: theme.colorScheme.error,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -92,15 +98,16 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Container(
       height: screenHeight * 0.75,
       padding: EdgeInsets.only(bottom: bottomPadding),
-      decoration: const BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Stack(
         children: [
@@ -113,7 +120,7 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white30,
+                    color: theme.colorScheme.onSurface.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -126,19 +133,18 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Visualizações',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     if (!_isDeleting)
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.delete_outline,
-                          color: Colors.redAccent,
+                          color: theme.colorScheme.error,
                           size: 26,
                         ),
                         onPressed: _confirmDelete,
@@ -146,7 +152,7 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
                   ],
                 ),
               ),
-              const Divider(color: Colors.white12, height: 1),
+              Divider(color: theme.colorScheme.onSurface.withOpacity(0.1), height: 1),
 
               // Viewers list
               Expanded(
@@ -154,19 +160,19 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
                   future: _viewersFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
+                      return Center(
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white54,
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
                         ),
                       );
                     }
 
                     if (snapshot.hasError) {
-                      return const Center(
+                      return Center(
                         child: Text(
                           'Erro ao carregar visualizações',
-                          style: TextStyle(color: Colors.white54),
+                          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                         ),
                       );
                     }
@@ -174,20 +180,20 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
                     final viewers = snapshot.data ?? [];
 
                     if (viewers.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
                               Icons.visibility_off_outlined,
-                              color: Colors.white24,
+                              color: theme.colorScheme.onSurface.withOpacity(0.2),
                               size: 48,
                             ),
-                            SizedBox(height: 12),
+                            const SizedBox(height: 12),
                             Text(
                               'Ainda sem visualizações',
                               style: TextStyle(
-                                color: Colors.white54,
+                                color: theme.colorScheme.onSurfaceVariant,
                                 fontSize: 15,
                               ),
                             ),
@@ -229,11 +235,11 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
           if (_isDeleting)
             Positioned.fill(
               child: Container(
-                color: Colors.black54,
-                child: const Center(
+                color: theme.colorScheme.surface.withOpacity(0.5),
+                child: Center(
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ),
@@ -267,6 +273,7 @@ class StoryViewerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final relativeTimeStr = _relativeTime(viewedAt);
 
     return Padding(
@@ -276,15 +283,15 @@ class StoryViewerTile extends StatelessWidget {
           // Avatar
           CircleAvatar(
             radius: 18,
-            backgroundColor: Colors.white24,
+            backgroundColor: theme.colorScheme.onSurface.withOpacity(0.1),
             backgroundImage: avatarUrl.isNotEmpty
                 ? NetworkImage(avatarUrl)
                 : null,
             child: avatarUrl.isEmpty
                 ? Text(
                     username.isNotEmpty ? username[0].toUpperCase() : '?',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -297,8 +304,8 @@ class StoryViewerTile extends StatelessWidget {
           Expanded(
             child: Text(
               username,
-              style: const TextStyle(
-                color: Colors.white,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),
@@ -309,7 +316,10 @@ class StoryViewerTile extends StatelessWidget {
           if (relativeTimeStr.isNotEmpty)
             Text(
               relativeTimeStr,
-              style: const TextStyle(color: Colors.white38, fontSize: 12),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                fontSize: 12,
+              ),
             ),
         ],
       ),

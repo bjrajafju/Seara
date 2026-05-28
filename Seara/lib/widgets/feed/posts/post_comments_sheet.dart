@@ -141,7 +141,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withOpacity(0.15),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -168,7 +168,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                         child: Text(
                           'Ainda não há comentários.',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.55),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                           ),
                         ),
                       )
@@ -192,7 +192,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                                     child: CircleAvatar(
                                       radius: 16,
                                       backgroundImage: NetworkImage(comment.avatarUrl),
-                                      backgroundColor: Colors.white12,
+                                      backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                                     ),
                                   ),
                                 ),
@@ -231,7 +231,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                                       Text(
                                         formatRelativeTime(comment.createdAt),
                                         style: theme.textTheme.bodySmall?.copyWith(
-                                          color: theme.colorScheme.onSurface.withOpacity(0.45),
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
                                         ),
                                       ),
                                     ],
@@ -262,7 +262,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                       _currentUserAvatarUrl ??
                           'https://ui-avatars.com/api/?name=${_currentUserUsername ?? 'user'}',
                     ),
-                    backgroundColor: Colors.white12,
+                    backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -276,7 +276,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                       decoration: InputDecoration(
                         hintText: 'Adicionar um comentário...',
                         hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.4),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                         ),
                         border: InputBorder.none,
                         isDense: true,
@@ -288,6 +288,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                     valueListenable: _commentController,
                     builder: (context, value, _) {
                       final hasText = value.text.trim().isNotEmpty;
+                      final primaryColor = Theme.of(context).colorScheme.primary;
                       return TextButton(
                         onPressed: hasText && !_isSubmitting
                             ? _submitComment
@@ -296,12 +297,12 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                         ),
                         child: _isSubmitting
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 16,
                                 height: 16,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.blue,
+                                  color: primaryColor,
                                 ),
                               )
                             : Text(
@@ -309,8 +310,8 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: hasText
-                                      ? Colors.blue
-                                      : Colors.blue.withOpacity(0.4),
+                                      ? primaryColor
+                                      : primaryColor.withValues(alpha: 0.4),
                                 ),
                               ),
                       );

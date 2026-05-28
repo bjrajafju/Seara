@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:seara/config/api_config.dart';
 import 'api_client.dart';
+import 'auth_error_handler.dart';
 
 class AuthService {
   static String get baseUrl => '${ApiConfig.baseUrl}/auth';
@@ -14,14 +16,16 @@ class AuthService {
 
   static Future<void> saveSession(
     String accessToken,
-    String refreshToken,
+    String? refreshToken,
   ) async {
     await _storage.write(key: 'access_token', value: accessToken);
-    await _storage.write(key: 'refresh_token', value: refreshToken);
-    try {
-      await Supabase.instance.client.auth.setSession(refreshToken);
-    } catch (e) {
-      print("Warning: failed to set Supabase session: $e");
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await _storage.write(key: 'refresh_token', value: refreshToken);
+      try {
+        await Supabase.instance.client.auth.setSession(refreshToken);
+      } catch (e) {
+        print("Warning: failed to set Supabase session: $e");
+      }
     }
   }
 
@@ -47,11 +51,13 @@ class AuthService {
   }
 
   /// Clears persisted session data and logs out the user
-  static Future<void> logout() async {
+  static Future<void> logout({bool supabaseSignOut = true}) async {
     await _storage.deleteAll();
-    try {
-      await Supabase.instance.client.auth.signOut();
-    } catch (_) {}
+    if (supabaseSignOut) {
+      try {
+        await Supabase.instance.client.auth.signOut();
+      } catch (_) {}
+    }
   }
 
   /// Validates the current auth token with the backend
@@ -101,10 +107,10 @@ class AuthService {
         return null;
       } else {
         final data = jsonDecode(response.body);
-        return data['error'] ?? 'Erro desconhecido';
+        return AuthErrorHandler.mapError(data['error'] ?? 'Erro desconhecido');
       }
     } catch (e) {
-      return 'Erro de conexão: $e';
+      return AuthErrorHandler.mapError(e);
     }
   }
 
@@ -127,21 +133,111 @@ class AuthService {
 
         await saveUserId(data['user']['id']);
 
-        try {
-          await Supabase.instance.client.auth.setSession(
-            data['session']['refresh_token'],
-          );
-        } catch (e) {
-          print("Warning: failed to set Supabase session in login: $e");
-        }
-
         return null;
       } else {
         final data = jsonDecode(response.body);
-        return data['error'] ?? 'Erro de login';
+        return AuthErrorHandler.mapError(data['error'] ?? 'Erro de login');
       }
     } catch (e) {
-      return 'Erro de conexão: $e';
+      return AuthErrorHandler.mapError(e);
+    }
+  }
+
+  /// Updates the user's password
+  static Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      // First, try to re-authenticate with Supabase to verify current password
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser != null && currentUser.email != null) {
+        try {
+          final authResponse = await Supabase.instance.client.auth.signInWithPassword(
+            email: currentUser.email!,
+            password: currentPassword,
+          );
+          
+          final session = authResponse.session;
+          if (session != null) {
+            await saveSession(
+              session.accessToken,
+              session.refreshToken,
+            );
+          }
+        } catch (e) {
+          return AuthErrorHandler.mapError(e);
+        }
+      }
+
+      // Then update the password in Supabase
+      final response = await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      if (response.user == null) {
+        return 'Não foi possível alterar a password. Tenta novamente.';
+      }
+
+      // Optional: Notify backend if endpoint exists
+      try {
+        await ApiClient.post(
+          Uri.parse('$baseUrl/change-password'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'current_password': currentPassword,
+            'new_password': newPassword,
+          }),
+        ).timeout(const Duration(seconds: 5));
+      } catch (_) {
+        // Ignore backend errors if Supabase update succeeded
+      }
+
+      return null;
+    } catch (e) {
+      return AuthErrorHandler.mapError(e);
+    }
+  }
+
+  /// Sends a password reset email using Supabase
+  static Future<String?> resetPassword(String email) async {
+    try {
+      String redirectTo;
+      if (kIsWeb) {
+        // Na Web, usamos o URL base atual (ex: http://localhost:59160)
+        // para garantir que volta para a mesma porta/ambiente.
+        redirectTo = Uri.base.origin;
+      } else {
+        // Em Desktop e Mobile, usamos o esquema customizado.
+        redirectTo = 'seara://auth/recovery';
+      }
+
+      if (kDebugMode) {
+        print("Requesting password reset for $email with redirectTo: $redirectTo");
+      }
+
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: redirectTo,
+      );
+      return null;
+    } catch (e) {
+      return AuthErrorHandler.mapError(e);
+    }
+  }
+
+  /// Updates the user's password using the recovery session
+  static Future<String?> updatePassword(String newPassword) async {
+    try {
+      final response = await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+      if (response.user == null) {
+        return 'Não foi possível redefinir a password. Tenta novamente.';
+      }
+      return null;
+    } catch (e) {
+      return AuthErrorHandler.mapError(e);
     }
   }
 }

@@ -143,11 +143,11 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
                     fontSize: 11,
                     overflow: TextOverflow.ellipsis,
                     shadows: _frameReady
-                        ? const [
+                        ? [
                             Shadow(
-                              color: Colors.black54,
+                              color: cs.scrim.withOpacity(0.5),
                               blurRadius: 4,
-                              offset: Offset(0, 1),
+                              offset: const Offset(0, 1),
                             ),
                           ]
                         : null,

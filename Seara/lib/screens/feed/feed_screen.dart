@@ -48,23 +48,24 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.colorScheme.surface,
       body: RefreshIndicator(
-        color: Colors.white,
-        backgroundColor: Colors.black,
+        color: theme.colorScheme.primary,
+        backgroundColor: theme.colorScheme.surface,
         onRefresh: _refresh,
         child: CustomScrollView(
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
-          slivers: const [
-            SliverToBoxAdapter(child: _FeedHeader()),
+          slivers: [
+            const SliverToBoxAdapter(child: _FeedHeader()),
             SliverToBoxAdapter(
-              child: Divider(color: Colors.white12, height: 1),
+              child: Divider(color: theme.colorScheme.onSurface.withValues(alpha: 0.1), height: 1),
             ),
-            PostsList(),
+            const PostsList(),
           ],
         ),
       ),

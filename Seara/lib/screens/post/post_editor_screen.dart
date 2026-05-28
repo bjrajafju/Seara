@@ -168,17 +168,34 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       );
       if (!mounted) return;
       context.read<PostFeedController>().insertAtTop(post);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Post publicado!'),
-          backgroundColor: Colors.green.shade700,
-        ),
-      );
+      if (mounted) {
+        final currentTheme = Theme.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Post publicado!'),
+            backgroundColor: currentTheme.colorScheme.primary,
+          ),
+        );
+      }
       Navigator.of(context).popUntil((route) => route.isFirst);
     } on PostPublishException catch (e) {
-      _showError(e.message);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } catch (_) {
-      _showError('Erro ao publicar. Tenta novamente.');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Erro ao publicar. Tenta novamente.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isPublishing = false);
     }
@@ -208,26 +225,22 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red.shade700),
-    );
-  }
 
   // ─────────────────────────────────────────────────────────
   // BUILD
   // ─────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final draft = _frozenDraft;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.colorScheme.surface,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (draft == null) _buildEditor() else _buildFinalPreview(draft),
+            if (draft == null) _buildEditor(theme) else _buildFinalPreview(draft, theme),
             // Hidden high-quality export widget
             if (draft != null)
               Offstage(
@@ -262,7 +275,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 
   // ── editor view ───────────────────────────────────────────
-  Widget _buildEditor() {
+  Widget _buildEditor(ThemeData theme) {
     return Column(
       children: [
         const SizedBox(height: 56), // reserve space for top bar
@@ -314,8 +327,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               // zoom level indicator
               Text(
                 '${(_crop.scale * 100).round()}%',
-                style: const TextStyle(
-                  color: Colors.white60,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                   fontSize: 13,
                   letterSpacing: 0.5,
                 ),
@@ -328,7 +341,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 
   // ── preview view ──────────────────────────────────────────
-  Widget _buildFinalPreview(PostDraft draft) {
+  Widget _buildFinalPreview(PostDraft draft, ThemeData theme) {
     return Column(
       children: [
         const SizedBox(height: 56),
@@ -381,12 +394,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             controller: _captionController,
             maxLines: 3,
             minLines: 1,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: theme.colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Escreve uma descrição...',
-              hintStyle: const TextStyle(color: Colors.white54),
+              hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
               filled: true,
-              fillColor: Colors.white10,
+              fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -500,20 +513,21 @@ class _CropHandles extends StatelessWidget {
     return Stack(
       children: [
         // corners
-        _handle(l, t, {_HandleEdge.left, _HandleEdge.top}, W, H),
-        _handle(r, t, {_HandleEdge.right, _HandleEdge.top}, W, H),
-        _handle(l, b, {_HandleEdge.left, _HandleEdge.bottom}, W, H),
-        _handle(r, b, {_HandleEdge.right, _HandleEdge.bottom}, W, H),
+        _handle(context, l, t, {_HandleEdge.left, _HandleEdge.top}, W, H),
+        _handle(context, r, t, {_HandleEdge.right, _HandleEdge.top}, W, H),
+        _handle(context, l, b, {_HandleEdge.left, _HandleEdge.bottom}, W, H),
+        _handle(context, r, b, {_HandleEdge.right, _HandleEdge.bottom}, W, H),
         // edges
-        _handle(cx, t, {_HandleEdge.top}, W, H),
-        _handle(cx, b, {_HandleEdge.bottom}, W, H),
-        _handle(l, cy, {_HandleEdge.left}, W, H),
-        _handle(r, cy, {_HandleEdge.right}, W, H),
+        _handle(context, cx, t, {_HandleEdge.top}, W, H),
+        _handle(context, cx, b, {_HandleEdge.bottom}, W, H),
+        _handle(context, l, cy, {_HandleEdge.left}, W, H),
+        _handle(context, r, cy, {_HandleEdge.right}, W, H),
       ],
     );
   }
 
   Widget _handle(
+    BuildContext context,
     double x,
     double y,
     Set<_HandleEdge> edges,
@@ -557,8 +571,11 @@ class _CropHandles extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(isCorner ? 3 : 5),
-              boxShadow: const [
-                BoxShadow(color: Colors.black38, blurRadius: 4),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35),
+                  blurRadius: 4,
+                ),
               ],
             ),
           ),
@@ -666,13 +683,14 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return SizedBox(
       height: 56,
       child: Row(
         children: [
           IconButton(
             onPressed: onClose,
-            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            icon: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface),
           ),
           const Spacer(),
           Padding(
@@ -681,10 +699,13 @@ class _TopBar extends StatelessWidget {
                 ? FilledButton(
                     onPressed: isPublishing ? null : onAction,
                     child: isPublishing
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.colorScheme.onPrimary,
+                            ),
                           )
                         : const Text('Publicar'),
                   )
@@ -707,12 +728,13 @@ class _ZoomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return IconButton.filled(
       onPressed: onTap,
       icon: Icon(icon),
       style: IconButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+        foregroundColor: theme.colorScheme.onSurface,
         minimumSize: const Size(40, 40),
       ),
     );

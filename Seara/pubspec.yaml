@@ -55,6 +55,7 @@ dependencies:
     flutter_secure_storage: ^9.2.2
     provider: ^6.1.5+1
     url_launcher: ^6.3.2
+    app_links: ^6.3.2
     desktop_drop: ^0.7.0
     emoji_picker_flutter: ^4.4.0
     just_audio_media_kit: ^2.1.0
@@ -69,6 +70,8 @@ dependencies:
     # Supports Android, iOS, macOS. Windows uses the bundled ffmpeg.exe asset.
     ffmpeg_kit_flutter_new: ^4.1.0
     image: ^4.8.0
+    protocol_handler: ^0.2.0
+    window_manager: ^0.5.1
 
 dev_dependencies:
     flutter_test:

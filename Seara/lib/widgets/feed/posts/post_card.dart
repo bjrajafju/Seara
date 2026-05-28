@@ -38,6 +38,7 @@ class PostCard extends StatelessWidget {
   }
 
   void _showPostOptionsMenu(BuildContext context) {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -45,10 +46,10 @@ class PostCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
+              leading: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+              title: Text(
                 'Eliminar post',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: theme.colorScheme.error),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -67,6 +68,7 @@ class PostCard extends StatelessWidget {
   }
 
   void _confirmDeletion(BuildContext context) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -95,7 +97,7 @@ class PostCard extends StatelessWidget {
                 }
               }
             },
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            child: Text('Eliminar', style: TextStyle(color: theme.colorScheme.error)),
           ),
         ],
       ),
@@ -152,8 +154,8 @@ class PostCard extends StatelessWidget {
                           CircleAvatar(
                             radius: 18,
                             backgroundImage: NetworkImage(post.avatarUrl),
-                            backgroundColor: theme.colorScheme.onSurface.withOpacity(
-                              0.1,
+                            backgroundColor: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.1,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -172,14 +174,14 @@ class PostCard extends StatelessWidget {
                   Text(
                     '•',
                     style: TextStyle(
-                      color: theme.colorScheme.onSurface.withOpacity(0.4),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Text(
                     formatRelativeTime(post.createdAt),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.55),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                     ),
                   ),
                   if (isOwner) ...[
@@ -191,38 +193,41 @@ class PostCard extends StatelessWidget {
                         ),
                         icon: Icon(
                           Icons.more_horiz,
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                         onSelected: (value) {
                           if (value == 'delete') {
                             _confirmDeletion(context);
                           }
                         },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 12),
-                                Text(
-                                  'Eliminar post',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ],
+                        itemBuilder: (context) {
+                          final Color errorColor = Theme.of(context).colorScheme.error;
+                          return [
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    color: errorColor,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Eliminar post',
+                                    style: TextStyle(color: errorColor),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ];
+                        },
                       )
                     else
                       IconButton(
                         icon: Icon(
                           Icons.more_horiz,
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                         onPressed: () => _showPostOptionsMenu(context),
                       ),
@@ -251,7 +256,7 @@ class PostCard extends StatelessWidget {
                     icon: Icon(
                       post.isLiked ? Icons.favorite : Icons.favorite_border,
                       color: post.isLiked
-                          ? Colors.red
+                          ? const Color(0xFFE91E63) // Cor de branding para "gosto"
                           : theme.colorScheme.onSurface,
                     ),
                     onPressed: () {
@@ -295,7 +300,7 @@ class PostCard extends StatelessWidget {
                     post.likeCount == 1
                         ? '1 gosto'
                         : '${post.likeCount} gostos',
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                    style: TextStyle(
                       color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.w700,
                     ),
@@ -314,16 +319,23 @@ class PostCard extends StatelessWidget {
                                 cursor: SystemMouseCursors.click,
                                 child: Text(
                                   '${post.username} ',
-                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                          TextSpan(text: post.caption!.trim()),
+                          TextSpan(
+                            text: post.caption!.trim(),
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
                         ],
                       ),
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface,
                         height: 1.3,
                       ),
                     ),
@@ -335,7 +347,7 @@ class PostCard extends StatelessWidget {
                       child: Text(
                         'Ver todos os ${post.commentCount} comentários',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.55),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                         ),
                       ),
                     ),

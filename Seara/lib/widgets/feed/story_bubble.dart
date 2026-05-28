@@ -14,19 +14,24 @@ class StoryBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [_buildRing(), const SizedBox(height: 5), _buildLabel()],
+          children: [
+            _buildRing(theme),
+            const SizedBox(height: 5),
+            _buildLabel(theme)
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildRing() {
+  Widget _buildRing(ThemeData theme) {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final isOwnEmptyStory =
         user.userId == currentUserId && user.stories.isEmpty;
@@ -39,17 +44,17 @@ class StoryBubble extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: user.hasUnseen ? _unseenGradient : null,
-            color: user.hasUnseen ? null : const Color(0xFF8E8E8E),
+            color: user.hasUnseen ? null : theme.colorScheme.onSurface.withOpacity(0.3),
           ),
           padding: const EdgeInsets.all(2.5), // ring thickness
           child: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.black, // separator between ring and avatar
+              color: theme.colorScheme.surface, // separator between ring and avatar
             ),
             padding: const EdgeInsets.all(2),
             child: CircleAvatar(
-              backgroundColor: const Color(0xFF333333),
+              backgroundColor: theme.colorScheme.onSurface.withOpacity(0.1),
               backgroundImage: user.avatarUrl.isNotEmpty
                   ? NetworkImage(user.avatarUrl)
                   : null,
@@ -58,8 +63,8 @@ class StoryBubble extends StatelessWidget {
                       user.username.isNotEmpty
                           ? user.username[0].toUpperCase()
                           : '?',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     )
@@ -73,19 +78,19 @@ class StoryBubble extends StatelessWidget {
             bottom: 0,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.blueAccent,
+                color: theme.colorScheme.primary,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.black, width: 2),
+                border: Border.all(color: theme.colorScheme.surface, width: 2),
               ),
               padding: const EdgeInsets.all(3),
-              child: const Icon(Icons.add, color: Colors.white, size: 14),
+              child: Icon(Icons.add, color: theme.colorScheme.onPrimary, size: 14),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildLabel() {
+  Widget _buildLabel(ThemeData theme) {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final displayName = user.userId == currentUserId
         ? 'O teu story'
@@ -98,8 +103,8 @@ class StoryBubble extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: theme.colorScheme.onSurface,
           fontSize: 11,
           fontWeight: FontWeight.w500,
         ),
