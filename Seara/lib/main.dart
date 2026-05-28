@@ -8,7 +8,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:seara/providers/messages_provider.dart';
-import 'package:seara/screens/profile/user_list_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/auth/login_screen.dart';
@@ -200,7 +199,6 @@ class _SearaAppState extends State<SearaApp> {
               '/settings': (ctx) => const SettingsScreen(),
               '/themes': (ctx) => const ThemesScreen(),
               '/privacy': (ctx) => const PrivacyScreen(),
-              '/list': (ctx) => const UserListScreen(),
               '/messages': (ctx) => const MessagesScreen(),
               '/reset-password': (ctx) => const ResetPasswordScreen(),
             },

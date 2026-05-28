@@ -6,7 +6,6 @@ import '../../services/auth_service.dart';
 import '../auth/login_screen.dart';
 import '../messages/messages_screen.dart';
 import '../profile/profile_screen.dart';
-import '../profile/user_list_screen.dart';
 import '../settings/settings_screen.dart';
 import '../challenges/challenges_screen.dart';
 import '../feed/feed_screen.dart';
@@ -20,7 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  static const int _logoutNavIndex = 6;
+  static const int _logoutNavIndex = 5;
 
   final List<Widget> _pages = [
     const FeedScreen(),
@@ -28,7 +27,6 @@ class _HomeScreenState extends State<HomeScreen> {
     const ChallengesScreen(),
     const SettingsScreen(),
     const ProfileScreen(),
-    const UserListScreen(),
   ];
 
   @override
@@ -92,10 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.person_rounded),
             label: 'Perfil',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_rounded),
-            label: 'Listar',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.logout_rounded),
