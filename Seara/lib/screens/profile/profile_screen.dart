@@ -4,6 +4,7 @@ import 'package:seara/services/auth_service.dart';
 import 'package:seara/services/messages_service.dart';
 import 'package:seara/screens/messages/conversation_screen.dart';
 import 'edit_profile_screen.dart';
+import 'user_posts_screen.dart';
 import 'package:seara/models/profile_model.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -14,15 +15,7 @@ class ProfileScreen extends StatefulWidget {
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen>
-    with SingleTickerProviderStateMixin {
-  static const List<Tab> postTabs = <Tab>[
-    Tab(text: 'Posts'),
-    Tab(text: 'Reposts'),
-    Tab(text: 'Mentioned'),
-  ];
-
-  late TabController _tabController;
+class _ProfileScreenState extends State<ProfileScreen> {
   Profile? profile;
   bool isLoading = true;
   bool isFollowing = false;
@@ -33,7 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   /// Initializes state used by this widget
   void initState() {
     super.initState();
-    _tabController = TabController(vsync: this, length: postTabs.length);
     _loadProfile();
   }
 
@@ -85,6 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       isFollowing = !isFollowing;
       profile = Profile(
         id: profile!.id,
+        authId: profile!.authId,
         username: profile!.username,
         name: profile!.name,
         bio: profile!.bio,
@@ -106,6 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         isFollowing = previousState;
         profile = Profile(
           id: profile!.id,
+          authId: profile!.authId,
           username: profile!.username,
           name: profile!.name,
           bio: profile!.bio,
@@ -159,7 +153,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   /// Releases controllers and subscriptions used by this widget
   void dispose() {
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -304,22 +297,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  /// Builds posts grid
-  Widget _buildPostsGrid(ThemeData theme) {
-    return GridView.builder(
-      padding: EdgeInsets.zero,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-      ),
-      itemCount: 60,
-      itemBuilder: (context, index) {
-        return Container(color: theme.colorScheme.surfaceContainerHighest);
-      },
-    );
-  }
-
   @override
   /// Builds the widget tree for this view
   Widget build(BuildContext context) {
@@ -331,24 +308,32 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverToBoxAdapter(child: _buildProfileHeader(theme)),
-            SliverAppBar(
-              pinned: true,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 0,
-              bottom: TabBar(controller: _tabController, tabs: postTabs),
-            ),
-          ];
-        },
-        body: TabBarView(
-          controller: _tabController,
+      body: SingleChildScrollView(
+        child: Column(
           children: [
-            _buildPostsGrid(theme),
-            _buildPostsGrid(theme),
-            _buildPostsGrid(theme),
+            _buildProfileHeader(theme),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UserPostsScreen(
+                        authId: profile!.authId,
+                        username: profile!.username,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.grid_view),
+                label: const Text('Ver publicações'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                ),
+              ),
+            ),
           ],
         ),
       ),

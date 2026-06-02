@@ -8,12 +8,18 @@ import '../services/auth_service.dart';
 import '../services/feed/post_repository.dart';
 
 class PostFeedController extends ChangeNotifier {
-  PostFeedController({PostRepository? repository})
-    : _repository = repository ?? PostRepository() {
-    _setupFollowSubscription();
+  PostFeedController({PostRepository? repository, String? targetAuthId})
+    : _repository = repository ?? PostRepository(),
+      _targetAuthId = targetAuthId {
+    if (_targetAuthId == null) {
+      _setupFollowSubscription();
+    } else {
+      _allowedUserIds = [_targetAuthId!];
+    }
   }
 
   final PostRepository _repository;
+  final String? _targetAuthId;
   final List<FeedPost> _posts = [];
   List<String> _allowedUserIds = [];
   StreamSubscription? _followSubscription;
@@ -33,7 +39,7 @@ class PostFeedController extends ChangeNotifier {
   Future<void> fetch({bool refresh = false}) async {
     if (_isLoading) return;
 
-    if (_followSubscription == null) {
+    if (_targetAuthId == null && _followSubscription == null) {
       _setupFollowSubscription();
     }
 
@@ -42,7 +48,7 @@ class PostFeedController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (refresh || _allowedUserIds.isEmpty) {
+      if (_targetAuthId == null && (refresh || _allowedUserIds.isEmpty)) {
         await _refreshAllowedUsers();
       }
 

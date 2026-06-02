@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:just_audio/just_audio.dart';
 import 'package:seara/services/global_audio_manager.dart';
 
@@ -80,8 +81,11 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     try {
       if (!kIsWeb && Platform.isWindows) {
         final tempDir = await getTemporaryDirectory();
-        final tempPath =
-            '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}_${widget.preview.fileName}';
+        final safeFileName = p.basename(widget.preview.fileName);
+        final tempPath = p.join(
+          tempDir.path,
+          '${DateTime.now().millisecondsSinceEpoch}_$safeFileName',
+        );
         final tempFile = File(tempPath);
         await tempFile.writeAsBytes(widget.preview.bytes, flush: true);
         _windowsTempAudioPath = tempPath;

@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
@@ -41,7 +41,7 @@ class _AudioServiceIo implements AudioService {
     if (!await file.exists()) return null;
 
     final bytes = await file.readAsBytes();
-    final fileName = path.split(Platform.pathSeparator).last;
+    final fileName = p.basename(path);
     return AudioRecordingResult(
       bytes: bytes,
       fileName: fileName.isEmpty

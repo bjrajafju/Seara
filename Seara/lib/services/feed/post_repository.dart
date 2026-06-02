@@ -23,6 +23,8 @@ class PostRepository {
       if (allowedUserIds.isEmpty) {
         // Se a lista estiver vazia (e.g. não logado), forçamos um filtro que não retorne nada
         query = query.eq('user_id', '00000000-0000-0000-0000-000000000000');
+      } else if (allowedUserIds.length == 1) {
+        query = query.eq('user_id', allowedUserIds.first);
       } else {
         query = query.inFilter('user_id', allowedUserIds);
       }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:seara/config/api_config.dart';
 import 'package:seara/services/api_client.dart';
 import 'package:seara/models/profile_model.dart';
@@ -14,6 +15,23 @@ class ProfileService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+
+      // Fallback: Se o auth_id vier vazio do backend, tenta buscar diretamente no Supabase
+      if (data['auth_id'] == null || data['auth_id'] == '') {
+        try {
+          final dbUser = await Supabase.instance.client
+              .from('users')
+              .select('auth_id')
+              .eq('id', userId)
+              .maybeSingle();
+          if (dbUser != null && dbUser['auth_id'] != null) {
+            data['auth_id'] = dbUser['auth_id'];
+          }
+        } catch (e) {
+          // Ignora falhas no fallback
+        }
+      }
+
       return Profile.fromJson(data);
     } else {
       throw Exception('Erro ao carregar perfil');

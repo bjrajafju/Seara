@@ -40,6 +40,7 @@ export const getProfile = async (req, res) => {
 
         return res.json({
             id: data.id,
+            auth_id: data.auth_id,
             username: data.username,
             name: data.name,
             bio: data.bio,
