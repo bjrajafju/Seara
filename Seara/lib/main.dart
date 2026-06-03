@@ -18,6 +18,7 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/settings/themes_screen.dart';
 import 'screens/settings/privacy_screen.dart';
 import 'screens/messages/messages_screen.dart';
+import 'screens/daily_question/daily_question_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:window_manager/window_manager.dart';
@@ -200,6 +201,7 @@ class _SearaAppState extends State<SearaApp> {
               '/themes': (ctx) => const ThemesScreen(),
               '/privacy': (ctx) => const PrivacyScreen(),
               '/messages': (ctx) => const MessagesScreen(),
+              '/daily-question': (ctx) => const DailyQuestionScreen(),
               '/reset-password': (ctx) => const ResetPasswordScreen(),
             },
           );

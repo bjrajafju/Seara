@@ -7,7 +7,7 @@ import '../auth/login_screen.dart';
 import '../messages/messages_screen.dart';
 import '../profile/profile_screen.dart';
 import '../settings/settings_screen.dart';
-import '../challenges/challenges_screen.dart';
+import '../daily_question/daily_question_screen.dart';
 import '../feed/feed_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _pages = [
     const FeedScreen(),
     const MessagesScreen(),
-    const ChallengesScreen(),
+    const DailyQuestionScreen(),
     const SettingsScreen(),
     const ProfileScreen(),
   ];
@@ -80,8 +80,8 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Mensagens',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.flash_on_rounded),
-            label: 'Desafios',
+            icon: Icon(Icons.lightbulb_outline_rounded),
+            label: 'Daily',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_rounded),

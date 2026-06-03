@@ -5,6 +5,7 @@ import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import messagesRoutes from "./routes/messagesRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import dailyQuestionRoutes from "./routes/dailyQuestionRoutes.js";
 import { startEphemeralCleanup } from "./services/ephemeralCleanup.js";
 
 import path from "path";
@@ -23,6 +24,7 @@ app.use("/auth", authRoutes);
 app.use("/profile", profileRoutes);
 app.use("/messages", messagesRoutes);
 app.use("/upload", uploadRoutes);
+app.use("/daily-question", dailyQuestionRoutes);
 
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";

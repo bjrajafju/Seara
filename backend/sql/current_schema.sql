@@ -250,3 +250,27 @@ CREATE TABLE public.users (
   theme text NOT NULL DEFAULT 'light',
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
+CREATE TABLE IF NOT EXISTS public.daily_questions (
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    date text UNIQUE, -- Formato YYYY-MM-DD (GMT+0) - UNIQUE garante uma única pergunta por dia
+    question text NOT NULL,
+    option_a text NOT NULL,
+    option_b text NOT NULL,
+    option_c text NOT NULL,
+    option_d text NOT NULL,
+    correct_option text NOT NULL,
+    explanation text,
+    topic text,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT daily_questions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE IF NOT EXISTS public.user_daily_answers (
+    user_id uuid NOT NULL,
+    question_id uuid NOT NULL,
+    selected_option text NOT NULL,
+    is_correct boolean NOT NULL,
+    answered_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT user_daily_answers_pkey PRIMARY KEY (user_id, question_id),
+    CONSTRAINT user_daily_answers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id),
+    CONSTRAINT user_daily_answers_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.daily_questions(id)
+);
