@@ -123,15 +123,30 @@ export const getTodayQuestion = async (req, res) => {
 export const answerDailyQuestion = async (req, res) => {
     try {
         const { question_id, selected_option } = req.body;
-        const userId = req.user.id;
-        const today = getTodayDateGMT0();
+        const userId = req.user?.id;
+        const todayStr = getTodayDateGMT0();
 
         if (!question_id || !selected_option) {
             return res.status(400).json({ error: "question_id e selected_option são obrigatórios." });
         }
 
-        // 1. Obter a pergunta oficial de hoje para validar
-        const todayStr = getTodayDateGMT0();
+        if (!userId) {
+            return res.status(401).json({ error: "Utilizador não autenticado." });
+        }
+
+        // 1. Verificar se o utilizador existe na tabela users (evita erro de FK)
+        const { data: userRecord, error: uError } = await supabase
+            .from("users")
+            .select("id")
+            .eq("auth_id", userId)
+            .maybeSingle();
+        
+        if (uError) throw uError;
+        if (!userRecord) {
+            return res.status(403).json({ error: "Perfil de utilizador não encontrado no sistema." });
+        }
+
+        // 2. Obter a pergunta oficial de hoje
         const { data: todayQuestion, error: todayQError } = await supabase
             .from("daily_questions")
             .select("id, correct_option, explanation")
@@ -145,13 +160,13 @@ export const answerDailyQuestion = async (req, res) => {
         }
 
         if (todayQuestion.id !== question_id) {
-            return res.status(400).json({ error: "Esta pergunta não é a pergunta do dia atual." });
+            return res.status(400).json({ error: "Esta pergunta não corresponde à pergunta do dia." });
         }
 
-        // 2. Impedir múltiplas respostas no mesmo dia
+        // 3. Impedir múltiplas respostas
         const { data: existingAnswer, error: checkError } = await supabase
             .from("user_daily_answers")
-            .select("*")
+            .select("answered_at")
             .eq("user_id", userId)
             .eq("question_id", question_id)
             .maybeSingle();
@@ -159,26 +174,27 @@ export const answerDailyQuestion = async (req, res) => {
         if (checkError) throw checkError;
 
         if (existingAnswer) {
-            return res.status(400).json({ error: "Você já respondeu à pergunta de hoje." });
+            return res.status(400).json({ error: "Já respondeu à pergunta de hoje." });
         }
 
-        // 3. Calcular isCorrect
-        const isCorrect = selected_option.toUpperCase() === todayQuestion.correct_option.toUpperCase();
+        // 4. Calcular isCorrect
+        const selOpt = String(selected_option).toUpperCase().trim();
+        const corOpt = String(todayQuestion.correct_option).toUpperCase().trim();
+        const isCorrect = selOpt === corOpt;
 
-        // 4. Guardar resposta
+        // 5. Guardar resposta
         const { error: insertError } = await supabase
             .from("user_daily_answers")
             .insert({
                 user_id: userId,
                 question_id: question_id,
-                selected_option: selected_option.toUpperCase(),
-                is_correct: isCorrect,
-                answered_at: new Date().toISOString()
+                selected_option: selOpt,
+                is_correct: isCorrect
             });
 
         if (insertError) throw insertError;
 
-        // 5. Calcular Global Accuracy
+        // 6. Calcular Global Accuracy
         const { count: totalAnswers } = await supabase
             .from("user_daily_answers")
             .select("*", { count: "exact", head: true })
@@ -190,17 +206,23 @@ export const answerDailyQuestion = async (req, res) => {
             .eq("question_id", question_id)
             .eq("is_correct", true);
 
-        const globalAccuracy = totalAnswers > 0 ? (correctAnswers / totalAnswers) * 100 : 0;
+        const tCount = totalAnswers || 0;
+        const cCount = correctAnswers || 0;
+        const globalAccuracy = tCount > 0 ? (cCount / tCount) * 100 : 0;
 
         return res.json({
             isCorrect,
             explanation: todayQuestion.explanation,
-            globalAccuracy: parseFloat(globalAccuracy.toFixed(2))
+            globalAccuracy: parseFloat(globalAccuracy.toFixed(2)),
+            correctOption: todayQuestion.correct_option
         });
 
     } catch (err) {
         console.error("Erro em answerDailyQuestion:", err);
-        return res.status(500).json({ error: err.message });
+        return res.status(500).json({ 
+            error: "Erro interno ao processar a resposta.",
+            message: err.message
+        });
     }
 };
 
