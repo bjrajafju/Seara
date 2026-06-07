@@ -31,6 +31,8 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  DateTime? _lastRefreshEventTime;
+
   AuthProvider() {
     _initSupabaseListener();
     _initAuthServiceListener();
@@ -51,6 +53,16 @@ class AuthProvider extends ChangeNotifier {
       final event = data.event;
       if (kDebugMode) {
         print("Auth: Supabase event detected: $event");
+      }
+
+      // Step 2: Debounce tokenRefreshed events
+      if (event == AuthChangeEvent.tokenRefreshed) {
+        if (_lastRefreshEventTime != null && 
+            DateTime.now().difference(_lastRefreshEventTime!).inSeconds < 10) {
+          if (kDebugMode) print("Auth: Ignoring repeated tokenRefreshed event (debounce).");
+          return;
+        }
+        _lastRefreshEventTime = DateTime.now();
       }
 
       if (event == AuthChangeEvent.signedIn || event == AuthChangeEvent.tokenRefreshed) {

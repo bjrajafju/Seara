@@ -16,6 +16,7 @@ class AuthService {
   static int _refreshFailures = 0;
   static bool _isRefreshing = false;
   static DateTime? _authBlockedUntil;
+  static DateTime? _lastRefreshTime;
 
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -69,14 +70,17 @@ class AuthService {
 
   /// Manually refreshes the Supabase session with circuit breaker and concurrency protection
   static Future<bool> refreshSession() async {
+    // Step 1: Strict lock - no waiting, just return if already in progress
     if (_isRefreshing) {
-      if (kDebugMode) print("Auth: Refresh already in progress, waiting...");
-      int waitAttempts = 0;
-      while (_isRefreshing && waitAttempts < 50) { // Wait up to 5 seconds
-        await Future.delayed(const Duration(milliseconds: 100));
-        waitAttempts++;
-      }
-      return true; // Let the caller retry, hopefully the other refresh finished
+      if (kDebugMode) print("Auth: Refresh already in progress, skipping.");
+      return true; 
+    }
+
+    // Step 2: Debounce - ignore if last refresh was < 10 seconds ago
+    if (_lastRefreshTime != null && 
+        DateTime.now().difference(_lastRefreshTime!).inSeconds < 10) {
+      if (kDebugMode) print("Auth: Refresh called too recently, skipping.");
+      return true;
     }
 
     if (_authBlockedUntil != null && TimeService.now.isBefore(_authBlockedUntil!)) {
@@ -84,7 +88,27 @@ class AuthService {
       return false;
     }
 
+    // Step 3: System time sanity check
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null && session.expiresAt != null) {
+      final now = DateTime.now();
+      final expiresAtSeconds = session.expiresAt!;
+      
+      // Inconsistent if expiresAt is suspiciously old (e.g., < year 2010) or far in the future
+      bool isSuspicious = expiresAtSeconds < 1262304000 || 
+                          expiresAtSeconds > (now.add(const Duration(days: 30)).millisecondsSinceEpoch / 1000);
+      
+      if (isSuspicious) {
+        if (kDebugMode) print("Auth: Suspicious session expiry detected: $expiresAtSeconds. Likely invalid device time.");
+        onAuthError?.call("Data/hora do dispositivo incorreta. Ajusta o relógio para continuar.");
+        await logout();
+        return false;
+      }
+    }
+
     _isRefreshing = true;
+    _lastRefreshTime = DateTime.now();
+
     try {
       final refreshToken = await getRefreshToken();
       if (refreshToken == null || refreshToken.isEmpty) {
@@ -113,24 +137,26 @@ class AuthService {
       _refreshFailures++;
       if (kDebugMode) print("Auth: Refresh failed with AuthException: ${e.message} (Status: ${e.statusCode})");
       
-      if (e.statusCode == '429' || _refreshFailures >= 3) {
+      // Step 4 & 6: Hard stop on 429 or 2 consecutive failures
+      if (e.statusCode == '429' || _refreshFailures >= 2) {
         _authBlockedUntil = TimeService.now.add(const Duration(minutes: 5));
         
         final errorMsg = e.statusCode == '429' 
           ? "Erro de autenticação (Too Many Requests). Verifica a data/hora do dispositivo e volta a iniciar sessão."
-          : "Erro de autenticação persistente. Verifica a data/hora do dispositivo e volta a iniciar sessão.";
+          : "Sessão expirada. Por favor, inicia sessão novamente.";
         
         onAuthError?.call(errorMsg);
         
-        if (e.statusCode == '429' || _refreshFailures >= 5) {
-          if (kDebugMode) print("Auth: Critical failure detected. Forcing logout.");
-          await logout();
-        }
+        if (kDebugMode) print("Auth: Critical failure detected (429 or 2+ failures). Forcing logout.");
+        await logout();
       }
       return false;
     } catch (e) {
       _refreshFailures++;
       if (kDebugMode) print("Auth: Refresh failed with unexpected error: $e");
+      if (_refreshFailures >= 2) {
+        await logout();
+      }
       return false;
     } finally {
       _isRefreshing = false;

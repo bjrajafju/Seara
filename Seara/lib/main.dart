@@ -100,7 +100,6 @@ class SearaApp extends StatefulWidget {
 }
 
 class _SearaAppState extends State<SearaApp> {
-  late final StreamSubscription<AuthState> _authSubscription;
   StreamSubscription<Uri>? _linkSubscription;
   StreamSubscription<bool>? _desyncSubscription;
   bool _hasCriticalDesync = false;
@@ -114,16 +113,10 @@ class _SearaAppState extends State<SearaApp> {
         _hasCriticalDesync = isCritical;
       });
     });
-
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final AuthState authState = data;
-      // O AuthProvider já trata as mudanças de estado do Supabase centralmente
-    });
   }
 
   @override
   void dispose() {
-    _authSubscription.cancel();
     _linkSubscription?.cancel();
     _desyncSubscription?.cancel();
     super.dispose();
