@@ -1,4 +1,4 @@
-import supabase from "../services/supabase.js";
+import { supabaseAdmin } from "../services/supabase.js";
 import { getTodayDateGMT0 } from "../utils/dateUtils.js";
 
 /**
@@ -11,7 +11,7 @@ export const getTodayQuestion = async (req, res) => {
         const userId = req.user.id;
 
         // 1. Tentar buscar a pergunta já atribuída ao dia de hoje
-        let { data: question, error: qError } = await supabase
+        let { data: question, error: qError } = await supabaseAdmin
             .from("daily_questions")
             .select("*")
             .eq("date", today)
@@ -24,7 +24,7 @@ export const getTodayQuestion = async (req, res) => {
             // Busca perguntas que ainda não foram usadas (date is null ou vazio)
             // Para consistência concorrente simplificada: pegamos todas sem data e escolhemos uma determinística ou aleatória.
             // Aqui vamos buscar uma aleatória da pool.
-            const { data: pool, error: pError } = await supabase
+            const { data: pool, error: pError } = await supabaseAdmin
                 .from("daily_questions")
                 .select("*")
                 .is("date", null);
@@ -34,7 +34,7 @@ export const getTodayQuestion = async (req, res) => {
             if (!pool || pool.length === 0) {
                 // Se a pool estiver vazia, pegamos qualquer uma aleatória para não deixar vazio,
                 // mas não atualizamos a data no banco para preservar o histórico.
-                const { data: allQuestions, error: aError } = await supabase
+                const { data: allQuestions, error: aError } = await supabaseAdmin
                     .from("daily_questions")
                     .select("*");
                 
@@ -51,14 +51,14 @@ export const getTodayQuestion = async (req, res) => {
                 question = pool[randomIndex];
 
                 // Atribui ao dia de hoje
-                const { error: uError } = await supabase
+                const { error: uError } = await supabaseAdmin
                     .from("daily_questions")
                     .update({ date: today })
                     .eq("id", question.id);
                 
                 if (uError) {
                     // Em caso de erro de concorrência (ex: outro processo já atribuiu), buscamos novamente
-                    const { data: retryQuestion } = await supabase
+                    const { data: retryQuestion } = await supabaseAdmin
                         .from("daily_questions")
                         .select("*")
                         .eq("date", today)
@@ -69,7 +69,7 @@ export const getTodayQuestion = async (req, res) => {
         }
 
         // 3. Verificar se o utilizador já respondeu hoje
-        const { data: userAnswer, error: ansError } = await supabase
+        const { data: userAnswer, error: ansError } = await supabaseAdmin
             .from("user_daily_answers")
             .select("*")
             .eq("user_id", userId)
@@ -79,12 +79,12 @@ export const getTodayQuestion = async (req, res) => {
         if (ansError) throw ansError;
 
         // 4. Calcular Global Accuracy
-        const { count: totalAnswers } = await supabase
+        const { count: totalAnswers } = await supabaseAdmin
             .from("user_daily_answers")
             .select("*", { count: "exact", head: true })
             .eq("question_id", question.id);
 
-        const { count: correctAnswers } = await supabase
+        const { count: correctAnswers } = await supabaseAdmin
             .from("user_daily_answers")
             .select("*", { count: "exact", head: true })
             .eq("question_id", question.id)
@@ -135,7 +135,7 @@ export const answerDailyQuestion = async (req, res) => {
         }
 
         // 1. Verificar se o utilizador existe na tabela users (evita erro de FK)
-        const { data: userRecord, error: uError } = await supabase
+        const { data: userRecord, error: uError } = await supabaseAdmin
             .from("users")
             .select("id")
             .eq("auth_id", userId)
@@ -147,7 +147,7 @@ export const answerDailyQuestion = async (req, res) => {
         }
 
         // 2. Obter a pergunta oficial de hoje
-        const { data: todayQuestion, error: todayQError } = await supabase
+        const { data: todayQuestion, error: todayQError } = await supabaseAdmin
             .from("daily_questions")
             .select("id, correct_option, explanation")
             .eq("date", todayStr)
@@ -164,7 +164,7 @@ export const answerDailyQuestion = async (req, res) => {
         }
 
         // 3. Impedir múltiplas respostas
-        const { data: existingAnswer, error: checkError } = await supabase
+        const { data: existingAnswer, error: checkError } = await supabaseAdmin
             .from("user_daily_answers")
             .select("answered_at")
             .eq("user_id", userId)
@@ -183,7 +183,7 @@ export const answerDailyQuestion = async (req, res) => {
         const isCorrect = selOpt === corOpt;
 
         // 5. Guardar resposta
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseAdmin
             .from("user_daily_answers")
             .insert({
                 user_id: userId,
@@ -195,12 +195,12 @@ export const answerDailyQuestion = async (req, res) => {
         if (insertError) throw insertError;
 
         // 6. Calcular Global Accuracy
-        const { count: totalAnswers } = await supabase
+        const { count: totalAnswers } = await supabaseAdmin
             .from("user_daily_answers")
             .select("*", { count: "exact", head: true })
             .eq("question_id", question_id);
 
-        const { count: correctAnswers } = await supabase
+        const { count: correctAnswers } = await supabaseAdmin
             .from("user_daily_answers")
             .select("*", { count: "exact", head: true })
             .eq("question_id", question_id)
@@ -233,7 +233,7 @@ export const getStreak = async (req, res) => {
 
         // 1. Verificar se respondeu hoje
         // Precisamos saber a pergunta de hoje para verificar na user_daily_answers
-        const { data: todayQ } = await supabase
+        const { data: todayQ } = await supabaseAdmin
             .from("daily_questions")
             .select("id")
             .eq("date", today)
@@ -241,7 +241,7 @@ export const getStreak = async (req, res) => {
 
         let answeredToday = false;
         if (todayQ) {
-            const { data: ansToday } = await supabase
+            const { data: ansToday } = await supabaseAdmin
                 .from("user_daily_answers")
                 .select("*")
                 .eq("user_id", userId)
@@ -255,7 +255,7 @@ export const getStreak = async (req, res) => {
         // Como o streak é diário, vamos verificar os dias consecutivos para trás.
         
         // Obter todas as datas únicas que o utilizador respondeu, ordenadas
-        const { data: history, error: hError } = await supabase
+        const { data: history, error: hError } = await supabaseAdmin
             .from("user_daily_answers")
             .select("answered_at")
             .eq("user_id", userId)

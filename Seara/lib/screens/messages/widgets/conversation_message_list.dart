@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:seara/models/conversation_model.dart';
 import 'package:seara/models/link_preview_model.dart';
 import 'package:seara/models/message_model.dart';
+import 'package:seara/services/time_service.dart';
 import 'package:seara/providers/messages_provider.dart';
 import 'package:seara/screens/messages/image_lightbox_screen.dart';
 import 'package:seara/screens/messages/widgets/audio_message_widget.dart';
@@ -197,7 +198,7 @@ class ConversationMessageList extends StatelessWidget {
   }
 
   String _formatDateLabel(DateTime date) {
-    final now = DateTime.now();
+    final now = TimeService.now;
     if (_isSameDay(date, now)) return 'Hoje';
     final yesterday = now.subtract(const Duration(days: 1));
     if (_isSameDay(date, yesterday)) return 'Ontem';

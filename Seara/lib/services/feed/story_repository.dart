@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../time_service.dart';
 
 import '../../models/feed/feed_story.dart';
 import '../../models/feed/story_user.dart';
@@ -44,7 +45,7 @@ class StoryRepository {
     var query = _client
         .from('stories')
         .select('*, users:user_id(id, auth_id, username, avatar_url:avatar)')
-        .gt('expires_at', DateTime.now().toUtc().toIso8601String());
+        .gt('expires_at', TimeService.now.toUtc().toIso8601String());
 
     if (allowedUserIds != null) {
       if (allowedUserIds.isEmpty) {
@@ -120,7 +121,7 @@ class StoryRepository {
     await _client.from('story_views').upsert({
       'story_id': storyId,
       'viewer_id': viewerId,
-      'viewed_at': DateTime.now().toUtc().toIso8601String(),
+      'viewed_at': TimeService.now.toUtc().toIso8601String(),
     }, onConflict: 'story_id,viewer_id');
   }
 

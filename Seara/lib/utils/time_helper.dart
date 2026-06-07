@@ -1,5 +1,7 @@
+import '../services/time_service.dart';
+
 String formatRelativeTime(DateTime dateTime) {
-  final now = DateTime.now();
+  final now = TimeService.now;
   final difference = now.difference(dateTime);
 
   if (difference.inDays >= 365) {

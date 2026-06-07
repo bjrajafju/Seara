@@ -7,11 +7,18 @@ class AuthProvider extends ChangeNotifier {
   bool _isChecking = true;
   bool _isRecovering = false;
   bool _recoveryHandled = false;
+  String? _authErrorMessage;
 
   bool get isLoggedIn => _isLoggedIn;
   bool get isChecking => _isChecking;
   bool get isRecovering => _isRecovering;
   bool get recoveryHandled => _recoveryHandled;
+  String? get authErrorMessage => _authErrorMessage;
+
+  void clearAuthError() {
+    _authErrorMessage = null;
+    notifyListeners();
+  }
 
   void setRecovering(bool value) {
     _isRecovering = value;

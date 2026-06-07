@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../time_service.dart';
 
 import '../../models/story/story_draft.dart';
 import '../../models/story/story_media.dart';
@@ -136,7 +137,7 @@ class StoryPublishService {
     required String type,
     required double duration,
   }) async {
-    final now = DateTime.now().toUtc();
+    final now = TimeService.now.toUtc();
     try {
       await _client.from('stories').insert({
         'user_id': userId,

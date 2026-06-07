@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/time_service.dart';
 import '../../models/daily_question_model.dart';
 import '../../services/daily_question_service.dart';
 
@@ -126,7 +127,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
           userAnswer: UserAnswer(
             selectedOption: option,
             isCorrect: result.isCorrect,
-            answeredAt: DateTime.now().toIso8601String(),
+            answeredAt: TimeService.now.toIso8601String(),
           ),
           globalAccuracy: result.globalAccuracy,
           explanation: result.explanation,

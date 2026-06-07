@@ -27,6 +27,8 @@ import 'controllers/story_feed_controller.dart';
 import 'services/auth_error_handler.dart';
 import 'services/deep_link_service.dart';
 import 'services/feed/audio_preferences_service.dart';
+import 'services/time_service.dart';
+import 'widgets/desync_error_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -55,6 +57,8 @@ void main(List<String> args) async {
   JustAudioMediaKit.ensureInitialized();
 
   await AudioPreferencesService.init();
+
+  await TimeService.syncTime();
 
   if (kIsWeb) {
     FilePicker.platform = FilePicker.platform;
@@ -97,10 +101,18 @@ class SearaApp extends StatefulWidget {
 class _SearaAppState extends State<SearaApp> {
   late final StreamSubscription<AuthState> _authSubscription;
   StreamSubscription<Uri>? _linkSubscription;
+  StreamSubscription<bool>? _desyncSubscription;
+  bool _hasCriticalDesync = false;
 
   @override
   void initState() {
     super.initState();
+    _hasCriticalDesync = TimeService.hasCriticalDesync;
+    _desyncSubscription = TimeService.desyncStream.listen((isCritical) {
+      setState(() {
+        _hasCriticalDesync = isCritical;
+      });
+    });
 
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
       (data) {
@@ -143,6 +155,7 @@ class _SearaAppState extends State<SearaApp> {
   void dispose() {
     _authSubscription.cancel();
     _linkSubscription?.cancel();
+    _desyncSubscription?.cancel();
     super.dispose();
   }
 
@@ -185,15 +198,42 @@ class _SearaAppState extends State<SearaApp> {
             ),
             themeMode: ThemeMode.light,
             theme: theme.currentTheme,
-            home: shouldShowReset
-                ? const ResetPasswordScreen()
-                : (auth.isChecking || auth.isRecovering)
-                ? const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  )
-                : auth.isLoggedIn
-                ? const HomeScreen()
-                : const LoginScreen(),
+            home: _hasCriticalDesync
+                ? const DesyncErrorScreen()
+                : auth.authErrorMessage != null
+                    ? Scaffold(
+                        body: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                              const SizedBox(height: 16),
+                              Text(auth.authErrorMessage!),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  auth.clearAuthError();
+                                  auth.checkSession();
+                                },
+                                child: const Text("Tentar Novamente"),
+                              ),
+                              TextButton(
+                                onPressed: () => auth.logout(),
+                                child: const Text("Ir para Login"),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : shouldShowReset
+                        ? const ResetPasswordScreen()
+                        : (auth.isChecking || auth.isRecovering)
+                            ? const Scaffold(
+                                body: Center(child: CircularProgressIndicator()),
+                              )
+                            : auth.isLoggedIn
+                                ? const HomeScreen()
+                                : const LoginScreen(),
             routes: {
               '/home': (ctx) => const HomeScreen(),
               '/profile': (ctx) => const ProfileScreen(),
