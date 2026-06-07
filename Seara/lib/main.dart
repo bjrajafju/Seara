@@ -115,8 +115,10 @@ class _SearaAppState extends State<SearaApp> {
       });
     });
 
-    // O AuthProvider já trata as mudanças de estado do Supabase centralmente
-    _authSubscription = const Stream.empty().listen((_) {});
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final AuthState authState = data;
+      // O AuthProvider já trata as mudanças de estado do Supabase centralmente
+    });
   }
 
   @override

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:seara/config/api_config.dart';
 import 'api_client.dart';
 import 'auth_error_handler.dart';
+import 'time_service.dart';
 
 class AuthService {
   static String get baseUrl => '${ApiConfig.baseUrl}/auth';
