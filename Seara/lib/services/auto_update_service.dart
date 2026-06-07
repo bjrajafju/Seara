@@ -19,7 +19,7 @@ class UpdateInfo {
 }
 
 class AutoUpdateService {
-  static const String currentVersion = "1.0.4";
+  static const String currentVersion = "1.0.3";
   // Em produção, isto deve vir de um ficheiro de config ou env
   static const String baseUrl = "https://seara.onrender.com";
 
@@ -99,7 +99,7 @@ class AutoUpdateService {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final tempDir = await getTemporaryDirectory();
-        final filePath = p.join(tempDir.path, "seara.exe");
+        final filePath = p.join(tempDir.path, "SearaSetup.exe");
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
 
