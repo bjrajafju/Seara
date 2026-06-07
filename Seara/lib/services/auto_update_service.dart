@@ -48,17 +48,24 @@ class AutoUpdateService {
   }
 
   static Future<Map<String, dynamic>> checkUpdate() async {
+    print("UPDATE CHECK STARTED");
+
     try {
       final response = await http
           .get(Uri.parse("$baseUrl/version"))
           .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
+        print("UPDATE RESPONSE: $data");
+        print("CURRENT VERSION: $currentVersion");
+
         final latestVersion = data['latestVersion'] as String;
         final minVersion = data['minVersion'] as String;
         final url = data['url'] as String;
 
         if (isNewerVersion(currentVersion, minVersion)) {
+          print("FORCED UPDATE DETECTED");
           return {
             'status': UpdateStatus.forcedUpdate,
             'info': UpdateInfo(
@@ -68,6 +75,7 @@ class AutoUpdateService {
             ),
           };
         } else if (isNewerVersion(currentVersion, latestVersion)) {
+          print("OPTIONAL UPDATE DETECTED");
           return {
             'status': UpdateStatus
                 .optionalUpdate, // Aqui pode ser tratado como obrigatório na UI
@@ -82,6 +90,7 @@ class AutoUpdateService {
     } catch (e) {
       stderr.writeln("Erro ao verificar atualização: $e");
     }
+    print("NO UPDATE");
     return {'status': UpdateStatus.upToDate};
   }
 

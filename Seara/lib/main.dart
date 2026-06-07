@@ -126,6 +126,7 @@ class _SearaAppState extends State<SearaApp> {
   Future<void> _checkUpdate() async {
     if (!kIsWeb && Platform.isWindows) {
       final result = await AutoUpdateService.checkUpdate();
+      print("UPDATE RESULT: ${result['status']}");
       if (mounted) {
         setState(() {
           _updateStatus = result['status'] as UpdateStatus;
@@ -193,46 +194,50 @@ class _SearaAppState extends State<SearaApp> {
                     body: Center(child: CircularProgressIndicator()),
                   )
                 : _updateStatus != UpdateStatus.upToDate
-                    ? UpdateScreen(
-                        updateInfo: _updateInfo!,
-                        isForced: _updateStatus == UpdateStatus.forcedUpdate,
-                      )
-                    : _hasCriticalDesync
-                        ? const DesyncErrorScreen()
-                        : auth.authErrorMessage != null
-                    ? Scaffold(
-                        body: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                              const SizedBox(height: 16),
-                              Text(auth.authErrorMessage!),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () {
-                                  auth.clearAuthError();
-                                  auth.checkSession();
-                                },
-                                child: const Text("Tentar Novamente"),
-                              ),
-                              TextButton(
-                                onPressed: () => auth.logout(),
-                                child: const Text("Ir para Login"),
-                              ),
-                            ],
+                ? UpdateScreen(
+                    updateInfo: _updateInfo!,
+                    isForced: _updateStatus == UpdateStatus.forcedUpdate,
+                  )
+                : _hasCriticalDesync
+                ? const DesyncErrorScreen()
+                : auth.authErrorMessage != null
+                ? Scaffold(
+                    body: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Colors.red,
                           ),
-                        ),
-                      )
-                    : shouldShowReset
-                        ? const ResetPasswordScreen()
-                        : (auth.isChecking || auth.isRecovering)
-                            ? const Scaffold(
-                                body: Center(child: CircularProgressIndicator()),
-                              )
-                            : auth.isLoggedIn
-                                ? const HomeScreen()
-                                : const LoginScreen(),
+                          const SizedBox(height: 16),
+                          Text(auth.authErrorMessage!),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              auth.clearAuthError();
+                              auth.checkSession();
+                            },
+                            child: const Text("Tentar Novamente"),
+                          ),
+                          TextButton(
+                            onPressed: () => auth.logout(),
+                            child: const Text("Ir para Login"),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : shouldShowReset
+                ? const ResetPasswordScreen()
+                : (auth.isChecking || auth.isRecovering)
+                ? const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  )
+                : auth.isLoggedIn
+                ? const HomeScreen()
+                : const LoginScreen(),
             routes: {
               '/home': (ctx) => const HomeScreen(),
               '/profile': (ctx) => const ProfileScreen(),

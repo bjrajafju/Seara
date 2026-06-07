@@ -202,7 +202,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pergunta do Dia'),
+        title: const Text('Pergunterrima do Dia'),
         centerTitle: true,
         actions: [
           if (_streak != null) _buildStreakIndicator(cs),
