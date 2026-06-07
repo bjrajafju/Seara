@@ -28,6 +28,8 @@ import 'services/auth_error_handler.dart';
 import 'services/deep_link_service.dart';
 import 'services/feed/audio_preferences_service.dart';
 import 'services/time_service.dart';
+import 'services/auto_update_service.dart';
+import 'screens/update_screen.dart';
 import 'widgets/desync_error_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -104,15 +106,40 @@ class _SearaAppState extends State<SearaApp> {
   StreamSubscription<bool>? _desyncSubscription;
   bool _hasCriticalDesync = false;
 
+  // Estado de Atualização
+  bool _isCheckingUpdate = true;
+  UpdateInfo? _updateInfo;
+  UpdateStatus _updateStatus = UpdateStatus.upToDate;
+
   @override
   void initState() {
     super.initState();
+    _checkUpdate();
     _hasCriticalDesync = TimeService.hasCriticalDesync;
     _desyncSubscription = TimeService.desyncStream.listen((isCritical) {
       setState(() {
         _hasCriticalDesync = isCritical;
       });
     });
+  }
+
+  Future<void> _checkUpdate() async {
+    if (!kIsWeb && Platform.isWindows) {
+      final result = await AutoUpdateService.checkUpdate();
+      if (mounted) {
+        setState(() {
+          _updateStatus = result['status'] as UpdateStatus;
+          _updateInfo = result['info'] as UpdateInfo?;
+          _isCheckingUpdate = false;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isCheckingUpdate = false;
+        });
+      }
+    }
   }
 
   @override
@@ -161,9 +188,18 @@ class _SearaAppState extends State<SearaApp> {
             ),
             themeMode: ThemeMode.light,
             theme: theme.currentTheme,
-            home: _hasCriticalDesync
-                ? const DesyncErrorScreen()
-                : auth.authErrorMessage != null
+            home: _isCheckingUpdate
+                ? const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  )
+                : _updateStatus != UpdateStatus.upToDate
+                    ? UpdateScreen(
+                        updateInfo: _updateInfo!,
+                        isForced: _updateStatus == UpdateStatus.forcedUpdate,
+                      )
+                    : _hasCriticalDesync
+                        ? const DesyncErrorScreen()
+                        : auth.authErrorMessage != null
                     ? Scaffold(
                         body: Center(
                           child: Column(

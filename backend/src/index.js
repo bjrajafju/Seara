@@ -7,6 +7,7 @@ import messagesRoutes from "./routes/messagesRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import dailyQuestionRoutes from "./routes/dailyQuestionRoutes.js";
 import timeRoutes from "./routes/timeRoutes.js";
+import versionRoutes from "./routes/versionRoutes.js";
 import { startEphemeralCleanup } from "./services/ephemeralCleanup.js";
 
 import path from "path";
@@ -27,6 +28,8 @@ app.use("/messages", messagesRoutes);
 app.use("/upload", uploadRoutes);
 app.use("/daily-question", dailyQuestionRoutes);
 app.use("/time", timeRoutes);
+app.use("/version", versionRoutes);
+app.use("/download", express.static(path.join(__dirname, "../../installers/windows")));
 
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
