@@ -26,8 +26,14 @@ class AutoUpdateService {
   /// Compara se [latest] é mais recente que [current]
   static bool isNewerVersion(String current, String latest) {
     try {
-      List<int> currentParts = current.split('.').map((e) => int.parse(e.split('+')[0])).toList();
-      List<int> latestParts = latest.split('.').map((e) => int.parse(e.split('+')[0])).toList();
+      List<int> currentParts = current
+          .split('.')
+          .map((e) => int.parse(e.split('+')[0]))
+          .toList();
+      List<int> latestParts = latest
+          .split('.')
+          .map((e) => int.parse(e.split('+')[0]))
+          .toList();
 
       for (int i = 0; i < 3; i++) {
         int curr = i < currentParts.length ? currentParts[i] : 0;
@@ -43,7 +49,9 @@ class AutoUpdateService {
 
   static Future<Map<String, dynamic>> checkUpdate() async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/version")).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(Uri.parse("$baseUrl/version"))
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final latestVersion = data['latestVersion'] as String;
@@ -57,16 +65,17 @@ class AutoUpdateService {
               latestVersion: latestVersion,
               minVersion: minVersion,
               url: url,
-            )
+            ),
           };
         } else if (isNewerVersion(currentVersion, latestVersion)) {
           return {
-            'status': UpdateStatus.optionalUpdate, // Aqui pode ser tratado como obrigatório na UI
+            'status': UpdateStatus
+                .optionalUpdate, // Aqui pode ser tratado como obrigatório na UI
             'info': UpdateInfo(
               latestVersion: latestVersion,
               minVersion: minVersion,
               url: url,
-            )
+            ),
           };
         }
       }
@@ -81,17 +90,17 @@ class AutoUpdateService {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final tempDir = await getTemporaryDirectory();
-        final filePath = p.join(tempDir.path, "SearaSetup.exe");
+        final filePath = p.join(tempDir.path, "seara.exe");
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
 
         // Executar o instalador em modo silencioso
-        await Process.start(
-          filePath,
-          ["/VERYSILENT", "/NORESTART", "/CLOSEAPPLICATIONS"],
-          mode: ProcessStartMode.detached,
-        );
-        
+        await Process.start(filePath, [
+          "/VERYSILENT",
+          "/NORESTART",
+          "/CLOSEAPPLICATIONS",
+        ], mode: ProcessStartMode.detached);
+
         // Fechar a aplicação imediatamente
         exit(0);
       }
