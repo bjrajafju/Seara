@@ -29,8 +29,8 @@ DisableProgramGroupPage=yes
 ; Remove the following line to run in administrative install mode (install for all users).
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
-OutputDir=C:\Users\Asus\Documents\GitHub\Seara\installers\windows
-OutputBaseFilename=seara
+OutputDir=C:\Users\Asus\Documents\GitHub\Seara\backend\installers\windows
+OutputBaseFilename=SearaSetup
 SolidCompression=yes
 WizardStyle=modern dynamic
 CloseApplications=force
@@ -44,7 +44,7 @@ Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\..\Seara\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "..\..\..\Seara\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
