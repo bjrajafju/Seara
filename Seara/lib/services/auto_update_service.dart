@@ -19,7 +19,7 @@ class UpdateInfo {
 }
 
 class AutoUpdateService {
-  static const String currentVersion = "1.0.0";
+  static const String currentVersion = "1.0.2";
   // Em produção, isto deve vir de um ficheiro de config ou env
   static const String baseUrl = "http://localhost:3000";
 
