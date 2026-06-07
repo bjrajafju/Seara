@@ -29,7 +29,7 @@ app.use("/upload", uploadRoutes);
 app.use("/daily-question", dailyQuestionRoutes);
 app.use("/time", timeRoutes);
 app.use("/version", versionRoutes);
-app.use("/download", express.static(path.join(__dirname, "../../installers/windows")));
+app.use("/download", express.static(path.join(__dirname, "../installers/windows")));
 
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
