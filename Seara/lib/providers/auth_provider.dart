@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
@@ -32,19 +33,50 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider() {
     _initSupabaseListener();
+    _initAuthServiceListener();
+  }
+
+  void _initAuthServiceListener() {
+    AuthService.onAuthError = (msg) {
+      _authErrorMessage = msg;
+      _isLoggedIn = false;
+      _isChecking = false;
+      notifyListeners();
+    };
   }
 
   void _initSupabaseListener() {
     // Listen to Supabase auth changes to keep our provider in sync
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
+      if (kDebugMode) {
+        print("Auth: Supabase event detected: $event");
+      }
 
       if (event == AuthChangeEvent.signedIn || event == AuthChangeEvent.tokenRefreshed) {
         _isLoggedIn = true;
+
+        // Handle recovery state cleanup
+        final bool isRecoveryInUrl = kIsWeb &&
+            (Uri.base.fragment.contains('type=recovery') ||
+                Uri.base.queryParameters.containsKey('code'));
+        if (isRecoveryInUrl || event == AuthChangeEvent.passwordRecovery) {
+          _isRecovering = false;
+        }
+
         notifyListeners();
       } else if (event == AuthChangeEvent.signedOut) {
         _isLoggedIn = false;
         notifyListeners();
+      } else if (event != AuthChangeEvent.initialSession) {
+        // Generic cleanup for other events if not in recovery URL
+        final bool isRecoveryInUrl = kIsWeb &&
+            (Uri.base.fragment.contains('type=recovery') ||
+                Uri.base.queryParameters.containsKey('code'));
+        if (!isRecoveryInUrl) {
+          _isRecovering = false;
+          notifyListeners();
+        }
       }
     });
   }

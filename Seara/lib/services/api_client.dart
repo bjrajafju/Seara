@@ -2,7 +2,9 @@ import 'package:http/http.dart' as http;
 export 'package:http/http.dart' show Response, MultipartRequest, MultipartFile;
 import 'dart:async';
 import 'dart:collection';
+import 'package:flutter/foundation.dart';
 import 'auth_service.dart';
+import 'time_service.dart';
 
 class ApiClient {
   static final Map<String, _EndpointState> _states = {};
@@ -37,7 +39,7 @@ class ApiClient {
     final state = _states.putIfAbsent(key, () => _EndpointState());
 
     // Circuit Breaker check
-    if (state.blockedUntil != null && DateTime.now().isBefore(state.blockedUntil!)) {
+    if (state.blockedUntil != null && TimeService.now.isBefore(state.blockedUntil!)) {
       throw Exception('Circuit breaker active for $key. Try again later.');
     }
 
@@ -67,8 +69,17 @@ class ApiClient {
           }
 
           if (response.statusCode == 401 || response.statusCode == 403) {
+            if (kDebugMode) {
+              print('Auth error (401/403) for $key. Syncing time and attempting manual refresh...');
+            }
             // Sincroniza tempo em caso de erro de auth, pois pode ser desync
             await TimeService.syncTime();
+            
+            final refreshed = await AuthService.refreshSession();
+            if (refreshed) {
+              attempts++;
+              continue;
+            }
           }
 
           if (response.statusCode == 429 || response.statusCode >= 500) {
@@ -102,7 +113,7 @@ class ApiClient {
   static void _handleFailure(_EndpointState state, String key) {
     state.failureCount++;
     if (state.failureCount >= _circuitBreakerThreshold) {
-      state.blockedUntil = DateTime.now().add(_circuitBreakerDuration);
+      state.blockedUntil = TimeService.now.add(_circuitBreakerDuration);
     }
   }
 

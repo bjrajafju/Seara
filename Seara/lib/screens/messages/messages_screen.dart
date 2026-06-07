@@ -6,6 +6,7 @@ import 'package:seara/screens/messages/conversation_screen.dart';
 import 'package:seara/screens/messages/new_conversation_screen.dart';
 import 'package:seara/services/auth_service.dart';
 import 'package:seara/services/messages_service.dart';
+import 'package:seara/services/time_service.dart';
 import 'package:seara/utils/message_helpers.dart';
 
 enum ContentFilter { all, images, videos, audio, documents }
@@ -439,7 +440,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   /// Formats date
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
+    final now = TimeService.now;
     final today = DateTime(now.year, now.month, now.day);
     final msgDay = DateTime(date.year, date.month, date.day);
     final diff = today.difference(msgDay).inDays;
@@ -610,9 +611,9 @@ class _FilterPanelState extends State<_FilterPanel> {
   Future<void> _pickDate(bool isFrom) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: (isFrom ? _dateFrom : _dateTo) ?? DateTime.now(),
+      initialDate: (isFrom ? _dateFrom : _dateTo) ?? TimeService.now,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: TimeService.now,
     );
     if (picked == null) return;
     setState(() {

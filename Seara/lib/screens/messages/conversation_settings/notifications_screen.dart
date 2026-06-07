@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:seara/models/conversation_settings_model.dart';
 import 'package:seara/services/conversation_settings_service.dart';
+import 'package:seara/services/time_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({
@@ -66,7 +67,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   /// Shows duration picker
   void _showDurationPicker() {
     final theme = Theme.of(context);
-    final now = DateTime.now();
+    final now = TimeService.now;
 
     final options = [
       _MuteOption('1 hora', now.add(const Duration(hours: 1))),

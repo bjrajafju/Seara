@@ -1,4 +1,5 @@
 import 'package:seara/utils/message_helpers.dart';
+import '../services/time_service.dart';
 
 class ConversationMember {
   final int id;
@@ -99,7 +100,7 @@ class ConversationNotification {
   bool get isEffectivelyMuted {
     if (!isMuted) return false;
     if (mutedUntil == null) return true;
-    return DateTime.now().isBefore(mutedUntil!);
+    return TimeService.now.isBefore(mutedUntil!);
   }
 
   String get muteLabel {
@@ -235,14 +236,14 @@ class ConversationDetails {
       print("ERROR parsing is_pinned: $e");
     }
 
-    DateTime createdAt = DateTime.now();
+    DateTime createdAt = TimeService.now;
     try {
       createdAt = DateTime.parse(json['created_at']);
     } catch (e) {
       print("ERROR parsing created_at: $e");
     }
 
-    DateTime updatedAt = DateTime.now();
+    DateTime updatedAt = TimeService.now;
     try {
       updatedAt = DateTime.parse(json['updated_at']);
     } catch (e) {

@@ -10,6 +10,12 @@ import 'auth_error_handler.dart';
 class AuthService {
   static String get baseUrl => '${ApiConfig.baseUrl}/auth';
 
+  static Function(String)? onAuthError;
+
+  static int _refreshFailures = 0;
+  static bool _isRefreshing = false;
+  static DateTime? _authBlockedUntil;
+
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
@@ -57,6 +63,76 @@ class AuthService {
       try {
         await Supabase.instance.client.auth.signOut();
       } catch (_) {}
+    }
+  }
+
+  /// Manually refreshes the Supabase session with circuit breaker and concurrency protection
+  static Future<bool> refreshSession() async {
+    if (_isRefreshing) {
+      if (kDebugMode) print("Auth: Refresh already in progress, waiting...");
+      int waitAttempts = 0;
+      while (_isRefreshing && waitAttempts < 50) { // Wait up to 5 seconds
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitAttempts++;
+      }
+      return true; // Let the caller retry, hopefully the other refresh finished
+    }
+
+    if (_authBlockedUntil != null && TimeService.now.isBefore(_authBlockedUntil!)) {
+      if (kDebugMode) print("Auth: Circuit breaker active until $_authBlockedUntil");
+      return false;
+    }
+
+    _isRefreshing = true;
+    try {
+      final refreshToken = await getRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        if (kDebugMode) print("Auth: No refresh token available.");
+        return false;
+      }
+
+      if (kDebugMode) print("Auth: Attempting manual session refresh...");
+      
+      // Use setSession with refreshToken to trigger a manual refresh
+      final response = await Supabase.instance.client.auth.setSession(refreshToken);
+      
+      if (response.session != null) {
+        await saveSession(
+          response.session!.accessToken,
+          response.session!.refreshToken,
+        );
+        _refreshFailures = 0;
+        if (kDebugMode) print("Auth: Manual refresh successful.");
+        return true;
+      }
+      
+      _refreshFailures++;
+      return false;
+    } on AuthException catch (e) {
+      _refreshFailures++;
+      if (kDebugMode) print("Auth: Refresh failed with AuthException: ${e.message} (Status: ${e.statusCode})");
+      
+      if (e.statusCode == '429' || _refreshFailures >= 3) {
+        _authBlockedUntil = TimeService.now.add(const Duration(minutes: 5));
+        
+        final errorMsg = e.statusCode == '429' 
+          ? "Erro de autenticação (Too Many Requests). Verifica a data/hora do dispositivo e volta a iniciar sessão."
+          : "Erro de autenticação persistente. Verifica a data/hora do dispositivo e volta a iniciar sessão.";
+        
+        onAuthError?.call(errorMsg);
+        
+        if (e.statusCode == '429' || _refreshFailures >= 5) {
+          if (kDebugMode) print("Auth: Critical failure detected. Forcing logout.");
+          await logout();
+        }
+      }
+      return false;
+    } catch (e) {
+      _refreshFailures++;
+      if (kDebugMode) print("Auth: Refresh failed with unexpected error: $e");
+      return false;
+    } finally {
+      _isRefreshing = false;
     }
   }
 

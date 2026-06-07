@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../controllers/story_engine_controller.dart';
 import '../../../screens/profile/profile_screen.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/time_service.dart';
 
 /// Top-left overlay showing author avatar, username and relative time.
 class StoryHeader extends StatelessWidget {
@@ -120,7 +121,7 @@ class StoryHeader extends StatelessWidget {
   }
 
   String _relativeTime(DateTime time) {
-    final diff = DateTime.now().difference(time);
+    final diff = TimeService.now.difference(time);
     if (diff.inSeconds < 60) return 'agora';
     if (diff.inMinutes < 60) return '${diff.inMinutes}min';
     if (diff.inHours < 24) return '${diff.inHours}h';

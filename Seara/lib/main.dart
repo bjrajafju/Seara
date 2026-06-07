@@ -50,6 +50,7 @@ void main(List<String> args) async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56eG1qYXpzZWd0c21zZHFuaXNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwNjExMzMsImV4cCI6MjA3NDYzNzEzM30.kRJQfqNMJDK4RWxxMT2tcQYrugyesedxrX-V9Nq8_mU',
     authOptions: const FlutterAuthClientOptions(
       authFlowType: AuthFlowType.implicit,
+      autoRefreshToken: false,
     ),
   );
 
@@ -114,41 +115,8 @@ class _SearaAppState extends State<SearaApp> {
       });
     });
 
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
-      (data) {
-        final AuthChangeEvent event = data.event;
-        if (event == AuthChangeEvent.passwordRecovery) {
-          // Agora o DeepLinkService trata da navegação diretamente
-          widget.authProvider.setRecovering(false);
-        } else if (event == AuthChangeEvent.signedIn) {
-          // No caso de links de recovery, o evento assinado pode vir antes ou depois
-          final bool isRecoveryInUrl =
-              kIsWeb &&
-              (Uri.base.fragment.contains('type=recovery') ||
-                  Uri.base.queryParameters.containsKey('code'));
-          if (isRecoveryInUrl) {
-            widget.authProvider.setRecovering(false);
-          }
-        } else if (event != AuthChangeEvent.initialSession) {
-          // Se houver qualquer outra mudança real (login, logout, etc),
-          // e NÃO estivermos à espera de um link de recovery na Web, limpamos o estado.
-          final bool isRecoveryInUrl =
-              kIsWeb &&
-              (Uri.base.fragment.contains('type=recovery') ||
-                  Uri.base.queryParameters.containsKey('code'));
-          if (!isRecoveryInUrl) {
-            widget.authProvider.setRecovering(false);
-          }
-        }
-      },
-      onError: (error) {
-        widget.authProvider.setRecovering(false);
-        final friendlyError = AuthErrorHandler.mapError(error);
-        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-          SnackBar(content: Text(friendlyError), backgroundColor: Colors.red),
-        );
-      },
-    );
+    // O AuthProvider já trata as mudanças de estado do Supabase centralmente
+    _authSubscription = const Stream.empty().listen((_) {});
   }
 
   @override

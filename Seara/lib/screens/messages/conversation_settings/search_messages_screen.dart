@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:seara/models/conversation_settings_model.dart';
 import 'package:seara/models/message_model.dart';
 import 'package:seara/services/conversation_settings_service.dart';
+import 'package:seara/services/time_service.dart';
 import 'package:seara/utils/message_helpers.dart';
 
 class SearchMessagesScreen extends StatefulWidget {
@@ -126,9 +127,9 @@ class _SearchMessagesScreenState extends State<SearchMessagesScreen> {
   Future<void> _pickDate(bool isFrom) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: (isFrom ? _dateFrom : _dateTo) ?? DateTime.now(),
+      initialDate: (isFrom ? _dateFrom : _dateTo) ?? TimeService.now,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: TimeService.now,
     );
     if (picked == null || !mounted) return;
     setState(() {

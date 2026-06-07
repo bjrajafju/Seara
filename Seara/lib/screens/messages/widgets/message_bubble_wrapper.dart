@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show Listenable, kIsWeb;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import '../../../services/time_service.dart';
 
 import 'package:seara/models/message_model.dart';
 
@@ -259,7 +260,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     if (!mounted) return;
     if (widget.message.isSystemMessage) return;
 
-    final age = DateTime.now().difference(widget.message.createdAt);
+    final age = TimeService.now.difference(widget.message.createdAt);
     final canModify = widget.isMe && age < const Duration(hours: 24);
 
     final overlay =
