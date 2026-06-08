@@ -4,7 +4,7 @@ const router = express.Router();
 
 router.get("/", (req, res) => {
   res.json({
-    latestVersion: "1.0.6",
+    latestVersion: "1.0.7",
     minVersion: "1.0.0",
     url: "https://seara.onrender.com/download/SearaSetup.exe"
   });
