@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:seara/models/profile_model.dart';
 import 'package:seara/services/profile/profile_service.dart';
 import 'package:seara/services/auth_service.dart';
+import 'package:seara/services/upload_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key, required this.profile});
@@ -13,6 +16,10 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isHoveringAvatar = false;
+  bool _isUploadingAvatar = false;
+
+  String? _avatarUrl;
+  final ImagePicker _picker = ImagePicker();
 
   late TextEditingController _nameController;
   late TextEditingController _usernameController;
@@ -25,6 +32,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController = TextEditingController(text: widget.profile.name);
     _usernameController = TextEditingController(text: widget.profile.username);
     _bioController = TextEditingController(text: widget.profile.bio);
+    _avatarUrl = widget.profile.avatarUrl;
   }
 
   @override
@@ -48,13 +56,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             onExit: (_) => setState(() => _isHoveringAvatar = false),
             cursor: SystemMouseCursors.click,
             child: InkWell(
-              onTap: () {},
+              onTap: _isUploadingAvatar ? null : _pickAvatar,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundImage: NetworkImage(widget.profile.avatarUrl),
+                    backgroundImage: NetworkImage(
+                      _avatarUrl ?? widget.profile.avatarUrl,
+                    ),
                   ),
                   AnimatedOpacity(
                     opacity: _isHoveringAvatar ? 1 : 0,
@@ -131,7 +141,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         name: _nameController.text.trim(),
         username: _usernameController.text.trim(),
         bio: _bioController.text.trim(),
-        avatar: widget.profile.avatarUrl,
+        avatar: _avatarUrl ?? widget.profile.avatarUrl,
       );
 
       if (mounted) Navigator.pop(context, true);
@@ -145,6 +155,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       );
+    }
+  }
+
+  /// Picks avatar
+  Future<void> _pickAvatar() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 512,
+    );
+
+    if (file == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+
+    try {
+      final bytes = await file.readAsBytes();
+
+      final result = await UploadService.uploadFile(
+        bucket: 'avatar',
+        fileName: 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        fileBytes: bytes,
+        mimeType: 'image/jpeg',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _avatarUrl = result.url;
+        _isUploadingAvatar = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isUploadingAvatar = false);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao atualizar avatar')));
     }
   }
 

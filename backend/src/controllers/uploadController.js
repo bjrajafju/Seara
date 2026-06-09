@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "../services/supabase.js";
 
-const ALLOWED_BUCKETS = ["avatars", "attachments", "groups", "stories", "posts"];
+const ALLOWED_BUCKETS = ["avatar", "attachments", "groups", "stories", "posts"];
 
 /// Resolves content type from file extension when needed.
 /// Handles uploads sent as application/octet-stream.
