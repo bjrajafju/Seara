@@ -660,7 +660,7 @@ export const deleteConversation = async (req, res) => {
     }
 
     try {
-        // validar criador
+        // validar criador do grupo
         const { data: membership } = await supabase
             .from("conversation_user")
             .select("is_creator")
