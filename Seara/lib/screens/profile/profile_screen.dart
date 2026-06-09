@@ -312,27 +312,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildProfileHeader(theme),
             const Divider(),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => UserPostsScreen(
-                        authId: profile!.authId,
-                        username: profile!.username,
+            if (widget.userId == null || isFollowing)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UserPostsScreen(
+                          authId: profile!.authId,
+                          username: profile!.username,
+                        ),
                       ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.grid_view),
-                label: const Text('Ver publicações'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                    );
+                  },
+                  icon: const Icon(Icons.grid_view),
+                  label: const Text('Ver publicações'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
