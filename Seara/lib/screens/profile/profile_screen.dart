@@ -259,7 +259,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
             child: const Text('Editar Perfil'),
           ),
-        TextButton(onPressed: () {}, child: const Text('Partilhar Perfil')),
         if (!isMyProfile)
           TextButton(
             onPressed: _isProcessingFollow ? null : _follow,
