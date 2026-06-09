@@ -505,19 +505,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                       onPressed: _toggleMute,
                     ),
                     const SizedBox(width: 16),
-                    if (!kIsWeb)
-                      IconButton(
-                        iconSize: 22,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(
-                          _isFullscreen
-                              ? Icons.fullscreen_exit_rounded
-                              : Icons.fullscreen_rounded,
-                          color: cs.onInverseSurface,
-                        ),
-                        onPressed: _toggleFullscreen,
-                      ),
                   ],
                 ),
               ),
