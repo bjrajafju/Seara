@@ -300,13 +300,30 @@ class _MessagesScreenState extends State<MessagesScreen> {
         .where((u) => u.id != _myId)
         .toList();
 
+    debugPrint(conversation.participants.toString()); // DEBUG
+    debugPrint("=======================================");
+    debugPrint(conversation.participants.toString());
+    debugPrint("=======================================");
+
+
+
     final displayName = conversation.isGroup
         ? conversation.name ?? "Grupo"
         : (otherUser.isNotEmpty ? otherUser.first.username : "User");
 
-    final displayAvatar = otherUser.isNotEmpty
-        ? otherUser.first.avatarUrl
-        : "https://ui-avatars.com/api/?name=User";
+    String displayAvatar;
+
+    if (conversation.isGroup) {
+      displayAvatar =
+          conversation.image ??
+          "https://ui-avatars.com/api/?name=${Uri.encodeComponent(conversation.name ?? 'Group')}";
+    } else {
+      final user = otherUser.isNotEmpty ? otherUser.first : null;
+
+      displayAvatar = (user?.avatarUrl?.isNotEmpty == true)
+          ? user!.avatarUrl
+          : "https://ui-avatars.com/api/?name=${Uri.encodeComponent(user?.username ?? 'User')}";
+    }
 
     final previewText = lastMessage != null
         ? _buildLastMessagePreview(lastMessage)
@@ -342,7 +359,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundImage: NetworkImage(displayAvatar),
+              backgroundImage: displayAvatar.isNotEmpty
+                  ? NetworkImage(displayAvatar)
+                  : null,
+              child: displayAvatar.isEmpty ? const Icon(Icons.person) : null,
             ),
             const SizedBox(width: 14),
             Expanded(
