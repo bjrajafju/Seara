@@ -92,10 +92,15 @@ class ConversationInfoSliver extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  displayName,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                GestureDetector(
+                  onTap: isGroup
+                      ? (isAdmin ? onOpenEditGroup : null)
+                      : onOpenProfile,
+                  child: Text(
+                    displayName,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
