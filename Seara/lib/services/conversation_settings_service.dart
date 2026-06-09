@@ -171,6 +171,20 @@ class ConversationSettingsService {
     }
   }
 
+  /// Delete conversation
+  static Future<void> deleteConversation(int conversationId, int userId) async {
+    final response = await ApiClient.delete(
+      Uri.parse("$baseUrl/conversations/$conversationId"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"userId": userId}),
+    );
+
+    if (response.statusCode != 200) {
+      final data = jsonDecode(response.body);
+      throw Exception(data['error'] ?? "Erro ao eliminar grupo.");
+    }
+  }
+
   /// Toggles pin
   static Future<bool> togglePin(int conversationId, int userId) async {
     final response = await ApiClient.put(

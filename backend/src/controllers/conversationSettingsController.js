@@ -138,7 +138,7 @@ export const getConversationDetails = async (req, res) => {
             }));
 
         const filteredMembers = filterSystemUsers(mappedMembers);
-        
+
         // DEBUG: Log response before sending
         const responseData = {
             ...conversation,
@@ -146,13 +146,13 @@ export const getConversationDetails = async (req, res) => {
             members: filteredMembers,
             settings: settings
                 ? {
-                    who_can_manage_members: settings.who_can_manage_members,
-                    who_can_edit_info: settings.who_can_edit_info,
-                    who_can_send_messages: settings.who_can_send_messages,
-                    who_can_edit_bio: settings.who_can_edit_bio,
-                    ephemeral_duration: settings.ephemeral_duration,
-                    theme: settings.theme,
-                }
+                      who_can_manage_members: settings.who_can_manage_members,
+                      who_can_edit_info: settings.who_can_edit_info,
+                      who_can_send_messages: settings.who_can_send_messages,
+                      who_can_edit_bio: settings.who_can_edit_bio,
+                      ephemeral_duration: settings.ephemeral_duration,
+                      theme: settings.theme,
+                  }
                 : null,
             description: settings?.description || null,
             my_role: myMembership?.role ?? 0,
@@ -160,12 +160,12 @@ export const getConversationDetails = async (req, res) => {
             is_pinned: myMembership?.is_pinned ?? false,
             notification: notification
                 ? {
-                    is_muted: notification.is_muted,
-                    muted_until: notification.muted_until,
-                }
+                      is_muted: notification.is_muted,
+                      muted_until: notification.muted_until,
+                  }
                 : { is_muted: false, muted_until: null },
         };
-        
+
         res.json(responseData);
     } catch (err) {
         console.error("getConversationDetails:", err);
@@ -518,7 +518,7 @@ export const updateSettings = async (req, res) => {
             settingsUpdate.ephemeral_duration !== undefined &&
             currentSettings &&
             settingsUpdate.ephemeral_duration !==
-            currentSettings.ephemeral_duration
+                currentSettings.ephemeral_duration
         ) {
             const durLabels = {
                 0: "desativou",
@@ -648,6 +648,53 @@ export const leaveConversation = async (req, res) => {
     } catch (err) {
         console.error("leaveConversation:", err);
         res.status(500).json({ error: "Erro ao sair da conversa." });
+    }
+};
+
+export const deleteConversation = async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    if (!id || !userId) {
+        return res.status(400).json({ error: "Dados inválidos." });
+    }
+
+    try {
+        // validar criador
+        const { data: membership } = await supabase
+            .from("conversation_user")
+            .select("is_creator")
+            .eq("conversation_id", id)
+            .eq("user_id", userId)
+            .single();
+
+        if (!membership?.is_creator) {
+            return res
+                .status(403)
+                .json({ error: "Apenas o criador pode eliminar o grupo." });
+        }
+
+        // apagar dependências (ordem correta)
+        await supabase.from("messages").delete().eq("conversation_id", id);
+        await supabase
+            .from("conversation_user")
+            .delete()
+            .eq("conversation_id", id);
+        await supabase
+            .from("conversation_notifications")
+            .delete()
+            .eq("conversation_id", id);
+        await supabase
+            .from("conversation_settings")
+            .delete()
+            .eq("conversation_id", id);
+
+        await supabase.from("conversations").delete().eq("id", id);
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error("deleteConversation:", err);
+        return res.status(500).json({ error: "Erro ao eliminar grupo." });
     }
 };
 

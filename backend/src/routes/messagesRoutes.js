@@ -79,6 +79,7 @@ router.put("/conversations/:id/notifications", updateNotifications);
 
 /// Conversation action routes.
 router.post("/conversations/:id/leave", leaveConversation);
+router.delete("/conversations/:id", deleteConversation);
 router.put("/conversations/:id/pin", togglePin);
 router.post("/conversations/:id/read", markAsRead);
 

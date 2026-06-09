@@ -156,24 +156,21 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     if (isGroup && isCreator) {
       title = 'Eliminar grupo';
       content =
-          'Tens a certeza que queres eliminar este grupo? Todos os membros serão removidos e as mensagens perdidas.';
+          'Tens a certeza que queres eliminar este grupo? Esta ação é irreversível.';
       actionLabel = 'Eliminar';
     } else if (isGroup) {
       title = 'Sair do grupo';
-      content =
-          'Tens a certeza que queres sair deste grupo? Não poderás voltar a entrar sem ser adicionado.';
+      content = 'Tens a certeza que queres sair deste grupo?';
       actionLabel = 'Sair';
     } else {
       title = 'Arquivar conversa';
-      content =
-          'A conversa será arquivada. Se enviares uma nova mensagem a este utilizador, será restaurada.';
+      content = 'A conversa será arquivada e ocultada.';
       actionLabel = 'Arquivar';
     }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title),
         content: Text(content),
         actions: [
@@ -183,9 +180,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
             child: Text(actionLabel),
           ),
         ],
@@ -195,17 +189,24 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     if (confirmed != true || !mounted) return;
 
     try {
-      await ConversationSettingsService.leaveConversation(
-        widget.conversation.id,
-        widget.myId,
-      );
+      if (isGroup && isCreator) {
+        await ConversationSettingsService.deleteConversation(
+          widget.conversation.id,
+          widget.myId,
+        );
+      } else {
+        await ConversationSettingsService.leaveConversation(
+          widget.conversation.id,
+          widget.myId,
+        );
+      }
+
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erro: ${e.toString()}')));
+      ).showSnackBar(SnackBar(content: Text('Erro: $e')));
     }
   }
 
