@@ -30,6 +30,7 @@ import {
     updateSettings,
     updateNotifications,
     leaveConversation,
+    deleteConversation,
     togglePin,
     markAsRead,
     searchConversationMessages,
