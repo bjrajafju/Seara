@@ -13,7 +13,11 @@ class FeedCreateMenu extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface,
       offset: const Offset(0, 42),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      icon: const Icon(Icons.add_circle_rounded, color: Colors.white, size: 30),
+      icon: Icon(
+        Icons.add_circle_rounded,
+        color: Theme.of(context).colorScheme.primary,
+        size: 30,
+      ),
       onSelected: (target) {
         switch (target) {
           case _CreateTarget.story:
