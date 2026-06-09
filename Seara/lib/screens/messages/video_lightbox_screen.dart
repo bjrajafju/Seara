@@ -34,7 +34,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
   bool _isSeeking = false;
   bool _isMuted = false;
   bool _isDownloading = false;
-  bool _isFullscreen = false;
 
   @override
   void initState() {
@@ -202,22 +201,6 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     _isMuted = !_isMuted;
     await _player.setVolume(_isMuted ? 0 : 100);
     if (mounted) setState(() {});
-    _showControlsTemporarily();
-  }
-
-  void _toggleFullscreen() {
-    if (kIsWeb) return;
-    setState(() => _isFullscreen = !_isFullscreen);
-    if (_isFullscreen) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    } else {
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    }
     _showControlsTemporarily();
   }
 
