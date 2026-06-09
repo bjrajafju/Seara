@@ -1,5 +1,9 @@
 import supabase from "../../services/supabase.js";
-import { createSafeReplyObject, getAttachmentLabel, filterSystemUsers } from "../helpers.js";
+import {
+    createSafeReplyObject,
+    getAttachmentLabel,
+    filterSystemUsers,
+} from "../helpers.js";
 
 /**
  * Formats a message object for API response
@@ -8,7 +12,11 @@ import { createSafeReplyObject, getAttachmentLabel, filterSystemUsers } from "..
  * @param {Array} othersLastRead - Array of other users' last read timestamps
  * @returns {Object} Formatted message object
  */
-export const formatMessage = (msg, requestingUserId = null, othersLastRead = []) => {
+export const formatMessage = (
+    msg,
+    requestingUserId = null,
+    othersLastRead = [],
+) => {
     // Determine read status for messages sent by requesting user
     let status = 0; // sent
     if (msg.user_id === requestingUserId) {
@@ -30,7 +38,9 @@ export const formatMessage = (msg, requestingUserId = null, othersLastRead = [])
         attachment: msg.attachment,
         attachment_type: msg.attachment_type,
         attachment_name: msg.attachment_name,
-        attachment_label: msg.attachment_type ? getAttachmentLabel(msg.attachment_type) : null,
+        attachment_label: msg.attachment_type
+            ? getAttachmentLabel(msg.attachment_type)
+            : null,
         reply_to_message_id: msg.reply_to_message_id,
         delivered_at: msg.delivered_at,
         expires_at: msg.expires_at,
@@ -143,9 +153,27 @@ export const formatEditMessageResponse = (message) => {
  * @param {Object|null} previewMsg - Preview message object
  * @returns {Object} Formatted conversation
  */
-export const formatConversation = (conv, membershipMap, unreadCounts, previewMsg = null) => {
+export const formatConversation = (
+    conv,
+    membershipMap,
+    unreadCounts,
+    previewMsg = null,
+) => {
     const participants = Array.isArray(conv.conversation_user)
-        ? filterSystemUsers(conv.conversation_user.map((cu) => cu.users))
+        ? filterSystemUsers(
+              conv.conversation_user
+                  .map((cu) => {
+                      const u = cu.users;
+                      if (!u) return null;
+                      return {
+                          id: u.id,
+                          username: u.username,
+                          name: u.name,
+                          avatar_url: u.avatar, // Mapeia avatar para avatar_url
+                      };
+                  })
+                  .filter(Boolean),
+          )
         : [];
 
     const image =
@@ -155,7 +183,9 @@ export const formatConversation = (conv, membershipMap, unreadCounts, previewMsg
 
     // Add attachment label to preview message if it has an attachment
     if (previewMsg && previewMsg.attachment_type) {
-        previewMsg.attachment_label = getAttachmentLabel(previewMsg.attachment_type);
+        previewMsg.attachment_label = getAttachmentLabel(
+            previewMsg.attachment_type,
+        );
     }
 
     return {
@@ -182,7 +212,8 @@ export const fetchAndFormatReplyMessage = async (replyToMessageId) => {
 
     const { data: replyMessage } = await supabase
         .from("messages")
-        .select(`
+        .select(
+            `
             id,
             user_id,
             body,
@@ -192,7 +223,8 @@ export const fetchAndFormatReplyMessage = async (replyToMessageId) => {
             users (
                 username
             )
-        `)
+        `,
+        )
         .eq("id", replyToMessageId)
         .single();
 
