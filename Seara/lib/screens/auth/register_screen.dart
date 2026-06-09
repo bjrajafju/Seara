@@ -75,7 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (error == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Conta criada com sucesso! Verifique o seu email.'),
+          content: Text('Conta criada com sucesso! Já pode iniciar sessão.'),
         ),
       );
       Navigator.pushReplacement(
