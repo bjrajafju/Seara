@@ -570,10 +570,20 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   /// Returns display avatar
   String _getDisplayAvatar() {
+    if (widget.conversation.isGroup) {
+      return widget.conversation.image?.isNotEmpty == true
+          ? widget.conversation.image!
+          : "https://ui-avatars.com/api/?name=${Uri.encodeComponent(widget.conversation.name ?? 'Group')}";
+    }
+
     final other = widget.conversation.participants
         .where((u) => u.id != _myId)
         .toList();
-    if (other.isNotEmpty) return other.first.avatarUrl;
+
+    if (other.isNotEmpty && other.first.avatarUrl.isNotEmpty) {
+      return other.first.avatarUrl;
+    }
+
     return "https://ui-avatars.com/api/?name=User";
   }
 

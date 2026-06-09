@@ -300,13 +300,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
         .where((u) => u.id != _myId)
         .toList();
 
-    debugPrint(conversation.participants.toString()); // DEBUG
-    debugPrint("=======================================");
-    debugPrint(conversation.participants.toString());
-    debugPrint("=======================================");
-
-
-
     final displayName = conversation.isGroup
         ? conversation.name ?? "Grupo"
         : (otherUser.isNotEmpty ? otherUser.first.username : "User");
