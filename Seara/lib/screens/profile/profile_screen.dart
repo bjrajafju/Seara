@@ -203,11 +203,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildStatsRow(ThemeData theme) {
     return Row(
       children: [
-        _buildStatItem(theme, profile!.posts.toString(), 'Posts'),
+        _buildStatItem(theme, profile!.posts.toString(), 'Publicações'),
         const SizedBox(width: 16),
-        _buildStatItem(theme, profile!.following.toString(), 'Following'),
+        _buildStatItem(theme, profile!.following.toString(), 'Seguindo'),
         const SizedBox(width: 16),
-        _buildStatItem(theme, profile!.followers.toString(), 'Followers'),
+        _buildStatItem(theme, profile!.followers.toString(), 'Seguidores'),
       ],
     );
   }
@@ -268,7 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(isFollowing ? 'Unfollow' : 'Follow'),
+                : Text(isFollowing ? 'Desseguir' : 'Seguir'),
           ),
         if (!isMyProfile)
           TextButton(
@@ -279,7 +279,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Message'),
+                : const Text('Conversar'),
           ),
       ],
     );
