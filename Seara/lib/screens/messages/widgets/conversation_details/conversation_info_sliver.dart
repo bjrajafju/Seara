@@ -19,7 +19,7 @@ class ConversationInfoSliver extends StatelessWidget {
 
   final bool isGroup;
   final bool isAdmin;
-  final String displayAvatar;
+  final String? displayAvatar;
   final String displayName;
   final String? membersLabel;
   final String? description;
@@ -64,8 +64,18 @@ class ConversationInfoSliver extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundImage: NetworkImage(displayAvatar),
+                        backgroundImage:
+                            displayAvatar != null && displayAvatar!.isNotEmpty
+                            ? NetworkImage(displayAvatar!)
+                            : null,
                         backgroundColor: theme.colorScheme.primaryContainer,
+                        child: displayAvatar == null || displayAvatar!.isEmpty
+                            ? Icon(
+                                isGroup ? Icons.group_rounded : Icons.person,
+                                size: 48,
+                                color: theme.colorScheme.primary,
+                              )
+                            : null,
                       ),
                       if (isGroup && isAdmin)
                         Positioned(

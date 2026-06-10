@@ -172,19 +172,42 @@ class _ForwardMessageScreenState extends State<ForwardMessageScreen> {
                                     .firstOrNull
                                     ?.username ??
                                 "Chat";
-                      final avatar = c.isGroup && c.image != null
-                          ? c.image!
-                          : c.participants
-                                    .where((p) => p.id != widget.myId)
-                                    .firstOrNull
-                                    ?.avatarUrl ??
-                                "https://ui-avatars.com/api/?name=$name";
 
+                      final otherUser = c.participants
+                          .where((p) => p.id != widget.myId)
+                          .toList();
+
+                      final bool hasImage = c.isGroup
+                          ? (c.image != null && c.image!.isNotEmpty)
+                          : (otherUser.isNotEmpty &&
+                                otherUser.first.avatarUrl.isNotEmpty);
+
+                      final String? avatarUrl = c.isGroup
+                          ? (hasImage
+                                ? c.image
+                                : (c.name != null && c.name!.trim().isNotEmpty
+                                      ? "https://ui-avatars.com/api/?name=${Uri.encodeComponent(c.name!)}"
+                                      : null))
+                          : (hasImage
+                                ? otherUser.first.avatarUrl
+                                : "https://ui-avatars.com/api/?name=${Uri.encodeComponent(otherUser.firstOrNull?.username ?? 'User')}");
                       final isSelected = _selectedIds.contains(c.id);
-
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: NetworkImage(avatar),
+                          backgroundImage: avatarUrl != null
+                              ? NetworkImage(avatarUrl)
+                              : null,
+                          backgroundColor: avatarUrl == null
+                              ? theme.colorScheme.primaryContainer
+                              : null,
+                          child: avatarUrl == null
+                              ? Icon(
+                                  c.isGroup
+                                      ? Icons.group_rounded
+                                      : Icons.person,
+                                  color: theme.colorScheme.primary,
+                                )
+                              : null,
                         ),
                         title: Text(name),
                         trailing: Checkbox(

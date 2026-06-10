@@ -24,7 +24,6 @@ export const listConversations = async (req, res) => {
     }
 
     try {
-
         let userConvQuery = supabase
             .from("conversation_user")
             .select("conversation_id, is_pinned, last_read_at")
@@ -44,7 +43,7 @@ export const listConversations = async (req, res) => {
         }
 
         const conversationIds = userConversations.map((c) => c.conversation_id);
-        
+
         const membershipMap = {};
         for (const uc of userConversations) {
             membershipMap[uc.conversation_id] = uc;
@@ -94,9 +93,12 @@ export const listConversations = async (req, res) => {
 
         let { data: conversations, error } = await dbQuery;
         if (error) throw error;
-        
+
         // Fallback safety: if no conversations after filtering but we had conversationIds
-        if ((!conversations || conversations.length === 0) && originalConversationIds.length > 0) {
+        if (
+            (!conversations || conversations.length === 0) &&
+            originalConversationIds.length > 0
+        ) {
             // Retry without filters except basic conversation ID filter
             let fallbackQuery = supabase
                 .from("conversations")
@@ -141,7 +143,7 @@ export const listConversations = async (req, res) => {
                 unreadCounts[uc.conversation_id] = await calculateUnreadCount(
                     uc.conversation_id,
                     userId,
-                    uc.last_read_at
+                    uc.last_read_at,
                 );
             }),
         );
@@ -201,7 +203,7 @@ export const listConversations = async (req, res) => {
                     let msgQuery = supabase
                         .from("messages")
                         .select(
-                            `id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at, is_forwarded`
+                            `id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, created_at, updated_at, edited_at, is_forwarded`,
                         )
                         .eq("conversation_id", conv.id)
                         .is("deleted_at", null)
@@ -227,7 +229,10 @@ export const listConversations = async (req, res) => {
                     }
 
                     const { data: matchedData } = await msgQuery.limit(1);
-                    previewMsg = matchedData && matchedData.length > 0 ? matchedData[0] : null;
+                    previewMsg =
+                        matchedData && matchedData.length > 0
+                            ? matchedData[0]
+                            : null;
 
                     // Drop if text match was required but not found
                     if (textMatchRequired && !previewMsg) {
@@ -245,17 +250,25 @@ export const listConversations = async (req, res) => {
                 const { data: latestRaw } = await supabase
                     .from("messages")
                     .select(
-                        `id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, reply_to_message_id, created_at, updated_at, edited_at`
+                        `id, conversation_id, user_id, body, attachment, attachment_type, attachment_name, reply_to_message_id, created_at, updated_at, edited_at`,
                     )
                     .eq("conversation_id", conv.id)
                     .is("deleted_at", null)
                     .order("created_at", { ascending: false })
                     .limit(1);
-                previewMsg = latestRaw && latestRaw.length > 0 ? latestRaw[0] : null;
+                previewMsg =
+                    latestRaw && latestRaw.length > 0 ? latestRaw[0] : null;
             }
 
             if (shouldInclude) {
-                processedConversations.push(formatConversation(conv, membershipMap, unreadCounts, previewMsg));
+                processedConversations.push(
+                    formatConversation(
+                        conv,
+                        membershipMap,
+                        unreadCounts,
+                        previewMsg,
+                    ),
+                );
             }
         }
 
@@ -269,8 +282,10 @@ export const listConversations = async (req, res) => {
         // Apply pagination at the end
         const pageLimit = parseInt(limit) || 50;
         const hasMore = processedConversations.length > pageLimit;
-        const pageResults = hasMore ? processedConversations.slice(0, pageLimit) : processedConversations;
-        
+        const pageResults = hasMore
+            ? processedConversations.slice(0, pageLimit)
+            : processedConversations;
+
         // Get next cursor (timestamp of last item)
         let nextCursor = null;
         if (hasMore && pageResults.length > 0) {
@@ -374,7 +389,9 @@ export const createConversation = async (req, res) => {
                     name: fullConversation.name,
                     is_group: fullConversation.is_group,
                     participants: filterSystemUsers(
-                        fullConversation.conversation_user.map((cu) => cu.users)
+                        fullConversation.conversation_user.map(
+                            (cu) => cu.users,
+                        ),
                     ),
                     messages: fullConversation.messages ?? [],
                     created_at: fullConversation.created_at,
@@ -387,7 +404,7 @@ export const createConversation = async (req, res) => {
         const { data: newConversation, error } = await supabase
             .from("conversations")
             .insert({
-                name: isGroup ? name : null,
+                name: isGroup ? name || "Grupo" : null,
                 is_group: isGroup,
             })
             .select()
@@ -442,7 +459,7 @@ export const createConversation = async (req, res) => {
         return res.status(201).json({
             ...fullConversation,
             participants: filterSystemUsers(
-                fullConversation.conversation_user.map((cu) => cu.users)
+                fullConversation.conversation_user.map((cu) => cu.users),
             ),
             messages: [],
         });

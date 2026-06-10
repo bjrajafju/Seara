@@ -22,14 +22,17 @@ class Profile {
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) {
+    final rawAvatar = json['avatar_url'] ?? json['avatar'];
+    final avatarUrlStr = (rawAvatar ?? '').toString();
+
     return Profile(
       id: json['id'] as int,
       authId: (json['auth_id'] ?? '') as String,
       username: (json['username'] ?? '') as String,
       name: (json['name'] ?? '') as String,
       bio: (json['bio'] ?? '') as String,
-      avatarUrl: (json['avatar_url'] ?? '').toString().isNotEmpty
-          ? json['avatar_url']
+      avatarUrl: avatarUrlStr.isNotEmpty
+          ? avatarUrlStr
           : 'https://ui-avatars.com/api/?name=${json['username'] ?? 'User'}',
       posts: json['posts_count'] ?? 0,
       followers: json['followers_count'] ?? 0,

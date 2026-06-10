@@ -587,6 +587,59 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return "https://ui-avatars.com/api/?name=User";
   }
 
+  ImageProvider? _getAvatarImage() {
+    if (widget.conversation.isGroup) {
+      if (widget.conversation.image != null &&
+          widget.conversation.image!.isNotEmpty) {
+        return NetworkImage(widget.conversation.image!);
+      }
+      if (widget.conversation.name != null &&
+          widget.conversation.name!.trim().isNotEmpty) {
+        return NetworkImage(
+          "https://ui-avatars.com/api/?name=${Uri.encodeComponent(widget.conversation.name!)}",
+        );
+      }
+      return null;
+    }
+
+    final other = widget.conversation.participants
+        .where((u) => u.id != _myId)
+        .toList();
+    if (other.isNotEmpty && other.first.avatarUrl.isNotEmpty) {
+      return NetworkImage(other.first.avatarUrl);
+    }
+    final otherUsername = other.isNotEmpty ? other.first.username : 'User';
+    return NetworkImage(
+      "https://ui-avatars.com/api/?name=${Uri.encodeComponent(otherUsername)}",
+    );
+  }
+
+  Widget? _getAvatarChild(ThemeData theme) {
+    if (widget.conversation.isGroup &&
+        (widget.conversation.image == null ||
+            widget.conversation.image!.isEmpty) &&
+        (widget.conversation.name == null ||
+            widget.conversation.name!.trim().isEmpty)) {
+      return Icon(
+        Icons.group_rounded,
+        color: theme.colorScheme.primary,
+        size: 20,
+      );
+    }
+    return null;
+  }
+
+  Color? _getAvatarBgColor(ThemeData theme) {
+    if (widget.conversation.isGroup &&
+        (widget.conversation.image == null ||
+            widget.conversation.image!.isEmpty) &&
+        (widget.conversation.name == null ||
+            widget.conversation.name!.trim().isEmpty)) {
+      return theme.colorScheme.primaryContainer;
+    }
+    return null;
+  }
+
   bool _isDragOver = false;
 
   /// Wrap with drop target
@@ -738,7 +791,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundImage: NetworkImage(_getDisplayAvatar()),
+                    backgroundImage: _getAvatarImage(),
+                    backgroundColor: _getAvatarBgColor(theme),
+                    child: _getAvatarChild(theme),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

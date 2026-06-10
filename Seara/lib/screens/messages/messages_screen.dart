@@ -304,19 +304,20 @@ class _MessagesScreenState extends State<MessagesScreen> {
         ? conversation.name ?? "Grupo"
         : (otherUser.isNotEmpty ? otherUser.first.username : "User");
 
-    String displayAvatar;
+    final bool hasImage = conversation.isGroup
+        ? (conversation.image != null && conversation.image!.isNotEmpty)
+        : (otherUser.isNotEmpty && otherUser.first.avatarUrl.isNotEmpty);
 
-    if (conversation.isGroup) {
-      displayAvatar =
-          conversation.image ??
-          "https://ui-avatars.com/api/?name=${Uri.encodeComponent(conversation.name ?? 'Group')}";
-    } else {
-      final user = otherUser.isNotEmpty ? otherUser.first : null;
-
-      displayAvatar = (user?.avatarUrl?.isNotEmpty == true)
-          ? user!.avatarUrl
-          : "https://ui-avatars.com/api/?name=${Uri.encodeComponent(user?.username ?? 'User')}";
-    }
+    final String? avatarUrl = conversation.isGroup
+        ? (hasImage
+              ? conversation.image
+              : (conversation.name != null &&
+                        conversation.name!.trim().isNotEmpty
+                    ? "https://ui-avatars.com/api/?name=${Uri.encodeComponent(conversation.name!)}"
+                    : null))
+        : (hasImage
+              ? otherUser.first.avatarUrl
+              : "https://ui-avatars.com/api/?name=${Uri.encodeComponent(otherUser.firstOrNull?.username ?? 'User')}");
 
     final previewText = lastMessage != null
         ? _buildLastMessagePreview(lastMessage)
@@ -352,10 +353,18 @@ class _MessagesScreenState extends State<MessagesScreen> {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundImage: displayAvatar.isNotEmpty
-                  ? NetworkImage(displayAvatar)
+              backgroundImage: avatarUrl != null
+                  ? NetworkImage(avatarUrl)
                   : null,
-              child: displayAvatar.isEmpty ? const Icon(Icons.person) : null,
+              backgroundColor: avatarUrl == null
+                  ? theme.colorScheme.primaryContainer
+                  : null,
+              child: avatarUrl == null
+                  ? Icon(
+                      conversation.isGroup ? Icons.group_rounded : Icons.person,
+                      color: theme.colorScheme.primary,
+                    )
+                  : null,
             ),
             const SizedBox(width: 14),
             Expanded(

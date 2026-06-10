@@ -86,15 +86,27 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     return other.isNotEmpty ? other.first.name : 'Utilizador';
   }
 
-  String get _displayAvatar {
-    if (widget.conversation.isGroup && _details?.image != null) {
-      return _details!.image!;
+  String? get _displayAvatar {
+    if (widget.conversation.isGroup) {
+      if (_details?.image != null && _details!.image!.isNotEmpty) {
+        return _details!.image!;
+      }
+      final name = _details?.name ?? widget.conversation.name;
+      if (name != null && name.trim().isNotEmpty) {
+        return 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}';
+      }
+      return null;
     }
+
     final other = widget.conversation.participants
         .where((u) => u.id != widget.myId)
         .toList();
-    if (other.isNotEmpty) return other.first.avatarUrl;
-    return 'https://ui-avatars.com/api/?name=Group';
+    if (other.isNotEmpty && other.first.avatarUrl.isNotEmpty) {
+      return other.first.avatarUrl;
+    }
+
+    final otherUsername = other.isNotEmpty ? other.first.username : 'User';
+    return 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(otherUsername)}';
   }
 
   int? get _otherUserId {
@@ -608,20 +620,6 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
         ),
       ),
     ).then((_) => _loadDetails());
-  }
-
-  /// Starts call
-  void _startCall({required bool isVideo}) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CallScreen(
-          conversationName: _displayName,
-          avatarUrl: _displayAvatar,
-          isVideo: isVideo,
-        ),
-      ),
-    );
   }
 
   /// Edit description
