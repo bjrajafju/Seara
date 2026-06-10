@@ -3,7 +3,7 @@ import { formatConversation } from "../utils/messages/messageFormatter.js";
 import { calculateUnreadCount } from "../utils/messages/messageStatus.js";
 import { filterSystemUsers } from "../utils/helpers.js";
 
-/// Simplified version of listConversations for debugging
+/// All this é so para debug mas vou deixar aqui até ao fim porque pode ser útil depois
 export const listConversationsSimple = async (req, res) => {
     const { userId } = req.params;
 
