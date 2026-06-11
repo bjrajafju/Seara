@@ -370,7 +370,7 @@ class _PostarButton extends StatelessWidget {
                 ),
               )
             : const Text(
-                'Postar',
+                'Publicar',
                 style: TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.w700,

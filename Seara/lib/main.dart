@@ -19,7 +19,7 @@ import 'screens/settings/themes_screen.dart';
 import 'screens/settings/privacy_screen.dart';
 import 'screens/messages/messages_screen.dart';
 import 'screens/daily_question/daily_question_screen.dart';
-
+import 'screens/auth/welcome_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 import 'controllers/post_feed_controller.dart';
@@ -237,7 +237,7 @@ class _SearaAppState extends State<SearaApp> {
                   )
                 : auth.isLoggedIn
                 ? const HomeScreen()
-                : const LoginScreen(),
+                : const WelcomeScreen(),
             routes: {
               '/home': (ctx) => const HomeScreen(),
               '/profile': (ctx) => const ProfileScreen(),

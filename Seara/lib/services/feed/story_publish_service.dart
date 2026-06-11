@@ -153,7 +153,7 @@ class StoryPublishService {
       );
       debugPrint('StoryPublishService: Details: ${e.details}, Hint: ${e.hint}');
       throw StoryPublishException(
-        'Erro ao registar a história na base de dados: ${e.message}',
+        'Erro ao registar o moment na base de dados: ${e.message}',
       );
     } catch (e) {
       debugPrint('StoryPublishService: Unexpected database error: $e');

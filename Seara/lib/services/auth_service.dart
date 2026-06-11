@@ -76,7 +76,7 @@ class AuthService {
       return true; 
     }
 
-    // Step 2: Debounce - ignore if last refresh was < 10 seconds ago
+    // Debounce - ignore if last refresh was < 10 seconds ago
     if (_lastRefreshTime != null && 
         DateTime.now().difference(_lastRefreshTime!).inSeconds < 10) {
       if (kDebugMode) print("Auth: Refresh called too recently, skipping.");
@@ -88,7 +88,7 @@ class AuthService {
       return false;
     }
 
-    // Step 3: System time sanity check
+    // System time sanity check
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null && session.expiresAt != null) {
       final now = DateTime.now();

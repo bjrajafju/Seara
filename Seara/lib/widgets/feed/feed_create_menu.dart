@@ -36,7 +36,7 @@ class FeedCreateMenu extends StatelessWidget {
           child: ListTile(
             dense: true,
             leading: Icon(Icons.auto_stories_rounded),
-            title: Text('Story'),
+            title: Text('Moment'),
           ),
         ),
         PopupMenuItem(
@@ -44,7 +44,7 @@ class FeedCreateMenu extends StatelessWidget {
           child: ListTile(
             dense: true,
             leading: Icon(Icons.photo_library_rounded),
-            title: Text('Post'),
+            title: Text('Publicação'),
           ),
         ),
       ],
