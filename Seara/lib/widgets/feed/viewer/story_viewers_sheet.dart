@@ -87,7 +87,7 @@ class _StoryViewersSheetState extends State<StoryViewersSheet> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Erro ao eliminar story'),
+              content: Text('Erro ao eliminar momento'),
               backgroundColor: Colors.redAccent,
             ),
           );
