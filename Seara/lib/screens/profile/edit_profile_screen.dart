@@ -85,7 +85,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Change profile photo',
+            'Mudar foto de perfil',
             style: TextStyle(color: cs.primary, fontWeight: FontWeight.w500),
           ),
         ],
@@ -124,7 +124,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       child: const Text(
-        'Save',
+        'Guardar',
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
@@ -200,7 +200,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /// Builds the widget tree for this view
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
+      appBar: AppBar(title: const Text('Editar Perfil')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -209,20 +209,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _buildAvatar(),
             const SizedBox(height: 16),
             _buildTextField(
-              label: 'Name',
-              hint: 'Your name',
+              label: 'Nome',
+              hint: 'O seu nome público',
               controller: _nameController,
             ),
             const SizedBox(height: 16),
             _buildTextField(
               label: 'Username',
-              hint: 'Unique username',
+              hint: 'O seu username único',
               controller: _usernameController,
             ),
             const SizedBox(height: 16),
             _buildTextField(
               label: 'Bio',
-              hint: 'Write your bio',
+              hint: 'Escreva a sua biografia',
               controller: _bioController,
               maxLines: 4,
             ),

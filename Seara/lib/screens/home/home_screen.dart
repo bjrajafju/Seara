@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.lightbulb_outline_rounded),
-            label: 'Daily',
+            label: 'Diário',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_rounded),
