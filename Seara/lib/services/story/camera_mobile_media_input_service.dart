@@ -40,26 +40,10 @@ class CameraMobileMediaInputService implements MediaInputService {
     final controller = _camera.controller;
     if (controller == null || !controller.value.isInitialized) return null;
 
-    final camAspect = controller.value.aspectRatio;
     return CameraPreviewData(
-      aspectRatio: camAspect,
+      aspectRatio: controller.value.aspectRatio,
       builder: (ctx) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // BoxFit.cover behavior within the available 9:16 viewport
-            // provided by StoryViewport.
-            return ClipRect(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  height: constraints.maxWidth / camAspect,
-                  child: CameraPreview(controller),
-                ),
-              ),
-            );
-          },
-        );
+        return ClipRect(child: CameraPreview(controller));
       },
     );
   }
