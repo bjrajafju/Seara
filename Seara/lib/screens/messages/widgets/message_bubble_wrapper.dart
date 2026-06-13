@@ -621,6 +621,118 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
     overlay.insert(_ReactionOverlayManager._emojiPicker!);
   }
 
+  void _openMobileMessageActions() {
+    if (!mounted || widget.message.isSystemMessage) return;
+
+    final age = TimeService.now.difference(widget.message.createdAt);
+    final canModify = widget.isMe && age < const Duration(hours: 24);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      showDragHandle: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // REACTIONS ROW (igual ao desktop, mas simplificado)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Wrap(
+                  spacing: 10,
+                  children: [
+                    for (final r in widget.quickReactions)
+                      InkWell(
+                        onTap: () {
+                          widget.onReact(widget.message, r);
+                          Navigator.pop(ctx);
+                        },
+                        child: Text(r, style: const TextStyle(fontSize: 26)),
+                      ),
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openReactionBubble(); // reutiliza o teu picker
+                      },
+                      child: Icon(Icons.add_rounded),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Divider(height: 1),
+
+              // ACTIONS
+              ListTile(
+                leading: const Icon(Icons.reply),
+                title: const Text('Responder'),
+                onTap: () {
+                  widget.onReply(widget.message);
+                  Navigator.pop(ctx);
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: const Text('Copiar'),
+                onTap: () {
+                  widget.onCopy(widget.message);
+                  Navigator.pop(ctx);
+                },
+              ),
+
+              if (canModify)
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('Editar'),
+                  onTap: () {
+                    widget.onEdit(widget.message);
+                    Navigator.pop(ctx);
+                  },
+                ),
+
+              ListTile(
+                leading: const Icon(Icons.forward),
+                title: const Text('Reencaminhar'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await Future.delayed(const Duration(milliseconds: 300));
+                  if (mounted) {
+                    widget.onForward(widget.message);
+                  }
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.push_pin),
+                title: const Text('Fixar'),
+                onTap: () {
+                  widget.onPin(widget.message);
+                  Navigator.pop(ctx);
+                },
+              ),
+
+              if (canModify)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('Eliminar'),
+                  onTap: () {
+                    widget.onDelete(widget.message);
+                    Navigator.pop(ctx);
+                  },
+                ),
+
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   /// Releases controllers and subscriptions used by this widget
   void dispose() {
@@ -646,7 +758,9 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
         child: GestureDetector(
           onSecondaryTapDown: (details) =>
               _showContextMenu(details.globalPosition),
-          onLongPress: _shouldEnableHover ? null : _openReactionBubble,
+          onLongPress: _shouldEnableHover
+              ? null
+              : () => _openMobileMessageActions(),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
