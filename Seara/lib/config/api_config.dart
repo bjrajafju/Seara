@@ -24,15 +24,6 @@ class ApiConfig {
       return productionUrl;
     }
 
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        // Android emulator default (10.0.2.2 is the alias to host localhost)
-        return 'http://10.0.2.2:3000';
-
-      default:
-        // For other platforms, default to production to be safe.
-        // Use --dart-define=BASE_URL=http://localhost:3000 for local development.
-        return productionUrl;
-    }
+    return productionUrl;
   }
 }
