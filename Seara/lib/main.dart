@@ -46,6 +46,7 @@ void main(List<String> args) async {
     await _registerWindowsProtocol();
   }
 
+  print("PASSO 1");
   await Supabase.initialize(
     url: 'https://nzxmjazsegtsmsdqnisq.supabase.co',
     anonKey:
@@ -56,20 +57,29 @@ void main(List<String> args) async {
     ),
   );
 
+  print("PASSO 2");
   MediaKit.ensureInitialized();
+
+  print("PASSO 3");
   JustAudioMediaKit.ensureInitialized();
 
+  print("PASSO 4");
   await AudioPreferencesService.init();
 
+  print("PASSO 5");
   await TimeService.syncTime();
 
   if (kIsWeb) {
     FilePicker.platform = FilePicker.platform;
   }
 
+  print("PASSO 6");
   final themeProvider = ThemeProvider();
+
+  print("PASSO 7");
   await themeProvider.init();
 
+  print("PASSO 8");
   final authProvider = AuthProvider();
 
   // Inicializar o serviço de links centralizado
@@ -82,8 +92,11 @@ void main(List<String> args) async {
       await themeProvider.loadThemeForUser(null);
     }
   });
+
+  print("PASSO 9");
   await authProvider.checkSession();
 
+  print("PASSO 10");
   runApp(SearaApp(themeProvider: themeProvider, authProvider: authProvider));
 }
 
