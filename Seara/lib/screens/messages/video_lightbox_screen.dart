@@ -237,7 +237,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return Scaffold(
-      backgroundColor: cs.inverseSurface,
+      backgroundColor: Colors.black,
       body: KeyboardListener(
         focusNode: _focusNode,
         autofocus: true,
@@ -287,13 +287,9 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
             controller: _videoController,
             controls: NoVideoControls,
             fit: BoxFit.contain,
-            fill: Theme.of(context).colorScheme.inverseSurface,
           ),
         ),
-        if (!_initialized)
-          CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.onInverseSurface,
-          ),
+        if (!_initialized) CircularProgressIndicator(color: Colors.white),
       ],
     );
   }
@@ -312,13 +308,13 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: cs.scrim.withAlpha(140),
+                color: Colors.black.withOpacity(0.6),
               ),
               child: Icon(
                 _player.state.playing
                     ? Icons.pause_rounded
                     : Icons.play_arrow_rounded,
-                color: cs.onInverseSurface,
+                color: Colors.white,
                 size: 40,
               ),
             ),
@@ -337,7 +333,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [cs.inverseSurface.withAlpha(200), Colors.transparent],
+          colors: [Colors.black.withOpacity(0.85), Colors.transparent],
         ),
       ),
       child: SafeArea(
@@ -345,14 +341,14 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
         child: Row(
           children: [
             IconButton(
-              icon: Icon(Icons.close_rounded, color: cs.onInverseSurface),
+              icon: Icon(Icons.close_rounded, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
             Expanded(
               child: Text(
                 widget.fileName ?? 'Video',
                 style: theme.textTheme.titleSmall?.copyWith(
-                  color: cs.onInverseSurface,
+                  color: Colors.white,
                   fontWeight: FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -366,15 +362,12 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: cs.onInverseSurface,
+                        color: Colors.white,
                       ),
                     ),
                   )
                 : IconButton(
-                    icon: Icon(
-                      Icons.download_rounded,
-                      color: cs.onInverseSurface,
-                    ),
+                    icon: Icon(Icons.download_rounded, color: Colors.white),
                     tooltip: 'Download',
                     onPressed: _download,
                   ),
@@ -384,7 +377,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                 child: IconButton(
                   icon: Icon(
                     Icons.keyboard_rounded,
-                    color: cs.onInverseSurface.withAlpha(140),
+                    color: Colors.white,
                     size: 20,
                   ),
                   onPressed: null,
@@ -410,7 +403,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
         gradient: LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
-          colors: [cs.inverseSurface.withAlpha(200), Colors.transparent],
+          colors: [Colors.transparent, Colors.black.withOpacity(0.85)],
         ),
       ),
       child: SafeArea(
@@ -429,10 +422,10 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                   overlayShape: const RoundSliderOverlayShape(
                     overlayRadius: 14,
                   ),
-                  activeTrackColor: cs.primary,
-                  inactiveTrackColor: cs.onInverseSurface.withAlpha(70),
-                  thumbColor: cs.primary,
-                  overlayColor: cs.primary.withAlpha(60),
+                  inactiveTrackColor: Colors.white.withOpacity(0.2),
+                  activeTrackColor: Colors.white,
+                  thumbColor: Colors.white,
+                  overlayColor: Colors.white.withOpacity(0.15),
                 ),
                 child: Slider(
                   value: progress.toDouble(),
@@ -456,21 +449,21 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                     Text(
                       _fmt(position),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: cs.onInverseSurface,
+                        color: Colors.white,
                         fontSize: 12,
                       ),
                     ),
                     Text(
                       ' / ',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: cs.onInverseSurface.withAlpha(160),
+                        color: Colors.white.withAlpha(220),
                         fontSize: 12,
                       ),
                     ),
                     Text(
                       _fmt(duration),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: cs.onInverseSurface.withAlpha(160),
+                        color: Colors.white.withAlpha(220),
                         fontSize: 12,
                       ),
                     ),
@@ -483,7 +476,7 @@ class _VideoLightboxScreenState extends State<VideoLightboxScreen>
                         _isMuted
                             ? Icons.volume_off_rounded
                             : Icons.volume_up_rounded,
-                        color: cs.onInverseSurface,
+                        color: Colors.white,
                       ),
                       onPressed: _toggleMute,
                     ),
