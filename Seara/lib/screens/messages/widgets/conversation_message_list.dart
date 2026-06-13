@@ -15,6 +15,7 @@ import 'package:seara/services/link_preview_service.dart';
 import 'package:seara/utils/conversation_theme_helper.dart';
 import 'package:seara/utils/message_helpers.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:seara/utils/responsive_helper.dart';
 
 const int _kGroupingMinutes = 5;
 final RegExp _urlRegex = RegExp(r'(https?:\/\/[^\s]+)');
@@ -358,7 +359,7 @@ class ConversationMessageList extends StatelessWidget {
                         .setQuickReactionSlot(slotIndex: slot, emoji: emoji),
                     child: Container(
                       constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.33,
+                        maxWidth: ResponsiveHelper.messageMaxWidth(context),
                       ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -466,7 +467,7 @@ class ConversationMessageList extends StatelessWidget {
                 .setQuickReactionSlot(slotIndex: slot, emoji: emoji),
             child: Container(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.33,
+                maxWidth: ResponsiveHelper.messageMaxWidth(context),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -946,4 +947,3 @@ class ConversationMessageList extends StatelessWidget {
     );
   }
 }
-
