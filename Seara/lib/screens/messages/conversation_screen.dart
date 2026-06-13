@@ -4,9 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:seara/models/conversation_model.dart';
 import 'package:seara/models/message_model.dart';
@@ -357,11 +355,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
     Uint8List finalBytes = bytes;
 
-    if (!isVideo && !kIsWeb) {
-      final cropped = await _cropImageBytes(bytes, file.name);
-      if (cropped != null) finalBytes = cropped;
-    }
-
     if (!mounted) return;
 
     await _openPreviewAndSend(
@@ -372,31 +365,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
       mimeType: mimeType,
       type: type,
     );
-  }
-
-  /// Crop image bytes
-  Future<Uint8List?> _cropImageBytes(Uint8List bytes, String fileName) async {
-    try {
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/$fileName');
-      await tempFile.writeAsBytes(bytes);
-
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: tempFile.path,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: "Cortar imagem",
-            lockAspectRatio: false,
-          ),
-          IOSUiSettings(title: "Cortar imagem"),
-        ],
-      );
-
-      if (cropped == null) return null;
-      return await cropped.readAsBytes();
-    } catch (_) {
-      return null;
-    }
   }
 
   /// Picks audio file

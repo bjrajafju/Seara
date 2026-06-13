@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:just_audio/just_audio.dart';
@@ -79,16 +78,20 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   /// Prepare audio
   Future<void> _prepareAudio() async {
     try {
-      if (!kIsWeb && Platform.isWindows) {
+      if (!kIsWeb && (Platform.isWindows || Platform.isAndroid)) {
         final tempDir = await getTemporaryDirectory();
         final safeFileName = p.basename(widget.preview.fileName);
+
         final tempPath = p.join(
           tempDir.path,
           '${DateTime.now().millisecondsSinceEpoch}_$safeFileName',
         );
+
         final tempFile = File(tempPath);
         await tempFile.writeAsBytes(widget.preview.bytes, flush: true);
+
         _windowsTempAudioPath = tempPath;
+
         await _audio.prepareFromFile(kAttachmentPreviewMessageId, tempPath);
       } else {
         await _audio.prepareFromBytes(
@@ -97,8 +100,11 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
           mimeType: widget.preview.mimeType,
         );
       }
+
       if (mounted) setState(() => _audioPrepared = true);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[AttachmentPreview] prepareAudio error: $e');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Erro ao carregar audio para preview.")),
@@ -120,7 +126,9 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
       return;
     }
 
-    if (!kIsWeb && Platform.isWindows && _windowsTempAudioPath != null) {
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isAndroid) &&
+        _windowsTempAudioPath != null) {
       await _audio.prepareFromFile(
         kAttachmentPreviewMessageId,
         _windowsTempAudioPath!,
@@ -166,14 +174,6 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
           icon: Icon(Icons.close_rounded, color: cs.onInverseSurface),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          if (widget.preview.type == PreviewType.image && !kIsWeb)
-            IconButton(
-              icon: Icon(Icons.crop_rounded, color: cs.onInverseSurface),
-              tooltip: "Cortar imagem",
-              onPressed: _cropImage,
-            ),
-        ],
       ),
       body: Column(
         children: [
@@ -182,46 +182,6 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
         ],
       ),
     );
-  }
-
-  /// Crop image
-  Future<void> _cropImage() async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Crop nao disponivel no browser.")),
-      );
-      return;
-    }
-
-    try {
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File(
-        '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}_${widget.preview.fileName}',
-      );
-      await tempFile.writeAsBytes(widget.preview.bytes);
-
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: tempFile.path,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: "Cortar imagem",
-            lockAspectRatio: false,
-          ),
-          IOSUiSettings(title: "Cortar imagem"),
-        ],
-      );
-
-      if (cropped == null) return;
-
-      final croppedBytes = await cropped.readAsBytes();
-      if (mounted) setState(() => _croppedBytes = croppedBytes);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Erro ao cortar imagem.")));
-      }
-    }
   }
 
   /// Builds preview content
