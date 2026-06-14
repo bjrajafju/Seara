@@ -45,6 +45,7 @@ class _BaseMediaWidgetState extends State<BaseMediaWidget> {
 
     await ctrl.initialize();
     await ctrl.setLooping(true);
+    await ctrl.play();
 
     ctrl.addListener(() {
       if (!mounted) return;

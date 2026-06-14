@@ -113,9 +113,7 @@ class VideoExportService {
     }
 
     // Move to final destination (Downloads or Gallery)
-    final finalLocation = await saver.saveExportedVideo(outputPath);
-
-    return ExportSuccess(finalLocation);
+    return ExportSuccess(outputPath);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────

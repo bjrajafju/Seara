@@ -8,7 +8,6 @@ class CameraControllerService {
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
   int _currentCameraIndex = 0;
-
   CameraController? get controller => _controller;
 
   /// Returns true if the current camera is front-facing.
@@ -47,7 +46,6 @@ class CameraControllerService {
   // ---------------------------------------------------------------------------
   // Camera controls
   // ---------------------------------------------------------------------------
-
   Future<bool> switchCamera() async {
     if (_cameras.length < 2) return false;
     _currentCameraIndex = (_currentCameraIndex + 1) % _cameras.length;
@@ -73,7 +71,6 @@ class CameraControllerService {
   // ---------------------------------------------------------------------------
   // Capture — XFile-returning variants used by all three platform services
   // ---------------------------------------------------------------------------
-
   /// Captures a still image. Returns the [XFile] on success, null otherwise.
   Future<XFile?> takePictureXFile() async {
     final c = _controller;
@@ -90,8 +87,12 @@ class CameraControllerService {
   /// Starts video recording. Returns true if started successfully.
   Future<bool> startVideoRecording() async {
     final c = _controller;
-    if (c == null || !c.value.isInitialized || c.value.isRecordingVideo) {
-      return false;
+    if (c == null || !c.value.isInitialized) return false;
+    if (c.value.isRecordingVideo == true) {
+      // evitar deadlock state
+      try {
+        await c.stopVideoRecording();
+      } catch (_) {}
     }
     try {
       await c.startVideoRecording();

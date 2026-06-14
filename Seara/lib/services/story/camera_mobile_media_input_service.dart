@@ -81,9 +81,19 @@ class CameraMobileMediaInputService implements MediaInputService {
 
   @override
   Future<MediaAsset?> stopVideoRecording() async {
-    final xFile = await _camera.stopVideoRecordingXFile();
-    if (xFile == null) return null;
-    return FileMediaAsset(xFile.path, isMirrored: _camera.isFrontCamera);
+    try {
+      final xFile = await _camera.stopVideoRecordingXFile();
+
+      if (xFile == null) {
+        debugPrint('STOP VIDEO: null file returned');
+        return null;
+      }
+
+      return FileMediaAsset(xFile.path, isMirrored: _camera.isFrontCamera);
+    } catch (e) {
+      debugPrint('STOP VIDEO ERROR: $e');
+      return null;
+    }
   }
 
   @override

@@ -62,8 +62,14 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
   Future<void> _onPublish() async {
     if (_controller.isBusy) return;
-    if (widget.draft.media.isEmpty) return;
+    final hasValidMedia =
+        widget.draft.media.isNotEmpty &&
+        (widget.draft.media.first.isVideo || widget.draft.media.first.isImage);
 
+    if (!hasValidMedia) {
+      _showError('Media inválida ou corrompida.');
+      return;
+    }
     if (kIsWeb && widget.draft.type == StoryType.video) {
       _showError('Vídeos não são suportados na Web.');
       return;

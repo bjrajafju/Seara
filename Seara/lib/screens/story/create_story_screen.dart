@@ -132,8 +132,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         );
       } else {
         if (path == null) return;
+
         final mimeType = StoryMediaMapper.inferMimeType(path);
         final isVideo = mimeType.startsWith('video/');
+
         _navigateToEditor(
           StoryDraft(
             type: isVideo ? StoryType.video : StoryType.photo,
@@ -221,16 +223,30 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       return;
     }
     if (!_isRecording) return;
+
     setState(() => _isProcessing = true);
 
     _stopRecordingTimer();
+
     final duration = _recordingDuration;
 
-    // Safety check: Don't stop if it was just started (less than 500ms)
-    // to avoid race conditions with quick releases or system glitches.
-    if (_recordingStartTime != null &&
-        DateTime.now().difference(_recordingStartTime!).inMilliseconds < 500) {
+    final isTooFast =
+        _recordingStartTime != null &&
+        DateTime.now().difference(_recordingStartTime!).inMilliseconds < 500;
+
+    if (isTooFast) {
       _pendingStop = true;
+
+      setState(() {
+        _isProcessing = false;
+      });
+
+      // tenta novamente depois de um frame
+      Future.microtask(() async {
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (_isRecording) await _stopRecording();
+      });
+
       return;
     }
 

@@ -22,38 +22,64 @@ abstract final class StoryMediaMapper {
         durationSeconds: durationSeconds,
         isMirrored: isMirrored,
       ),
-      BytesMediaAsset(:final Uint8List bytes, :final mimeType, :final isMirrored) => StoryMedia(
-        filePath: '',
-        mimeType: mimeType,
-        bytes: bytes,
-        durationSeconds: durationSeconds,
-        isMirrored: isMirrored,
-      ),
-      StreamMediaAsset(:final url, :final mimeType, :final isMirrored) => StoryMedia(
-        filePath: url,
-        mimeType: mimeType,
-        durationSeconds: durationSeconds,
-        isMirrored: isMirrored,
-      ),
+      BytesMediaAsset(
+        :final Uint8List bytes,
+        :final mimeType,
+        :final isMirrored,
+      ) =>
+        StoryMedia(
+          filePath: '',
+          mimeType: mimeType,
+          bytes: bytes,
+          durationSeconds: durationSeconds,
+          isMirrored: isMirrored,
+        ),
+      StreamMediaAsset(:final url, :final mimeType, :final isMirrored) =>
+        StoryMedia(
+          filePath: url,
+          mimeType: mimeType,
+          durationSeconds: durationSeconds,
+          isMirrored: isMirrored,
+        ),
     };
   }
-
-  // ---------------------------------------------------------------------------
-  // MIME inference (previously in CreateStoryScreen)
-  // ---------------------------------------------------------------------------
 
   /// Infers a MIME type from a file extension or URL.
   ///
   /// Returns `'application/octet-stream'` for unrecognised extensions.
   static String inferMimeType(String path) {
     final lower = path.toLowerCase();
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    if (lower.endsWith('.mp4')) return 'video/mp4';
-    if (lower.endsWith('.mov')) return 'video/quicktime';
-    if (lower.endsWith('.webm')) return 'video/webm';
-    if (lower.endsWith('.avi')) return 'video/x-msvideo';
-    return 'application/octet-stream';
+
+    // strip query params / content URIs
+    final cleanPath = lower.split('?').first.split('#').first;
+
+    if (cleanPath.contains('video') && cleanPath.contains('mp4')) {
+      return 'video/mp4';
+    }
+
+    if (cleanPath.endsWith('.jpg') || cleanPath.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
+    if (cleanPath.endsWith('.png')) return 'image/png';
+    if (cleanPath.endsWith('.webp')) return 'image/webp';
+
+    if (cleanPath.endsWith('.mp4') ||
+        cleanPath.contains('mp4') ||
+        cleanPath.contains('video')) {
+      return 'video/mp4';
+    }
+
+    if (cleanPath.endsWith('.mov')) return 'video/quicktime';
+    if (cleanPath.endsWith('.webm')) return 'video/webm';
+    if (cleanPath.endsWith('.avi')) return 'video/x-msvideo';
+
+    // fallback inteligente (NÃO destruir vídeo)
+    if (cleanPath.contains('video') ||
+        cleanPath.contains('camera') ||
+        cleanPath.contains('cache')) {
+      return 'video/mp4';
+    }
+
+    return 'image/jpeg';
   }
 }
