@@ -48,6 +48,14 @@ class CameraControllerService {
   // ---------------------------------------------------------------------------
   Future<bool> switchCamera() async {
     if (_cameras.length < 2) return false;
+
+    final c = _controller;
+
+    if (c != null && c.value.isRecordingVideo) {
+      // bloqueia swap durante gravação
+      return false;
+    }
+
     _currentCameraIndex = (_currentCameraIndex + 1) % _cameras.length;
     return _initCamera(_cameras[_currentCameraIndex]);
   }
@@ -57,8 +65,10 @@ class CameraControllerService {
   Future<bool> toggleFlash() async {
     final c = _controller;
     if (c == null || !c.value.isInitialized) return false;
+    final isVideoMode = c.value.isRecordingVideo;
+
     final next = c.value.flashMode == FlashMode.off
-        ? FlashMode.always
+        ? (isVideoMode ? FlashMode.torch : FlashMode.always)
         : FlashMode.off;
     try {
       await c.setFlashMode(next);
@@ -88,13 +98,18 @@ class CameraControllerService {
   Future<bool> startVideoRecording() async {
     final c = _controller;
     if (c == null || !c.value.isInitialized) return false;
+
     if (c.value.isRecordingVideo == true) {
-      // evitar deadlock state
       try {
         await c.stopVideoRecording();
       } catch (_) {}
     }
+
     try {
+      if (c.value.flashMode != FlashMode.off) {
+        await c.setFlashMode(FlashMode.torch);
+      }
+
       await c.startVideoRecording();
       return true;
     } catch (_) {
@@ -105,12 +120,21 @@ class CameraControllerService {
   /// Stops video recording. Returns the [XFile] on success, null otherwise.
   Future<XFile?> stopVideoRecordingXFile() async {
     final c = _controller;
+
     if (c == null || !c.value.isInitialized || !c.value.isRecordingVideo) {
       return null;
     }
+
     try {
-      return await c.stopVideoRecording();
+      final file = await c.stopVideoRecording();
+
+      await c.setFlashMode(FlashMode.off).catchError((_) {});
+
+      return file;
     } catch (_) {
+      try {
+        await c.setFlashMode(FlashMode.off);
+      } catch (_) {}
       return null;
     }
   }

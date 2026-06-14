@@ -272,9 +272,17 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to record video')));
+        await _mediaService.dispose();
+        await _mediaService.initialize();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erro ao gravar vídeo. Reinicializando câmara.'),
+          ),
+        );
+        return;
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -288,6 +296,15 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
   Future<void> _switchCamera() async {
     final success = await _mediaService.switchCamera();
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Não é possível trocar de câmara durante gravação'),
+        ),
+      );
+    }
+
     if (success && mounted) setState(() {});
   }
 
