@@ -24,6 +24,8 @@ abstract class MediaInputService {
   /// Whether a live camera preview stream is available.
   bool get hasCameraPreview;
 
+  bool get isFrontCamera;
+
   /// Returns preview data for rendering, or null if not yet initialised.
   CameraPreviewData? getPreview(BuildContext context);
 
@@ -44,9 +46,13 @@ abstract class MediaInputService {
   /// Returns false on platforms / hardware where flash is unavailable.
   Future<bool> toggleFlash();
 
+  Future<bool> isFlashOn();
+
   /// Switches between available cameras (e.g. front ↔ back).
   /// Returns false if only one camera is present or switching failed.
   Future<bool> switchCamera();
+
+  Future<bool> hasTwoCameras();
 
   /// Releases all held resources.
   Future<void> dispose();

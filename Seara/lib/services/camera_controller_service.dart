@@ -37,6 +37,7 @@ class CameraControllerService {
     );
     try {
       await _controller!.initialize();
+      await _controller!.setFlashMode(FlashMode.off).catchError((_) {});
       return true;
     } catch (_) {
       return false;
@@ -58,6 +59,11 @@ class CameraControllerService {
 
     _currentCameraIndex = (_currentCameraIndex + 1) % _cameras.length;
     return _initCamera(_cameras[_currentCameraIndex]);
+  }
+
+  Future<bool> hasTwoCameras() async {
+    if (_cameras.length < 2) return false;
+    return true;
   }
 
   /// Toggles flash between always-on and off.
@@ -141,6 +147,10 @@ class CameraControllerService {
 
   /// Disposes the controller and releases hardware resources.
   Future<void> dispose() async {
+    try {
+      await _controller?.setFlashMode(FlashMode.off);
+    } catch (_) {}
+
     await _controller?.dispose();
     _controller = null;
   }

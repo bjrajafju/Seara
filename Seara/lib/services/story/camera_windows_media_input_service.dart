@@ -91,12 +91,25 @@ class CameraWindowsMediaInputService implements MediaInputService {
     return FileMediaAsset(xFile.path, isMirrored: _camera.isFrontCamera);
   }
 
-  /// Flash is not implemented in camera_windows — always returns false.
+  /// Flash is not implemented in camera_windows - always returns false.
   @override
   Future<bool> toggleFlash() async => false;
 
   @override
+  bool get isFrontCamera => _camera.isFrontCamera;
+
+  @override
+  Future<bool> isFlashOn() async {
+    final c = _camera.controller;
+    if (c == null || !c.value.isInitialized) return false;
+    return c.value.flashMode != FlashMode.off;
+  }
+
+  @override
   Future<bool> switchCamera() => _camera.switchCamera();
+
+  @override
+  Future<bool> hasTwoCameras() => _camera.hasTwoCameras();
 
   @override
   Future<void> dispose() => _camera.dispose();

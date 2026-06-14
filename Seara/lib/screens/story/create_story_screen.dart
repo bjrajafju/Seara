@@ -35,6 +35,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     super.initState();
     _mediaService = createMediaInputService();
     _initService();
+    _syncFlashState();
   }
 
   Future<void> _initService() async {
@@ -294,8 +295,32 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     if (mounted) setState(() => _isFlashOn = isOn);
   }
 
+  bool get _canShowFlash {
+    if (kIsWeb) return false;
+    if (!_mediaService.hasCameraPreview) return false;
+    return !_mediaService.isFrontCamera;
+  }
+
+  Future<void> _syncFlashState() async {
+    final isOn = await _mediaService.isFlashOn();
+    if (mounted) {
+      setState(() => _isFlashOn = isOn);
+    }
+  }
+
   Future<void> _switchCamera() async {
+    final hasTwoCameras = await _mediaService.hasTwoCameras();
     final success = await _mediaService.switchCamera();
+
+    if (!hasTwoCameras && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Não foi possível encontrar outra câmara neste dispositivo.',
+          ),
+        ),
+      );
+    }
 
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -498,7 +523,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           Row(
             children: [
               // Flash only makes sense on camera platforms.
-              if (_mediaService.hasCameraPreview)
+              if (_canShowFlash)
                 IconButton(
                   icon: Icon(
                     _isFlashOn ? Icons.flash_on : Icons.flash_off,

@@ -80,7 +80,16 @@ class CameraWebMediaInputService implements MediaInputService {
   Future<bool> toggleFlash() async => false;
 
   @override
+  bool get isFrontCamera => false;
+
+  @override
+  Future<bool> isFlashOn() async => false;
+
+  @override
   Future<bool> switchCamera() => _camera.switchCamera();
+
+  @override
+  Future<bool> hasTwoCameras() => _camera.hasTwoCameras();
 
   @override
   Future<void> dispose() => _camera.dispose();

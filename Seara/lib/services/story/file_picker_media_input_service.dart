@@ -102,7 +102,16 @@ class FilePickerMediaInputService implements MediaInputService {
   Future<bool> toggleFlash() async => false;
 
   @override
+  bool get isFrontCamera => false;
+
+  @override
+  Future<bool> isFlashOn() async => false;
+
+  @override
   Future<bool> switchCamera() async => false;
+
+  @override
+  Future<bool> hasTwoCameras() async => false;
 
   @override
   Future<void> dispose() async {
