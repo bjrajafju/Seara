@@ -54,6 +54,9 @@ class StoryEngineController extends ChangeNotifier {
   bool _isReady = false;
   bool get isReady => _isReady;
 
+  bool _mediaReady = false;
+  bool get mediaReady => _mediaReady;
+
   // ── Pause state ──────────────────────────────────────────────────────────
 
   bool _isPaused = false;
@@ -102,27 +105,44 @@ class StoryEngineController extends ChangeNotifier {
   Future<void> _activateStory(TickerProvider? vsync) async {
     if (_disposed) return;
 
-    if (_activeVideo != null) {
-      _activeVideo!.player.pause().catchError((_) {});
-    }
-
     final activationSerial = ++_activationSerial;
     final story = currentStory;
+
+    _mediaReady = false;
+
     feedController.markSeen(story.id);
+
+    final oldVideo = _activeVideo;
+    _activeVideo = null;
+
+    notifyListeners();
+
+    if (oldVideo != null) {
+      try {
+        await oldVideo.player.pause();
+      } catch (_) {}
+    }
 
     _activeVideo = null;
 
     if (story.isVideo) {
-      _activeVideo = _preloadService.getVideo(story.id);
-      notifyListeners();
-
       _activeVideo = await _preloadService.activateVideo(
         story,
         isMuted: _isMuted,
-        shouldPlay: !_isPaused,
+        shouldPlay: false, // importante: não deixar autoplay já
       );
+      notifyListeners();
 
       if (_disposed || activationSerial != _activationSerial) return;
+
+      try {
+        await _activeVideo!.player.seek(Duration.zero);
+        await Future.delayed(const Duration(milliseconds: 50));
+      } catch (_) {}
+
+      if (!_isPaused) {
+        _activeVideo!.player.play();
+      }
 
       final duration = await _resolveDuration(story);
       if (_disposed || activationSerial != _activationSerial) return;
@@ -130,20 +150,28 @@ class StoryEngineController extends ChangeNotifier {
       progressController.duration = Duration(
         milliseconds: (duration * 1000).toInt(),
       );
+
+      _mediaReady = false;
     } else {
       progressController.duration = Duration(
         milliseconds: (story.effectiveDuration * 1000).toInt(),
       );
+
+      _mediaReady = true;
     }
 
     progressController.reset();
-    if (!_isPaused) progressController.forward();
+
+    if (!story.isVideo && !_isPaused) {
+      progressController.forward();
+    }
 
     _preloadService.preloadAround(
       users: users,
       userIndex: _userIndex,
       storyIndex: _storyIndex,
     );
+
     notifyListeners();
   }
 
@@ -151,9 +179,25 @@ class StoryEngineController extends ChangeNotifier {
     if (_disposed || _isPaused || _activeVideo != video) return;
     await video.ensurePlayingAfterAttach();
     if (_disposed || _isPaused || _activeVideo != video) return;
-    if (!progressController.isAnimating) {
+    _mediaReady = true;
+
+    if (!progressController.isAnimating && !_isPaused) {
       progressController.forward();
     }
+
+    notifyListeners();
+  }
+
+  void onVideoFirstFrameReady() {
+    if (_disposed) return;
+
+    _mediaReady = true;
+
+    progressController
+      ..reset()
+      ..forward();
+
+    notifyListeners();
   }
 
   /// Waits up to 500ms for the player to report a real duration.
@@ -202,7 +246,7 @@ class StoryEngineController extends ChangeNotifier {
       _storyIndex = _findFirstUnseenIndex(currentUser);
       _activateStory(vsync);
     } else {
-      // Last story of last user — signal close.
+      // Last story of last user - signal close.
       _shouldClose = true;
       notifyListeners();
     }
@@ -253,7 +297,9 @@ class StoryEngineController extends ChangeNotifier {
   void resume() {
     if (!_isPaused) return;
     _isPaused = false;
-    progressController.forward();
+    if (_mediaReady) {
+      progressController.forward();
+    }
     _activeVideo?.player.play();
     notifyListeners();
   }

@@ -33,6 +33,7 @@ class StoryProgressBars extends StatelessWidget {
                   ? _SegmentState.active
                   : _SegmentState.future,
               progressAnimation: engine.progressController,
+              mediaReady: engine.mediaReady,
             ),
           ),
         );
@@ -46,8 +47,13 @@ enum _SegmentState { past, active, future }
 class _StorySegment extends StatelessWidget {
   final _SegmentState state;
   final AnimationController progressAnimation;
+  final bool mediaReady;
 
-  const _StorySegment({required this.state, required this.progressAnimation});
+  const _StorySegment({
+    required this.state,
+    required this.progressAnimation,
+    required this.mediaReady,
+  });
 
   @override
   Widget build(BuildContext context) {

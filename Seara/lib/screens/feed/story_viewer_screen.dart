@@ -20,7 +20,7 @@ import '../../widgets/story/story_viewport.dart';
 /// Architecture:
 /// - [StoryEngineController] is the single source of truth.
 /// - [PageView] is the owner of horizontal swipe between users.
-/// - [StoryGestureLayer] handles taps and long-press → signals engine.
+/// - [StoryGestureLayer] handles taps and long-press -> signals engine.
 /// - [StoryProgressBars], [StoryHeader], [StoryMediaView] read from engine.
 class StoryViewerScreen extends StatefulWidget {
   final List<StoryUser> users;

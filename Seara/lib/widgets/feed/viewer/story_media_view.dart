@@ -95,21 +95,51 @@ class _StoryVideoPlayerWidgetState extends State<StoryVideoPlayerWidget> {
   @override
   void initState() {
     super.initState();
+
     _firstFrameReady = widget.video.isFirstFrameReady;
-    widget.video.controller.waitUntilFirstFrameRendered.then((_) {
-      if (!mounted) return;
-      widget.video.markFirstFrameReady();
-      setState(() => _firstFrameReady = true);
+
+    final engine = context.read<StoryEngineController>();
+
+    widget.video.player.stream.completed.listen((completed) {
+      if (!mounted || !completed) return;
+      engine.next();
     });
 
-    if (kIsWeb) {
+    widget.video.player.stream.playing.listen((playing) {
+      if (!mounted) return;
+
+      final engine = context.read<StoryEngineController>();
+
+      if (playing && !engine.isPaused) {
+        if (!engine.progressController.isAnimating) {
+          engine.progressController.forward();
+        }
+      } else {
+        engine.progressController.stop();
+      }
+    });
+
+    if (_firstFrameReady && !engine.mediaReady) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context.read<StoryEngineController>().ensureActiveVideoPlayback(
-          widget.video,
-        );
+        if (mounted) {
+          engine.onVideoFirstFrameReady();
+        }
       });
     }
+
+    widget.video.controller.waitUntilFirstFrameRendered.then((_) {
+      if (!mounted) return;
+
+      widget.video.markFirstFrameReady();
+
+      final engine = context.read<StoryEngineController>();
+
+      if (!engine.mediaReady) {
+        engine.onVideoFirstFrameReady();
+      }
+
+      setState(() => _firstFrameReady = true);
+    });
   }
 
   @override
@@ -148,6 +178,16 @@ class _StoryVideoPlaceholder extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [Color(0xFF151515), Color(0xFF050505)],
+        ),
+      ),
+      child: const Center(
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: CircularProgressIndicator(
+            strokeWidth: 3,
+            color: Colors.white70,
+          ),
         ),
       ),
     );

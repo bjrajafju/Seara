@@ -129,7 +129,6 @@ class VideoExportService {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
     } catch (e) {
-      // ignore: avoid_print
       print('[VideoExportService] overlay capture failed: $e');
       return null;
     }

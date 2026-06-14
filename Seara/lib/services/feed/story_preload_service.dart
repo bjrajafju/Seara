@@ -22,9 +22,7 @@ class StoryPreloadService {
 
   static final StoryPreloadService instance = StoryPreloadService._();
 
-  static const int _maxCachedVideos = 4;
-  static const Duration _warmUpDelay = Duration(milliseconds: 100);
-  static const Duration _firstFrameTimeout = Duration(milliseconds: 450);
+  static const int _maxCachedVideos = 1;
 
   final LinkedHashMap<String, StoryPreloadedVideo> _videos =
       LinkedHashMap<String, StoryPreloadedVideo>();
@@ -46,6 +44,10 @@ class StoryPreloadService {
 
     await video.warmUp();
     if (video.isDisposed) return null;
+    await video.player.setPlaylistMode(PlaylistMode.none);
+
+    await video.player.setVideoTrack(VideoTrack.auto());
+    await video.player.setAudioTrack(AudioTrack.auto());
 
     await video.player.setVolume(isMuted ? 0 : 100);
     await video.restartPlayback(shouldPlay: shouldPlay);
@@ -212,35 +214,17 @@ class StoryPreloadedVideo {
       await player.setPlaylistMode(PlaylistMode.none);
       await player.setVolume(0);
       await player.open(Media(story.mediaUrl), play: false);
-      if (_isDisposed) return;
 
-      await player.play();
-      await Future.any<void>([
-        controller.waitUntilFirstFrameRendered.then(
-          (_) => _markFirstFrameReady(),
-        ),
-        Future<void>.delayed(StoryPreloadService._warmUpDelay),
-      ]);
-      if (_isDisposed) return;
-
-      await player.pause();
       await controller.waitUntilFirstFrameRendered
-          .timeout(StoryPreloadService._firstFrameTimeout)
+          .timeout(const Duration(seconds: 2))
           .then((_) => _markFirstFrameReady())
-          .catchError((Object error) {
-            debugPrint(
-              'StoryPreloadService: first frame timeout for ${story.id}',
-            );
-          });
+          .catchError((_) {});
+
       _hasWarmed = true;
     } catch (error, stackTrace) {
-      debugPrint('StoryPreloadService: warm-up failed for ${story.id}: $error');
+      debugPrint('Warm-up failed: $error');
       debugPrintStack(stackTrace: stackTrace);
       dispose();
-    } finally {
-      if (!_hasWarmed) {
-        _warmUpFuture = null;
-      }
     }
   }
 
@@ -295,10 +279,24 @@ class StoryPreloadedVideo {
     _firstFrameCompleter?.complete();
   }
 
+  Future<void> _safeDispose() async {
+    try {
+      await player.pause();
+    } catch (_) {}
+
+    await Future.delayed(const Duration(milliseconds: 250));
+
+    try {
+      await player.dispose();
+    } catch (e) {
+      debugPrint('StoryPreloadedVideo dispose ignored: $e');
+    }
+  }
+
   void dispose() {
     if (_isDisposed) return;
     _isDisposed = true;
-    player.dispose();
+    unawaited(_safeDispose());
     if (_firstFrameCompleter != null && !_firstFrameCompleter!.isCompleted) {
       _firstFrameCompleter!.complete();
     }
