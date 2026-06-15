@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 enum UpdateStatus { upToDate, optionalUpdate, forcedUpdate }
 
@@ -52,7 +54,7 @@ class AutoUpdateService {
 
     try {
       final response = await http
-          .get(Uri.parse("$baseUrl/version"))
+          .get(Uri.parse("$baseUrl/version?platform=${platform}"))
           .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -103,12 +105,18 @@ class AutoUpdateService {
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
 
-        // Executar o instalador em modo silencioso
-        await Process.start(filePath, [
-          "/VERYSILENT",
-          "/NORESTART",
-          "/CLOSEAPPLICATIONS",
-        ], mode: ProcessStartMode.detached);
+        if (Platform.isAndroid) {
+          await Process.run("sh", [
+            "-c",
+            "am start -a android.intent.action.VIEW -d file://$filePath -t application/vnd.android.package-archive",
+          ]);
+        } else {
+          await Process.start(filePath, [
+            "/VERYSILENT",
+            "/NORESTART",
+            "/CLOSEAPPLICATIONS",
+          ], mode: ProcessStartMode.detached);
+        }
 
         // Fechar a aplicação imediatamente
         exit(0);
@@ -116,5 +124,12 @@ class AutoUpdateService {
     } catch (e) {
       stderr.writeln("Erro ao descarregar ou instalar: $e");
     }
+  }
+
+  static String get platform {
+    if (kIsWeb) return "web";
+    if (defaultTargetPlatform == TargetPlatform.android) return "android";
+    if (defaultTargetPlatform == TargetPlatform.windows) return "windows";
+    return "windows";
   }
 }
