@@ -1,55 +1,67 @@
 @echo off
 setlocal
+
 echo ==========================
-echo SEARA ANDROID BUILD START
+echo SEARA ANDROID RELEASE BUILD
 echo ==========================
+
 set ROOT=C:\Users\Asus\Documents\GitHub\Seara
 set PROJECT_DIR=%ROOT%\Seara
+set VERSION=1.3.0
+
 echo PROJECT DIR:
 echo %PROJECT_DIR%
-echo ==========================
-echo START BUILD
-echo ==========================
+
 pushd "%PROJECT_DIR%"
-echo NOW IN:
-cd
-echo CLEAN CACHE (SAFE)
+
+echo ==========================
+echo CLEAN + GET DEPENDENCIES
+echo ==========================
+
 call flutter clean
-echo GET DEPENDENCIES
 call flutter pub get
-echo BUILDING APK...
+
+echo ==========================
+echo BUILD APK
+echo ==========================
+
 call flutter build apk --release
-echo ERRORLEVEL AFTER BUILD = %errorlevel%
+
 if %errorlevel% neq 0 (
   echo BUILD FAILED
   popd
   pause
   exit /b
 )
-echo ==========================
-echo COPY APK
-echo ==========================
-set APK_SOURCE=%PROJECT_DIR%\build\app\outputs\flutter-apk\app-release.apk
-set APK_DEST=%ROOT%\backend\installers\android\Seara.apk
-echo SOURCE:
-echo %APK_SOURCE%
-echo DEST:
-echo %APK_DEST%
-if not exist "%APK_SOURCE%" (
+
+set APK_PATH=%PROJECT_DIR%\build\app\outputs\flutter-apk\app-release.apk
+
+if not exist "%APK_PATH%" (
   echo ERROR: APK NOT FOUND
   popd
   pause
   exit /b
 )
-copy /Y "%APK_SOURCE%" "%APK_DEST%"
+
+echo ==========================
+echo CREATING GITHUB RELEASE
+echo ==========================
+
+gh release create %VERSION% "%APK_PATH%" ^
+--title "Seara %VERSION%" ^
+--notes "Android release %VERSION%"
+
 if %errorlevel% neq 0 (
-  echo ERROR: COPY FAILED
+  echo RELEASE FAILED
   popd
   pause
   exit /b
 )
+
 popd
+
 echo ==========================
 echo DONE
 echo ==========================
+
 pause
