@@ -47,6 +47,11 @@ void main(List<String> args) async {
   }
 
   print("PASSO 1");
+
+  await Future.delayed(const Duration(seconds: 3));
+
+  print("PASSO 2.5");
+
   await Supabase.initialize(
     url: 'https://nzxmjazsegtsmsdqnisq.supabase.co',
     anonKey:
