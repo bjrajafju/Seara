@@ -98,19 +98,38 @@ class AutoUpdateService {
 
   static Future<void> downloadAndInstall(String url) async {
     try {
+      print("DOWNLOAD START: $url");
+
       final response = await http.get(Uri.parse(url));
+
+      print("DOWNLOAD FINISHED");
+      print("STATUS CODE: ${response.statusCode}");
+      print("BYTES: ${response.bodyBytes.length}");
+
       if (response.statusCode == 200) {
         final tempDir = await getTemporaryDirectory();
+
+        print("TEMP DIR: ${tempDir.path}");
+
         final fileName = Platform.isAndroid ? "Seara.apk" : "SearaSetup.exe";
         final filePath = p.join(tempDir.path, fileName);
+
+        print("WRITING FILE: $filePath");
+
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
 
+        print("FILE WRITTEN");
+
         if (Platform.isAndroid) {
+          print("STARTING APK INSTALL...");
+
           await Process.run("sh", [
             "-c",
             "am start -a android.intent.action.VIEW -d file://$filePath -t application/vnd.android.package-archive",
           ]);
+
+          print("INSTALL COMMAND SENT");
         } else {
           await Process.start(filePath, [
             "/VERYSILENT",
@@ -124,6 +143,7 @@ class AutoUpdateService {
       }
     } catch (e) {
       stderr.writeln("Erro ao descarregar ou instalar: $e");
+      print("DOWNLOAD ERROR: $e");
     }
   }
 
