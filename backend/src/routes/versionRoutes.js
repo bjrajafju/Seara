@@ -7,14 +7,14 @@ router.get("/", (req, res) => {
 
     if (platform === "android") {
         return res.json({
-            latestVersion: "1.3.0",
+            latestVersion: "1.3.2",
             minVersion: "1.0.0",
-            url: "https://github.com/bjrajafju/Seara/releases/download/1.3.0/Seara.apk",
+            url: "https://github.com/bjrajafju/Seara/releases/download/1.3.2/Seara.apk",
         });
     }
 
     return res.json({
-        latestVersion: "1.3.0",
+        latestVersion: "1.3.2",
         minVersion: "1.0.0",
         url: "https://seara.onrender.com/download/SearaSetup.exe",
     });

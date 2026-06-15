@@ -123,9 +123,10 @@ class _SearaAppState extends State<SearaApp> {
   }
 
   Future<void> _checkUpdate() async {
-    if (!kIsWeb && Platform.isWindows) {
+    if (!kIsWeb && (Platform.isWindows || Platform.isAndroid)) {
       final result = await AutoUpdateService.checkUpdate();
       print("UPDATE RESULT: ${result['status']}");
+
       if (mounted) {
         setState(() {
           _updateStatus = result['status'] as UpdateStatus;

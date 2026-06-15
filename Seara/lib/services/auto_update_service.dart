@@ -21,7 +21,7 @@ class UpdateInfo {
 }
 
 class AutoUpdateService {
-  static const String currentVersion = "1.3.0";
+  static const String currentVersion = "1.3.2";
   // Em produção, isto deve vir de um ficheiro de config ou env
   static const String baseUrl = "https://seara.onrender.com";
 
@@ -101,7 +101,8 @@ class AutoUpdateService {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final tempDir = await getTemporaryDirectory();
-        final filePath = p.join(tempDir.path, "SearaSetup.exe");
+        final fileName = Platform.isAndroid ? "Seara.apk" : "SearaSetup.exe";
+        final filePath = p.join(tempDir.path, fileName);
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
 
