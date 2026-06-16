@@ -44,10 +44,25 @@ if not exist "%APK_PATH%" (
 )
 
 echo ==========================
+echo PREPARING APK NAME
+echo ==========================
+
+set FINAL_APK=%PROJECT_DIR%\build\app\outputs\flutter-apk\Seara.apk
+
+copy /Y "%APK_PATH%" "%FINAL_APK%"
+
+if not exist "%FINAL_APK%" (
+  echo ERROR: RENAMED APK NOT FOUND
+  popd
+  pause
+  exit /b
+)
+
+echo ==========================
 echo CREATING GITHUB RELEASE
 echo ==========================
 
-gh release create %VERSION% "%APK_PATH%#Seara.apk" ^
+gh release create %VERSION% "%FINAL_APK%" ^
 --title "Seara %VERSION%" ^
 --notes "Android release %VERSION%"
 
