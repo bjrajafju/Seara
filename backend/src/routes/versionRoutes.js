@@ -2,7 +2,7 @@ import express from "express";
 
 const router = express.Router();
 
-const LATEST_VERSION = "1.3.7";
+const LATEST_VERSION = "1.3.8";
 const MIN_VERSION = "1.0.0";
 const ANDROID_FILE = "Seara.apk";
 const ANDROID_URL = `https://github.com/bjrajafju/Seara/releases/download/${LATEST_VERSION}/${ANDROID_FILE}`;

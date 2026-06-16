@@ -66,6 +66,7 @@ dependencies:
     gal: ^2.3.2
     uuid: ^4.4.0
     visibility_detector: ^0.4.0
+    open_filex: ^4.7.0
 
     # FFmpeg: video compositing for Phase 4 export.
     # Supports Android, iOS, macOS. Windows uses the bundled ffmpeg.exe asset.

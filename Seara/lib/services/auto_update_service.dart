@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:open_filex/open_filex.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
@@ -21,7 +22,7 @@ class UpdateInfo {
 }
 
 class AutoUpdateService {
-  static const String currentVersion = "1.3.7";
+  static const String currentVersion = "1.3.8";
   // Em produção, isto deve vir de um ficheiro de config ou env
   static const String baseUrl = "https://seara.onrender.com";
 
@@ -124,16 +125,13 @@ class AutoUpdateService {
         if (Platform.isAndroid) {
           print("STARTING APK INSTALL...");
 
-          final result = await Process.run("sh", [
-            "-c",
-            "am start -a android.intent.action.VIEW -d file://$filePath -t application/vnd.android.package-archive",
-          ]);
+          final result = await OpenFilex.open(filePath);
 
-          print("EXIT CODE: ${result.exitCode}");
-          print("STDOUT: ${result.stdout}");
-          print("STDERR: ${result.stderr}");
+          print("OPEN RESULT: ${result.type}");
+          print("MESSAGE: ${result.message}");
 
-          print("INSTALL COMMAND SENT");
+          // NÃO uses exit imediato
+          await Future.delayed(const Duration(seconds: 3));
         } else {
           await Process.start(filePath, [
             "/VERYSILENT",
@@ -141,9 +139,6 @@ class AutoUpdateService {
             "/CLOSEAPPLICATIONS",
           ], mode: ProcessStartMode.detached);
         }
-
-        // Fechar a aplicação imediatamente
-        exit(0);
       }
     } catch (e) {
       stderr.writeln("Erro ao descarregar ou instalar: $e");
