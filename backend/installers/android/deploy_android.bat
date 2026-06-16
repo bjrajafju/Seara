@@ -47,7 +47,7 @@ echo ==========================
 echo CREATING GITHUB RELEASE
 echo ==========================
 
-gh release create %VERSION% "%APK_PATH%" ^
+gh release create %VERSION% "%APK_PATH%#Seara.apk" ^
 --title "Seara %VERSION%" ^
 --notes "Android release %VERSION%"
 
