@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:open_filex/open_filex.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
@@ -99,11 +100,16 @@ class AutoUpdateService {
 
   static Future<void> downloadAndInstall(String url) async {
     try {
+      final stopwatch = Stopwatch()..start();
+
       print("DOWNLOAD START: $url");
 
       final response = await http.get(Uri.parse(url));
 
+      stopwatch.stop();
+
       print("DOWNLOAD FINISHED");
+      print("DOWNLOAD TIME: ${stopwatch.elapsed.inSeconds}s");
       print("STATUS CODE: ${response.statusCode}");
       print("BYTES: ${response.bodyBytes.length}");
 
@@ -125,12 +131,8 @@ class AutoUpdateService {
         if (Platform.isAndroid) {
           print("STARTING APK INSTALL...");
 
-          final result = await OpenFilex.open(filePath);
+          await installApk(filePath);
 
-          print("OPEN RESULT: ${result.type}");
-          print("MESSAGE: ${result.message}");
-
-          // NÃO uses exit imediato
           await Future.delayed(const Duration(seconds: 3));
         } else {
           await Process.start(filePath, [
@@ -144,6 +146,35 @@ class AutoUpdateService {
       stderr.writeln("Erro ao descarregar ou instalar: $e");
       print("DOWNLOAD ERROR: $e");
     }
+  }
+
+  static Future<void> installApk(String path) async {
+    if (!Platform.isAndroid) return;
+
+    print("INSTALL APK START");
+    print("APK PATH: $path");
+
+    final status = await Permission.requestInstallPackages.status;
+    print("CURRENT PERMISSION STATUS: $status");
+
+    if (!status.isGranted) {
+      print("REQUESTING PERMISSION...");
+
+      final result = await Permission.requestInstallPackages.request();
+      print("PERMISSION RESULT: $result");
+
+      if (!result.isGranted) {
+        print("PERMISSION DENIED -> OPEN SETTINGS");
+        await openAppSettings();
+        return;
+      }
+    }
+
+    print("OPENING APK INSTALLER...");
+    final result = await OpenFilex.open(path);
+
+    print("INSTALL RESULT TYPE: ${result.type}");
+    print("INSTALL RESULT MESSAGE: ${result.message}");
   }
 
   static String get platform {
