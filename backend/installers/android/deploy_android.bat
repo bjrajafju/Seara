@@ -7,7 +7,7 @@ echo ==========================
 
 set ROOT=C:\Users\Asus\Documents\GitHub\Seara
 set PROJECT_DIR=%ROOT%\Seara
-set VERSION=1.3.5
+set VERSION=1.3.6
 
 echo PROJECT DIR:
 echo %PROJECT_DIR%
@@ -51,6 +51,13 @@ set FINAL_APK=%PROJECT_DIR%\build\app\outputs\flutter-apk\Seara.apk
 
 copy /Y "%APK_PATH%" "%FINAL_APK%"
 
+if %errorlevel% neq 0 (
+  echo ERROR: APK COPY FAILED
+  popd
+  pause
+  exit /b
+)
+
 if not exist "%FINAL_APK%" (
   echo ERROR: RENAMED APK NOT FOUND
   popd
@@ -62,7 +69,7 @@ echo ==========================
 echo CREATING GITHUB RELEASE
 echo ==========================
 
-gh release create %VERSION% "%FINAL_APK%" ^
+gh release create "%VERSION%" "%FINAL_APK%" ^
 --title "Seara %VERSION%" ^
 --notes "Android release %VERSION%"
 
