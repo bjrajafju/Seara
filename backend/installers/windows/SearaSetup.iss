@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "Seara"
-#define MyAppVersion "1.3.8"
+#define MyAppVersion "1.3.9"
 #define MyAppPublisher "Seara"
 #define MyAppExeName "seara.exe"
 
