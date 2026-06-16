@@ -21,7 +21,7 @@ class UpdateInfo {
 }
 
 class AutoUpdateService {
-  static const String currentVersion = "1.3.6";
+  static const String currentVersion = "1.3.7";
   // Em produção, isto deve vir de um ficheiro de config ou env
   static const String baseUrl = "https://seara.onrender.com";
 
@@ -124,10 +124,14 @@ class AutoUpdateService {
         if (Platform.isAndroid) {
           print("STARTING APK INSTALL...");
 
-          await Process.run("sh", [
+          final result = await Process.run("sh", [
             "-c",
             "am start -a android.intent.action.VIEW -d file://$filePath -t application/vnd.android.package-archive",
           ]);
+
+          print("EXIT CODE: ${result.exitCode}");
+          print("STDOUT: ${result.stdout}");
+          print("STDERR: ${result.stderr}");
 
           print("INSTALL COMMAND SENT");
         } else {
