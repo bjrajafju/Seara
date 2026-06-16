@@ -5,6 +5,7 @@ const router = express.Router();
 const LATEST_VERSION = "1.3.5";
 const MIN_VERSION = "1.0.0";
 const ANDROID_FILE = "Seara.apk";
+const ANDROID_URL = `https://github.com/bjrajafju/Seara/releases/download/${LATEST_VERSION}/${ANDROID_FILE}`;
 
 router.get("/", (req, res) => {
     const platform = req.query.platform || "windows";
@@ -13,7 +14,7 @@ router.get("/", (req, res) => {
         return res.json({
             latestVersion: LATEST_VERSION,
             minVersion: MIN_VERSION,
-            url: `https://github.com/bjrajafju/Seara/releases/download/${LATEST_VERSION}/${ANDROID_FILE}`,
+            url: ANDROID_URL,
         });
     }
 
