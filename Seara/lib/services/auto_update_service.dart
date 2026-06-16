@@ -21,7 +21,7 @@ class UpdateInfo {
 }
 
 class AutoUpdateService {
-  static const String currentVersion = "1.3.3";
+  static const String currentVersion = "1.3.5";
   // Em produção, isto deve vir de um ficheiro de config ou env
   static const String baseUrl = "https://seara.onrender.com";
 
