@@ -13,7 +13,7 @@ router.get("/", (req, res) => {
         return res.json({
             latestVersion: LATEST_VERSION,
             minVersion: MIN_VERSION,
-            url: "https://github.com/bjrajafju/Seara/releases/download/${LATEST_VERSION}/${ANDROID_FILE}",
+            url: `https://github.com/bjrajafju/Seara/releases/download/${LATEST_VERSION}/${ANDROID_FILE}`,
         });
     }
 
