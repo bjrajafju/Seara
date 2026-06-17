@@ -93,7 +93,7 @@ class StoryBubble extends StatelessWidget {
   Widget _buildLabel(ThemeData theme) {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final displayName = user.userId == currentUserId
-        ? 'O teu momento'
+        ? 'Momentos'
         : user.username;
 
     return SizedBox(
