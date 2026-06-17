@@ -48,7 +48,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to initialize camera or permission denied.'),
+            content: Text('Falha ao inicializar a câmara ou permissão recusada.'),
           ),
         );
       }
@@ -175,7 +175,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to capture photo')),
+          const SnackBar(content: Text('Falha ao capturar foto.')),
         );
       }
     } finally {
