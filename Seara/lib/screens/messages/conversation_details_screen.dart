@@ -151,7 +151,7 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao fixar/desfixar conversa.')),
+        const SnackBar(content: Text('Erro ao afixar/desafixar conversa.')),
       );
     }
   }
@@ -415,8 +415,8 @@ class _ConversationDetailsScreenState extends State<ConversationDetailsScreen>
             ? Icons.push_pin_rounded
             : Icons.push_pin_outlined,
         title: _details?.isPinned == true
-            ? 'Desfixar conversa'
-            : 'Fixar conversa',
+            ? 'Desafixar conversa'
+            : 'Afixar conversa',
         onTap: () => _togglePin(),
         trailing: Switch(
           value: _details?.isPinned ?? false,

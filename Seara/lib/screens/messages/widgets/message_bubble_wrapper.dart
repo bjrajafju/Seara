@@ -296,7 +296,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
         PopupMenuItem<String>(
           value: 'pin',
           onTap: () => widget.onPin(widget.message),
-          child: const Text('Fixar'),
+          child: const Text('Afixar'),
         ),
         PopupMenuItem<String>(
           value: 'forward',
@@ -708,7 +708,7 @@ class _MessageBubbleWrapperState extends State<MessageBubbleWrapper> {
 
               ListTile(
                 leading: const Icon(Icons.push_pin),
-                title: const Text('Fixar'),
+                title: const Text('Afixar'),
                 onTap: () {
                   widget.onPin(widget.message);
                   Navigator.pop(ctx);

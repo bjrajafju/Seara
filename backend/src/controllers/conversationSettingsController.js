@@ -735,7 +735,7 @@ export const togglePin = async (req, res) => {
         res.json({ success: true, is_pinned: newState });
     } catch (err) {
         console.error("togglePin:", err);
-        res.status(500).json({ error: "Erro ao fixar/desfixar conversa." });
+        res.status(500).json({ error: "Erro ao afixar/desafixar conversa." });
     }
 };
 

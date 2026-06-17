@@ -197,7 +197,7 @@ class ConversationSettingsService {
       final data = jsonDecode(response.body);
       return data['is_pinned'] as bool;
     } else {
-      throw Exception("Erro ao fixar/desfixar conversa.");
+      throw Exception("Erro ao afixar/desafixar conversa.");
     }
   }
 
