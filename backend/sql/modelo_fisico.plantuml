@@ -1,0 +1,164 @@
+@startuml modelo_fisico
+
+hide methods
+skinparam classAttributeIconSize 0
+
+entity "Utilizadores" as Users {
+    * id : BIGINT <<PK>>
+    --
+    auth_id : UUID <<UK>>
+}
+
+entity "Conversas" as Conversations {
+    * id : BIGINT <<PK>>
+}
+
+entity "Participantes_Conversa" as ConversationUser {
+    * id : BIGINT <<PK>>
+    --
+    conversation_id : BIGINT <<FK>>
+    user_id : BIGINT <<FK>>
+}
+
+entity "Configuracoes_Conversa" as ConversationSettings {
+    * id : INT <<PK>>
+    --
+    conversation_id : BIGINT <<FK>>
+}
+
+entity "Mensagens" as Messages {
+    * id : BIGINT <<PK>>
+    --
+    conversation_id : BIGINT <<FK>>
+    user_id : BIGINT <<FK>>
+    reply_to_message_id : BIGINT <<FK>>
+}
+
+entity "Reacoes_Mensagem" as MessageReactions {
+    * id : BIGINT <<PK>>
+    --
+    message_id : BIGINT <<FK>>
+    user_id : BIGINT <<FK>>
+}
+
+entity "Mensagens_Afixadas" as PinnedMessages {
+    * id : BIGINT <<PK>>
+    --
+    conversation_id : BIGINT <<FK>>
+    message_id : BIGINT <<FK>>
+    pinned_by : BIGINT <<FK>>
+}
+
+entity "Seguidores" as Followers {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT <<FK>>
+    follower_id : BIGINT <<FK>>
+}
+
+entity "Publicacoes" as Posts {
+    * id : UUID <<PK>>
+    --
+    user_id : UUID <<FK → users.auth_id>>
+}
+
+entity "Comentarios_Publicacao" as PostComments {
+    * id : BIGINT <<PK>>
+    --
+    post_id : UUID <<FK>>
+    user_id : UUID <<FK → users.auth_id>>
+}
+
+entity "Gostos_Publicacao" as PostLikes {
+    * id : BIGINT <<PK>>
+    --
+    post_id : UUID <<FK>>
+    user_id : UUID <<FK → users.auth_id>>
+}
+
+entity "Stories" as Stories {
+    * id : UUID <<PK>>
+    --
+    user_id : UUID <<FK → users.auth_id>>
+}
+
+entity "Visualizacoes_Story" as StoryViews {
+    * id : UUID <<PK>>
+    --
+    story_id : UUID <<FK>>
+    viewer_id : UUID <<FK → users.auth_id>>
+}
+
+entity "Perguntas_Diarias" as DailyQuestions {
+    * id : UUID <<PK>>
+}
+
+entity "Respostas_Diarias" as UserDailyAnswers {
+    * user_id : UUID <<PK,FK>>
+    * question_id : UUID <<PK,FK>>
+}
+
+'=========================
+' RELAÇÕES
+'=========================
+
+Users ||--o{
+    ConversationUser
+    Conversations ||--o{
+        ConversationUser
+
+        Conversations ||--|| ConversationSettings
+
+        Conversations ||--o{
+            Messages
+            Users ||--o{
+                Messages
+
+                Messages
+            }
+            o--|| Messages : responde_a
+
+            Messages ||--o{
+                MessageReactions
+                Users ||--o{
+                    MessageReactions
+
+                    Messages ||--o{
+                        PinnedMessages
+                        Conversations ||--o{
+                            PinnedMessages
+                            Users ||--o{
+                                PinnedMessages
+
+                                Users ||--o{
+                                    Followers : seguido
+                                    Users ||--o{
+                                        Followers : seguidor
+
+                                        Users ||--o{
+                                            Posts
+
+                                            Posts ||--o{
+                                                PostComments
+                                                Users ||--o{
+                                                    PostComments
+
+                                                    Posts ||--o{
+                                                        PostLikes
+                                                        Users ||--o{
+                                                            PostLikes
+
+                                                            Users ||--o{
+                                                                Stories
+
+                                                                Stories ||--o{
+                                                                    StoryViews
+                                                                    Users ||--o{
+                                                                        StoryViews
+
+                                                                        DailyQuestions ||--o{
+                                                                            UserDailyAnswers
+                                                                            Users ||--o{
+                                                                                UserDailyAnswers
+
+                                                                                @enduml

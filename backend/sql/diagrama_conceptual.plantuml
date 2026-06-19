@@ -1,0 +1,55 @@
+@startuml diagrama_conceptual
+
+hide methods
+hide fields
+skinparam classAttributeIconSize 0
+
+class Utilizador
+class Conversa
+class Mensagem
+class Publicacao
+class Comentario
+class Story
+class PerguntaDiaria
+
+' =====================
+' Mensagens
+' =====================
+
+Utilizador "0..*" -- "0..*" Conversa : participa
+
+Conversa "1" -- "0..*" Mensagem : contém
+
+Utilizador "1" -- "0..*" Mensagem : envia
+
+Mensagem "0..1" --> "0..*" Mensagem : responde a
+
+Mensagem ..> Utilizador : reação
+
+Mensagem ..> Utilizador : afixada por
+
+' =====================
+' Rede social
+' =====================
+
+Utilizador "0..*" -- "0..*" Utilizador : segue
+
+Utilizador "1" -- "0..*" Publicacao : cria
+
+Publicacao "1" -- "0..*" Comentario : tem
+
+Utilizador "1" -- "0..*" Comentario : escreve
+
+Publicacao ..> Utilizador : gosto
+
+Utilizador "1" -- "0..*" Story : publica
+
+Story ..> Utilizador : visualizada por
+
+' =====================
+' Pergunta diária
+' =====================
+
+Utilizador "0..*" -- "0..*" PerguntaDiaria : responde
+
+@enduml
