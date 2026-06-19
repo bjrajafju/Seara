@@ -1,276 +1,392 @@
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
+SET
+  NAMES utf8mb4;
 
-CREATE TABLE public.cache (
-  key text NOT NULL,
-  value text NOT NULL,
-  expiration integer NOT NULL,
-  CONSTRAINT cache_pkey PRIMARY KEY (key)
-);
-CREATE TABLE public.cache_locks (
-  key text NOT NULL,
-  owner text NOT NULL,
-  expiration integer NOT NULL,
-  CONSTRAINT cache_locks_pkey PRIMARY KEY (key)
-);
-CREATE TABLE public.conversations (
-  id bigint NOT NULL DEFAULT nextval('conversations_id_seq'::regclass),
-  name text,
-  is_group boolean NOT NULL DEFAULT false,
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT conversations_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.users (
-  id bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass),
-  name text NOT NULL,
-  email text NOT NULL UNIQUE,
-  email_verified_at timestamp without time zone,
-  remember_token text,
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
-  bio text,
-  avatar text,
-  is_private boolean NOT NULL DEFAULT false,
-  auth_id uuid NOT NULL UNIQUE,
-  username text NOT NULL UNIQUE,
-  theme text NOT NULL DEFAULT 'light'::text,
-  CONSTRAINT users_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.conversation_user (
-  id bigint NOT NULL DEFAULT nextval('conversation_user_id_seq'::regclass),
-  conversation_id bigint NOT NULL,
-  user_id bigint NOT NULL,
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
-  role smallint NOT NULL DEFAULT 0,
-  is_creator boolean NOT NULL DEFAULT false,
-  is_archived boolean NOT NULL DEFAULT false,
-  is_pinned boolean NOT NULL DEFAULT false,
-  last_read_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT conversation_user_pkey PRIMARY KEY (id),
-  CONSTRAINT conversation_user_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id),
-  CONSTRAINT conversation_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.desafios (
-  id bigint NOT NULL DEFAULT nextval('desafios_id_seq'::regclass),
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT desafios_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.failed_jobs (
-  id bigint NOT NULL DEFAULT nextval('failed_jobs_id_seq'::regclass),
-  uuid text NOT NULL UNIQUE,
-  connection text NOT NULL,
-  queue text NOT NULL,
-  payload text NOT NULL,
-  exception text NOT NULL,
-  failed_at timestamp without time zone NOT NULL DEFAULT now(),
-  CONSTRAINT failed_jobs_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.followers (
-  id bigint NOT NULL DEFAULT nextval('followers_id_seq'::regclass),
-  user_id bigint NOT NULL,
-  follower_id bigint NOT NULL,
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT followers_pkey PRIMARY KEY (id),
-  CONSTRAINT followers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT followers_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.job_batches (
-  id text NOT NULL,
-  name text NOT NULL,
-  total_jobs integer NOT NULL,
-  pending_jobs integer NOT NULL,
-  failed_jobs integer NOT NULL,
-  failed_job_ids text NOT NULL,
-  options text,
-  cancelled_at integer,
-  created_at integer NOT NULL,
-  finished_at integer,
-  CONSTRAINT job_batches_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.jobs (
-  id bigint NOT NULL DEFAULT nextval('jobs_id_seq'::regclass),
-  queue text NOT NULL,
-  payload text NOT NULL,
-  attempts smallint NOT NULL,
-  reserved_at integer,
-  available_at integer NOT NULL,
-  created_at integer NOT NULL,
-  CONSTRAINT jobs_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.messages (
-  id bigint NOT NULL DEFAULT nextval('messages_id_seq'::regclass),
-  conversation_id bigint NOT NULL,
-  user_id bigint NOT NULL,
-  body text,
-  attachment text,
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
-  attachment_type text,
-  attachment_name text,
-  delivered_at timestamp with time zone,
-  expires_at timestamp with time zone,
-  is_system boolean DEFAULT false,
-  edited_at timestamp with time zone,
-  deleted_at timestamp with time zone,
-  is_forwarded boolean DEFAULT false,
-  reply_to_message_id bigint,
-  CONSTRAINT messages_pkey PRIMARY KEY (id),
-  CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id),
-  CONSTRAINT messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT messages_reply_to_message_id_fkey FOREIGN KEY (reply_to_message_id) REFERENCES public.messages(id)
-);
-CREATE TABLE public.migrations (
-  id integer NOT NULL DEFAULT nextval('migrations_id_seq'::regclass),
-  migration text NOT NULL,
-  batch integer NOT NULL,
-  CONSTRAINT migrations_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.password_reset_tokens (
-  email text NOT NULL,
-  token text NOT NULL,
-  created_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (email)
-);
-CREATE TABLE public.sessions (
-  id text NOT NULL,
-  user_id bigint,
-  ip_address text,
-  user_agent text,
-  payload text NOT NULL,
-  last_activity integer NOT NULL,
-  CONSTRAINT sessions_pkey PRIMARY KEY (id),
-  CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.submissaos (
-  id bigint NOT NULL DEFAULT nextval('submissaos_id_seq'::regclass),
-  created_at timestamp without time zone DEFAULT now(),
-  updated_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT submissaos_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.conversation_settings (
-  id integer NOT NULL DEFAULT nextval('conversation_settings_id_seq'::regclass),
-  conversation_id integer NOT NULL UNIQUE,
-  who_can_manage_members smallint NOT NULL DEFAULT 0,
-  who_can_edit_info smallint NOT NULL DEFAULT 0,
-  who_can_send_messages smallint NOT NULL DEFAULT 0,
-  ephemeral_duration smallint NOT NULL DEFAULT 0,
-  theme smallint NOT NULL DEFAULT 0,
-  image text,
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  description text,
-  who_can_edit_bio integer DEFAULT 0,
-  CONSTRAINT conversation_settings_pkey PRIMARY KEY (id),
-  CONSTRAINT conversation_settings_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id)
-);
-CREATE TABLE public.conversation_notifications (
-  id integer NOT NULL DEFAULT nextval('conversation_notifications_id_seq'::regclass),
-  conversation_id integer NOT NULL,
-  user_id integer NOT NULL,
-  is_muted boolean NOT NULL DEFAULT false,
-  muted_until timestamp with time zone,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT conversation_notifications_pkey PRIMARY KEY (id),
-  CONSTRAINT conversation_notifications_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id),
-  CONSTRAINT conversation_notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.pinned_messages (
-  id bigint NOT NULL DEFAULT nextval('pinned_messages_id_seq'::regclass),
-  conversation_id bigint,
-  message_id bigint,
-  pinned_by bigint,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT pinned_messages_pkey PRIMARY KEY (id),
-  CONSTRAINT pinned_messages_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.messages(id),
-  CONSTRAINT pinned_messages_pinned_by_fkey FOREIGN KEY (pinned_by) REFERENCES public.users(id),
-  CONSTRAINT pinned_messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id)
-);
-CREATE TABLE public.message_reactions (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  message_id bigint NOT NULL,
-  user_id bigint NOT NULL,
-  reaction text NOT NULL,
-  created_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT message_reactions_pkey PRIMARY KEY (id),
-  CONSTRAINT message_reactions_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.messages(id),
-  CONSTRAINT message_reactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.stories (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  media_url text NOT NULL,
-  type text NOT NULL CHECK (type = ANY (ARRAY['image'::text, 'video'::text])),
-  duration double precision DEFAULT 6.0,
-  created_at timestamp with time zone DEFAULT now(),
-  expires_at timestamp with time zone DEFAULT (now() + '24:00:00'::interval),
-  CONSTRAINT stories_pkey PRIMARY KEY (id),
-  CONSTRAINT stories_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id)
-);
-CREATE TABLE public.story_views (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  story_id uuid NOT NULL,
-  viewer_id uuid NOT NULL,
-  viewed_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT story_views_pkey PRIMARY KEY (id),
-  CONSTRAINT story_views_story_id_fkey FOREIGN KEY (story_id) REFERENCES public.stories(id),
-  CONSTRAINT story_views_viewer_id_fkey FOREIGN KEY (viewer_id) REFERENCES public.users(auth_id)
-);
-CREATE TABLE public.posts (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  media_url text NOT NULL,
-  media_type text NOT NULL CHECK (media_type = ANY (ARRAY['image'::text, 'video'::text])),
-  caption text,
-  thumbnail_url text,
-  crop jsonb NOT NULL DEFAULT '{"scale": 1, "offsetX": 0, "offsetY": 0}'::jsonb,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT posts_pkey PRIMARY KEY (id),
-  CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id)
-);
-CREATE TABLE public.post_comments (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  post_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  content text NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT post_comments_pkey PRIMARY KEY (id),
-  CONSTRAINT post_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id),
-  CONSTRAINT post_comments_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id)
-);
-CREATE TABLE public.post_likes (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  post_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT post_likes_pkey PRIMARY KEY (id),
-  CONSTRAINT post_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id),
-  CONSTRAINT post_likes_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id)
-);
-CREATE TABLE public.daily_questions (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  date text UNIQUE,
-  question text NOT NULL,
-  option_a text NOT NULL,
-  option_b text NOT NULL,
-  option_c text NOT NULL,
-  option_d text NOT NULL,
-  correct_option text NOT NULL,
-  explanation text,
-  topic text,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT daily_questions_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.user_daily_answers (
-  user_id uuid NOT NULL,
-  question_id uuid NOT NULL,
-  selected_option text NOT NULL,
-  is_correct boolean NOT NULL,
-  answered_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT user_daily_answers_pkey PRIMARY KEY (user_id, question_id),
-  CONSTRAINT user_daily_answers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(auth_id),
-  CONSTRAINT user_daily_answers_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.daily_questions(id)
-);
+SET
+  FOREIGN_KEY_CHECKS = 0;
+
+-- ==========================================
+-- CACHE
+-- ==========================================
+CREATE TABLE
+  cache (
+    `key` VARCHAR(255) NOT NULL,
+    `value` LONGTEXT NOT NULL,
+    expiration INT NOT NULL,
+    PRIMARY KEY (`key`)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  cache_locks (
+    `key` VARCHAR(255) NOT NULL,
+    owner VARCHAR(255) NOT NULL,
+    expiration INT NOT NULL,
+    PRIMARY KEY (`key`)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- USERS
+-- ==========================================
+CREATE TABLE
+  users (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name TEXT NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    email_verified_at TIMESTAMP NULL,
+    remember_token TEXT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    bio TEXT NULL,
+    avatar TEXT NULL,
+    is_private BOOLEAN NOT NULL DEFAULT FALSE,
+    auth_id CHAR(36) NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    theme VARCHAR(50) NOT NULL DEFAULT 'light',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_users_email (email),
+    UNIQUE KEY uk_users_auth_id (auth_id),
+    UNIQUE KEY uk_users_username (username)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- CONVERSATIONS
+-- ==========================================
+CREATE TABLE
+  conversations (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name TEXT NULL,
+    is_group BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  conversation_user (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    conversation_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    role SMALLINT NOT NULL DEFAULT 0,
+    is_creator BOOLEAN NOT NULL DEFAULT FALSE,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    last_read_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_conversation_user_conversation (conversation_id),
+    KEY idx_conversation_user_user (user_id),
+    CONSTRAINT fk_conversation_user_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_conversation_user_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  conversation_settings (
+    id INT NOT NULL AUTO_INCREMENT,
+    conversation_id BIGINT UNSIGNED NOT NULL,
+    who_can_manage_members SMALLINT NOT NULL DEFAULT 0,
+    who_can_edit_info SMALLINT NOT NULL DEFAULT 0,
+    who_can_send_messages SMALLINT NOT NULL DEFAULT 0,
+    ephemeral_duration SMALLINT NOT NULL DEFAULT 0,
+    theme SMALLINT NOT NULL DEFAULT 0,
+    image TEXT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    description TEXT NULL,
+    who_can_edit_bio INT DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_conversation_settings_conversation (conversation_id),
+    CONSTRAINT fk_conversation_settings_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  conversation_notifications (
+    id INT NOT NULL AUTO_INCREMENT,
+    conversation_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    is_muted BOOLEAN NOT NULL DEFAULT FALSE,
+    muted_until TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_conversation_notifications_conversation (conversation_id),
+    KEY idx_conversation_notifications_user (user_id),
+    CONSTRAINT fk_conversation_notifications_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_conversation_notifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- MESSAGES
+-- ==========================================
+CREATE TABLE
+  messages (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    conversation_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    body LONGTEXT NULL,
+    attachment TEXT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    attachment_type VARCHAR(100) NULL,
+    attachment_name VARCHAR(255) NULL,
+    delivered_at TIMESTAMP NULL,
+    expires_at TIMESTAMP NULL,
+    is_system BOOLEAN DEFAULT FALSE,
+    edited_at TIMESTAMP NULL,
+    deleted_at TIMESTAMP NULL,
+    is_forwarded BOOLEAN DEFAULT FALSE,
+    reply_to_message_id BIGINT UNSIGNED NULL,
+    PRIMARY KEY (id),
+    KEY idx_messages_conversation (conversation_id),
+    KEY idx_messages_user (user_id),
+    KEY idx_messages_reply (reply_to_message_id),
+    CONSTRAINT fk_messages_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_messages_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_messages_reply FOREIGN KEY (reply_to_message_id) REFERENCES messages (id) ON DELETE SET NULL
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  pinned_messages (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    conversation_id BIGINT UNSIGNED NULL,
+    message_id BIGINT UNSIGNED NULL,
+    pinned_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_pinned_messages_conversation (conversation_id),
+    KEY idx_pinned_messages_message (message_id),
+    KEY idx_pinned_messages_user (pinned_by),
+    CONSTRAINT fk_pinned_messages_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_pinned_messages_message FOREIGN KEY (message_id) REFERENCES messages (id) ON DELETE CASCADE,
+    CONSTRAINT fk_pinned_messages_user FOREIGN KEY (pinned_by) REFERENCES users (id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  message_reactions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    message_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    reaction VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_message_reactions_message (message_id),
+    KEY idx_message_reactions_user (user_id),
+    CONSTRAINT fk_message_reactions_message FOREIGN KEY (message_id) REFERENCES messages (id) ON DELETE CASCADE,
+    CONSTRAINT fk_message_reactions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- FOLLOWERS
+-- ==========================================
+CREATE TABLE
+  followers (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NOT NULL,
+    follower_id BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_followers_user (user_id),
+    KEY idx_followers_follower (follower_id),
+    CONSTRAINT fk_followers_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_followers_follower FOREIGN KEY (follower_id) REFERENCES users (id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- STORIES
+-- ==========================================
+CREATE TABLE
+  stories (
+    id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    media_url TEXT NOT NULL,
+    type ENUM ('image', 'video') NOT NULL,
+    duration DOUBLE DEFAULT 6.0,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 DAY),
+    PRIMARY KEY (id),
+    KEY idx_stories_user (user_id),
+    CONSTRAINT fk_stories_user FOREIGN KEY (user_id) REFERENCES users (auth_id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  story_views (
+    id CHAR(36) NOT NULL,
+    story_id CHAR(36) NOT NULL,
+    viewer_id CHAR(36) NOT NULL,
+    viewed_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_story_views_story (story_id),
+    KEY idx_story_views_viewer (viewer_id),
+    CONSTRAINT fk_story_views_story FOREIGN KEY (story_id) REFERENCES stories (id) ON DELETE CASCADE,
+    CONSTRAINT fk_story_views_viewer FOREIGN KEY (viewer_id) REFERENCES users (auth_id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- POSTS
+-- ==========================================
+CREATE TABLE
+  posts (
+    id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    media_url TEXT NOT NULL,
+    media_type ENUM ('image', 'video') NOT NULL,
+    caption TEXT NULL,
+    thumbnail_url TEXT NULL,
+    crop JSON NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_posts_user (user_id),
+    CONSTRAINT fk_posts_user FOREIGN KEY (user_id) REFERENCES users (auth_id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  post_comments (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    post_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_post_comments_post (post_id),
+    KEY idx_post_comments_user (user_id),
+    CONSTRAINT fk_post_comments_post FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
+    CONSTRAINT fk_post_comments_user FOREIGN KEY (user_id) REFERENCES users (auth_id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  post_likes (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    post_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_post_likes_post (post_id),
+    KEY idx_post_likes_user (user_id),
+    CONSTRAINT fk_post_likes_post FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
+    CONSTRAINT fk_post_likes_user FOREIGN KEY (user_id) REFERENCES users (auth_id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- DAILY QUESTIONS
+-- ==========================================
+CREATE TABLE
+  daily_questions (
+    id CHAR(36) NOT NULL,
+    `date` VARCHAR(50) UNIQUE,
+    question TEXT NOT NULL,
+    option_a TEXT NOT NULL,
+    option_b TEXT NOT NULL,
+    option_c TEXT NOT NULL,
+    option_d TEXT NOT NULL,
+    correct_option VARCHAR(10) NOT NULL,
+    explanation TEXT NULL,
+    topic VARCHAR(255) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  user_daily_answers (
+    user_id CHAR(36) NOT NULL,
+    question_id CHAR(36) NOT NULL,
+    selected_option VARCHAR(10) NOT NULL,
+    is_correct BOOLEAN NOT NULL,
+    answered_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, question_id),
+    CONSTRAINT fk_user_daily_answers_user FOREIGN KEY (user_id) REFERENCES users (auth_id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_daily_answers_question FOREIGN KEY (question_id) REFERENCES daily_questions (id) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- LARAVEL TABLES
+-- ==========================================
+CREATE TABLE
+  failed_jobs (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    uuid VARCHAR(255) NOT NULL,
+    connection TEXT NOT NULL,
+    queue TEXT NOT NULL,
+    payload LONGTEXT NOT NULL,
+    exception LONGTEXT NOT NULL,
+    failed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_failed_jobs_uuid (uuid)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  jobs (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    queue VARCHAR(255) NOT NULL,
+    payload LONGTEXT NOT NULL,
+    attempts TINYINT UNSIGNED NOT NULL,
+    reserved_at INT NULL,
+    available_at INT NOT NULL,
+    created_at INT NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_jobs_queue (queue)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  job_batches (
+    id VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    total_jobs INT NOT NULL,
+    pending_jobs INT NOT NULL,
+    failed_jobs INT NOT NULL,
+    failed_job_ids LONGTEXT NOT NULL,
+    options LONGTEXT NULL,
+    cancelled_at INT NULL,
+    created_at INT NOT NULL,
+    finished_at INT NULL,
+    PRIMARY KEY (id)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  migrations (
+    id INT NOT NULL AUTO_INCREMENT,
+    migration VARCHAR(255) NOT NULL,
+    batch INT NOT NULL,
+    PRIMARY KEY (id)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  password_reset_tokens (
+    email VARCHAR(255) NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (email)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  sessions (
+    id VARCHAR(255) NOT NULL,
+    user_id BIGINT UNSIGNED NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    payload LONGTEXT NOT NULL,
+    last_activity INT NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_sessions_user (user_id),
+    CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==========================================
+-- OUTRAS TABELAS
+-- ==========================================
+CREATE TABLE
+  desafios (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE
+  submissaos (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+SET
+  FOREIGN_KEY_CHECKS = 1;
