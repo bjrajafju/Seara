@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_rounded),
-            label: 'Home',
+            label: 'Início',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.message_rounded),
@@ -93,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.logout_rounded),
-            label: 'Logout',
+            label: 'Sair',
           ),
         ],
         onTap: (int index) async {
