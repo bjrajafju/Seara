@@ -64,7 +64,7 @@ class EditorToolbar extends StatelessWidget {
             icon: controller.isMuted
                 ? Icons.volume_off_rounded
                 : Icons.volume_up_rounded,
-            label: controller.isMuted ? 'Muted' : 'Sound',
+            label: controller.isMuted ? 'Silêncio' : 'Som',
             active: !controller.isMuted,
             onPressed: isBusy
                 ? null
@@ -119,10 +119,10 @@ class EditorToolbar extends StatelessWidget {
     try {
       final path = await saveExportedImage(bytes);
       if (!context.mounted) return;
-      _snack(context, 'Saved: $path');
+      _snack(context, 'Guardado: $path');
     } catch (_) {
       if (!context.mounted) return;
-      _snack(context, 'Could not save file.', isError: true);
+      _snack(context, 'Não foi possível guardar o ficheiro.', isError: true);
     }
   }
 
@@ -146,9 +146,9 @@ class EditorToolbar extends StatelessWidget {
 
       switch (result) {
         case ExportSuccess(:final outputPath):
-          _snack(context, 'Saved: $outputPath');
+          _snack(context, 'Guardado: $outputPath');
         case ExportFailure(:final error):
-          _snack(context, 'Export failed: $error', isError: true);
+          _snack(context, 'Exportação falhou: $error', isError: true);
         case ExportUnsupported(:final reason):
           _snack(
             context,

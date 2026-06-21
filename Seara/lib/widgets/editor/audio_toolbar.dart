@@ -166,7 +166,7 @@ class _UploadPrompt extends StatelessWidget {
           Icon(Icons.music_note_rounded, color: Colors.white38, size: 20),
           SizedBox(width: 10),
           Text(
-            'Add music track...',
+            'Adicionar música...',
             style: TextStyle(
               color: Colors.white38,
               fontSize: 14,

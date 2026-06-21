@@ -71,7 +71,7 @@ class _TextEditModalState extends State<TextEditModal> {
                       ),
                       decoration: const InputDecoration(
                         border: InputBorder.none,
-                        hintText: 'Type something…',
+                        hintText: 'Escreva algo…',
                         hintStyle: TextStyle(color: Colors.white38),
                       ),
                       onChanged: (value) {
