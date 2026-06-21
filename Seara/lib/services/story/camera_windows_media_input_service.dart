@@ -82,7 +82,9 @@ class CameraWindowsMediaInputService implements MediaInputService {
   }
 
   @override
-  Future<bool> startVideoRecording() => _camera.startVideoRecording();
+  Future<bool> startVideoRecording() {
+    return _camera.startVideoRecording();
+  }
 
   @override
   Future<MediaAsset?> stopVideoRecording() async {

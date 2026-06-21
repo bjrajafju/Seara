@@ -1,4 +1,5 @@
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 /// Low-level wrapper around [CameraController].
 ///
@@ -108,17 +109,26 @@ class CameraControllerService {
     if (c.value.isRecordingVideo == true) {
       try {
         await c.stopVideoRecording();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint(
+          'Camera: error stopping existing recording before start: $e',
+        );
+      }
     }
 
     try {
       if (c.value.flashMode != FlashMode.off) {
-        await c.setFlashMode(FlashMode.torch);
+        try {
+          await c.setFlashMode(FlashMode.torch);
+        } catch (e) {
+          debugPrint('Camera: setFlashMode(FlashMode.torch) failed: $e');
+        }
       }
 
       await c.startVideoRecording();
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Camera: startVideoRecording() failed: $e');
       return false;
     }
   }
@@ -134,13 +144,20 @@ class CameraControllerService {
     try {
       final file = await c.stopVideoRecording();
 
-      await c.setFlashMode(FlashMode.off).catchError((_) {});
-
-      return file;
-    } catch (_) {
       try {
         await c.setFlashMode(FlashMode.off);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Camera: setFlashMode(FlashMode.off) failed in stop: $e');
+      }
+
+      return file;
+    } catch (e) {
+      debugPrint('Camera: stopVideoRecordingXFile() failed: $e');
+      try {
+        await c.setFlashMode(FlashMode.off);
+      } catch (e2) {
+        debugPrint('Camera: setFlashMode(FlashMode.off) failed in catch: $e2');
+      }
       return null;
     }
   }

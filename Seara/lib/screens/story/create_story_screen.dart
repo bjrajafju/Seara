@@ -48,7 +48,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Falha ao inicializar a câmara ou permissão recusada.'),
+            content: Text(
+              'Falha ao inicializar a câmara ou permissão recusada.',
+            ),
           ),
         );
       }
