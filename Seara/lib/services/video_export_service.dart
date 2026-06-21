@@ -46,7 +46,6 @@ class VideoExportService {
     required StoryDraft draft,
     required GlobalKey overlayKey,
   }) async {
-    // ── Step 0: Ensure the boundary is painted ──────────────────────────────
     // Wait for at least one frame (plus buffer) to ensure the 'busy' state
     // rebuild has finished and the overlay boundary has been painted.
     await Future.delayed(const Duration(milliseconds: 100));
@@ -57,9 +56,6 @@ class VideoExportService {
       return ExportFailure('Could not find overlay capture boundary.');
     }
 
-    // ── Step 1: Calculate canonical pixel ratio ─────────────────────────────
-    // We want exactly 1080x1920. The viewport is already constrained to 9:16
-    // logically. We derive the scale factor to reach 1080 horizontal pixels.
     final logicalWidth = boundary.size.width;
     final targetPixelRatio = 1080.0 / logicalWidth;
 
@@ -69,12 +65,12 @@ class VideoExportService {
       return ExportFailure('Failed to render overlay image.');
     }
 
-    // ── Web path ─────────────────────────────────────────────────────────────
+    // Web path
     if (kIsWeb) {
       return ExportFailure('Vídeos não são suportados na Web.');
     }
 
-    // ── Native path (Windows / Android / iOS / macOS) ─────────────────────
+    // Native path (Windows / Android / iOS / macOS)
     final media = _videoMedia(draft);
     if (media == null) {
       return ExportFailure('No video source found in draft.');
@@ -116,7 +112,7 @@ class VideoExportService {
     return ExportSuccess(outputPath);
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
+  // Helpers
 
   Future<Uint8List?> _captureOverlay(
     RenderRepaintBoundary? boundary,

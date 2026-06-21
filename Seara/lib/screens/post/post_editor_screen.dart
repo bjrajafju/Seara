@@ -15,9 +15,9 @@ import '../../models/feed/post_media_source.dart';
 import '../../services/feed/post_publish_service.dart';
 import '../../widgets/feed/posts/post_media_frame.dart';
 
-// ─────────────────────────────────────────────────────────────
+//
 // Screen
-// ─────────────────────────────────────────────────────────────
+//
 
 class PostEditorScreen extends StatefulWidget {
   const PostEditorScreen({super.key, required this.source});
@@ -34,18 +34,18 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   final _previewKey = GlobalKey();
   final _exportKey = GlobalKey();
 
-  // ── crop state ────────────────────────────────────────────
+  // crop state
   PostCropTransform _crop = PostCropTransform.identity;
 
-  // ── gesture tracking ─────────────────────────────────────
+  // gesture tracking
   PostCropTransform _gestureStartCrop = PostCropTransform.identity;
   Offset _gestureFocalStart = Offset.zero;
 
-  // ── publish state ─────────────────────────────────────────
+  // publish state
   PostDraft? _frozenDraft;
   bool _isPublishing = false;
 
-  // ─────────────────────────────────────────────────────────
+  //
   @override
   void dispose() {
     _captionController.dispose();
@@ -54,7 +54,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   bool get _isPreview => _frozenDraft != null;
 
-  // ── navigation ────────────────────────────────────────────
+  // navigation
   void _next() {
     setState(() {
       _frozenDraft = PostDraft(
@@ -72,7 +72,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     });
   }
 
-  // ── zoom buttons ──────────────────────────────────────────
+  // zoom buttons
   void _zoomBy(double delta) {
     setState(() {
       _crop = _crop
@@ -83,7 +83,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     });
   }
 
-  // ── gesture handlers ──────────────────────────────────────
+  // gesture handlers
   void _onScaleStart(ScaleStartDetails d, Size containerSize) {
     _gestureStartCrop = _crop;
     _gestureFocalStart = d.localFocalPoint;
@@ -115,7 +115,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     });
   }
 
-  // ── crop-frame resize ─────────────────────────────────────
+  // crop-frame resize
   void _onCropFrameChanged(Rect newFrame) {
     setState(() {
       _crop = PostCropTransform(
@@ -130,7 +130,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     });
   }
 
-  // ── publish ───────────────────────────────────────────────
+  // publish
   Future<void> _publish() async {
     final frozen = _frozenDraft;
     if (frozen == null || _isPublishing) return;
@@ -225,10 +225,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
-
-  // ─────────────────────────────────────────────────────────
+  //
   // BUILD
-  // ─────────────────────────────────────────────────────────
+  //
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -240,7 +239,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (draft == null) _buildEditor(theme) else _buildFinalPreview(draft, theme),
+            if (draft == null)
+              _buildEditor(theme)
+            else
+              _buildFinalPreview(draft, theme),
             // Hidden high-quality export widget
             if (draft != null)
               Offstage(
@@ -254,7 +256,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                   ),
                 ),
               ),
-            // ── top bar ──────────────────────────────────
+            // top bar
             Positioned(
               top: 0,
               left: 0,
@@ -274,7 +276,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     );
   }
 
-  // ── editor view ───────────────────────────────────────────
+  // editor view
   Widget _buildEditor(ThemeData theme) {
     return Column(
       children: [
@@ -312,7 +314,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             ),
           ),
         ),
-        // ── zoom controls ────────────────────────────────
+        // zoom controls
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: Row(
@@ -328,7 +330,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               Text(
                 '${(_crop.scale * 100).round()}%',
                 style: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.6,
+                  ),
                   fontSize: 13,
                   letterSpacing: 0.5,
                 ),
@@ -340,7 +344,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     );
   }
 
-  // ── preview view ──────────────────────────────────────────
+  // preview view
   Widget _buildFinalPreview(PostDraft draft, ThemeData theme) {
     return Column(
       children: [
@@ -397,7 +401,11 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             style: TextStyle(color: theme.colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Escreve uma descrição...',
-              hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+              hintStyle: TextStyle(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.6,
+                ),
+              ),
               filled: true,
               fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
               border: OutlineInputBorder(
@@ -412,9 +420,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
+//
 // Media edit area – gesture detection + crop overlay
-// ─────────────────────────────────────────────────────────────
+//
 
 class _MediaEditArea extends StatelessWidget {
   const _MediaEditArea({
@@ -446,7 +454,7 @@ class _MediaEditArea extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── media (gesture target) ───────────────
+              // media (gesture target)
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onScaleStart: (d) => onScaleStart(d, containerSize),
@@ -458,13 +466,13 @@ class _MediaEditArea extends StatelessWidget {
                   isFullFrame: true,
                 ),
               ),
-              // ── dimmed overlay + dashed border ───────
+              // dimmed overlay + dashed border
               IgnorePointer(
                 child: CustomPaint(
                   painter: _CropOverlayPainter(cropFrame: cropFrame),
                 ),
               ),
-              // ── resize handles (interactive) ─────────
+              // resize handles (interactive)
               _CropHandles(
                 cropFrame: cropFrame,
                 containerSize: containerSize,
@@ -478,9 +486,9 @@ class _MediaEditArea extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
+//
 // Resizable handle overlay
-// ─────────────────────────────────────────────────────────────
+//
 
 enum _HandleEdge { left, right, top, bottom }
 
@@ -573,7 +581,9 @@ class _CropHandles extends StatelessWidget {
               borderRadius: BorderRadius.circular(isCorner ? 3 : 5),
               boxShadow: [
                 BoxShadow(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.35),
                   blurRadius: 4,
                 ),
               ],
@@ -585,9 +595,9 @@ class _CropHandles extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
+//
 // Crop overlay painter – dims outside, dashed border, grid
-// ─────────────────────────────────────────────────────────────
+//
 
 class _CropOverlayPainter extends CustomPainter {
   const _CropOverlayPainter({required this.cropFrame});
@@ -603,7 +613,7 @@ class _CropOverlayPainter extends CustomPainter {
       cropFrame.bottom * size.height,
     );
 
-    // ── dim outside ─────────────────────────────────
+    // dim outside
     final dimPaint = Paint()..color = Colors.black.withValues(alpha: 0.55);
     final dimPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
@@ -611,14 +621,14 @@ class _CropOverlayPainter extends CustomPainter {
       ..fillType = PathFillType.evenOdd;
     canvas.drawPath(dimPath, dimPaint);
 
-    // ── border ───────────────────────────────────────
+    // border
     final borderPaint = Paint()
       ..color = Colors.white
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
     _drawDashedRect(canvas, rect, borderPaint);
 
-    // ── rule-of-thirds grid ──────────────────────────
+    // rule-of-thirds grid
     final gridPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.3)
       ..strokeWidth = 0.7;
@@ -664,9 +674,9 @@ class _CropOverlayPainter extends CustomPainter {
   bool shouldRepaint(_CropOverlayPainter old) => old.cropFrame != cropFrame;
 }
 
-// ─────────────────────────────────────────────────────────────
+//
 // Small reusable widgets
-// ─────────────────────────────────────────────────────────────
+//
 
 class _TopBar extends StatelessWidget {
   const _TopBar({
@@ -741,9 +751,9 @@ class _ZoomButton extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
+//
 // Export-specific widget for high-quality capture
-// ─────────────────────────────────────────────────────────────
+//
 
 class PostCropExportWidget extends StatelessWidget {
   const PostCropExportWidget({

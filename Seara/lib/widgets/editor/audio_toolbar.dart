@@ -35,7 +35,7 @@ class AudioToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ── Track info or upload prompt ──────────────────────────────────
+          // Track info or upload prompt
           Expanded(
             child: track == null
                 ? _UploadPrompt(onTap: () => _pickAudio(context))
@@ -45,7 +45,7 @@ class AudioToolbar extends StatelessWidget {
           const SizedBox(width: 12),
 
           if (track != null) ...[
-            // ── Remove audio ───────────────────────────────────────────────
+            // Remove audio
             GestureDetector(
               onTap: () => context.read<EditorController>().removeAudioTrack(),
               child: Container(
@@ -62,7 +62,7 @@ class AudioToolbar extends StatelessWidget {
               ),
             ),
           ] else ...[
-            // ── Upload button (icon-only) when no track ──────────────────
+            // Upload button (icon-only) when no track
             GestureDetector(
               onTap: () => _pickAudio(context),
               child: Container(
@@ -150,7 +150,7 @@ class AudioToolbar extends StatelessWidget {
   }
 }
 
-// ── Sub-widgets ──────────────────────────────────────────────────────────────
+//  Sub-widgets
 
 class _UploadPrompt extends StatelessWidget {
   final VoidCallback onTap;

@@ -70,7 +70,7 @@ class AuthService {
 
   /// Manually refreshes the Supabase session with circuit breaker and concurrency protection
   static Future<bool> refreshSession() async {
-    // Step 1: Strict lock - no waiting, just return if already in progress
+    // Strict lock - no waiting, just return if already in progress
     if (_isRefreshing) {
       if (kDebugMode) print("Auth: Refresh already in progress, skipping.");
       return true; 
@@ -137,13 +137,13 @@ class AuthService {
       _refreshFailures++;
       if (kDebugMode) print("Auth: Refresh failed with AuthException: ${e.message} (Status: ${e.statusCode})");
       
-      // Step 4 & 6: Hard stop on 429 or 2 consecutive failures
+      // Hard stop on 429 or 2 consecutive failures
       if (e.statusCode == '429' || _refreshFailures >= 2) {
         _authBlockedUntil = TimeService.now.add(const Duration(minutes: 5));
         
         final errorMsg = e.statusCode == '429' 
-          ? "Erro de autenticação (Too Many Requests). Verifica a data/hora do dispositivo e volta a iniciar sessão."
-          : "Sessão expirada. Por favor, inicia sessão novamente.";
+          ? "Erro de autenticação. Verifique a data/hora do dispositivo e volte a iniciar sessão."
+          : "Sessão expirada. Por favor, inicie sessão novamente.";
         
         onAuthError?.call(errorMsg);
         

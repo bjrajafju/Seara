@@ -68,16 +68,18 @@ class _CanvasContent extends StatelessWidget {
     final isDrawing = controller.isDrawingMode;
 
     return GestureDetector(
-      onTap: isDrawing ? null : () => context.read<EditorController>().deselectAll(),
+      onTap: isDrawing
+          ? null
+          : () => context.read<EditorController>().deselectAll(),
       behavior: HitTestBehavior.opaque,
       child: SizedBox.expand(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // ── Overlay export boundary (Hidden at the bottom) ──────────────
-            // Strategy: We use Opacity(0.01) instead of 0.0 to force Flutter 
+            // Overlay export boundary (Hidden at the bottom)
+            // Strategy: We use Opacity(0.01) instead of 0.0 to force Flutter
             // to paint the boundary (otherwise it's optimized away).
-            // By putting it at the bottom of the stack, it's effectively 
+            // By putting it at the bottom of the stack, it's effectively
             // covered by the video/media while still being valid for capture.
             IgnorePointer(
               child: Opacity(

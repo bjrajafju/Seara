@@ -20,7 +20,7 @@ import '../utils/media/blob_url_helper.dart'
 /// Owns the mutable [StoryDraft] working copy and all editor UI state.
 /// Also manages the preview audio lifecycle for external tracks.
 class EditorController extends ChangeNotifier {
-  // ── Constants ──────────────────────────────────────────────────────────────
+  // Constants
 
   static const double kMinScale = 0.3;
   static const double kMaxScale = 5.0;
@@ -31,7 +31,7 @@ class EditorController extends ChangeNotifier {
   static const double kMinPosition = -0.2;
   static const double kMaxPosition = 1.2;
 
-  // ── State ──────────────────────────────────────────────────────────────────
+  // State
 
   final StoryDraft _draft;
   String? _selectedLayerId;
@@ -62,7 +62,7 @@ class EditorController extends ChangeNotifier {
     super.dispose();
   }
 
-  // ── Getters ────────────────────────────────────────────────────────────────
+  // Getters
 
   StoryDraft get draft => _draft;
   String? get selectedLayerId => _selectedLayerId;
@@ -98,7 +98,7 @@ class EditorController extends ChangeNotifier {
     }
   }
 
-  // ── Audio Preview Logic ────────────────────────────────────────────────────
+  // Audio Preview Logic
 
   void _initAudioPreview() {
     if (_draft.audio != null) {
@@ -134,7 +134,7 @@ class EditorController extends ChangeNotifier {
     }
   }
 
-  // ── Layer mutations ────────────────────────────────────────────────────────
+  // Layer mutations
 
   void addTextLayer() {
     final id = 'text_${DateTime.now().microsecondsSinceEpoch}';
@@ -178,7 +178,7 @@ class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Transform mutations ────────────────────────────────────────────────────
+  // Transform mutations
 
   void updatePosition(String id, double newX, double newY) {
     final layer = _layerById(id);
@@ -196,7 +196,7 @@ class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Text / font mutations ──────────────────────────────────────────────────
+  // Text / font mutations
 
   void updateText(String id, String newContent) {
     final layer = _layerById(id);
@@ -212,7 +212,7 @@ class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Drawing mutations ─────────────────────────────────────────────────────
+  // Drawing mutations
 
   void toggleDrawingMode() {
     _isDrawingMode = !_isDrawingMode;
@@ -247,7 +247,7 @@ class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Video / audio mutations ───────────────────────────────────────────────
+  // Video / audio mutations
 
   void toggleMute() {
     _draft.isMuted = !_draft.isMuted;
@@ -276,7 +276,7 @@ class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Modal control ──────────────────────────────────────────────────────────
+  // Modal control
 
   void openEditModal(String id) {
     _selectedLayerId = id;
@@ -294,7 +294,7 @@ class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Export ────────────────────────────────────────────────────────────────
+  // Export
 
   void beginExporting() {
     _isExporting = true;
@@ -338,7 +338,7 @@ class EditorController extends ChangeNotifier {
     }
   }
 
-  // ── Private helpers ────────────────────────────────────────────────────────
+  // Private helpers
 
   TextOverlay? _layerById(String id) {
     try {

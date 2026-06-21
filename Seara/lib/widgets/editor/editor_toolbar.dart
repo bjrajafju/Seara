@@ -36,7 +36,7 @@ class EditorToolbar extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Add Text (disabled in drawing mode) ──────────────────────────────
+        // Add Text (disabled in drawing mode)
         _ToolbarButton(
           icon: Icons.text_fields,
           label: 'Texto',
@@ -47,7 +47,7 @@ class EditorToolbar extends StatelessWidget {
 
         const SizedBox(height: 12),
 
-        // ── Draw mode toggle ─────────────────────────────────────────────────
+        // Draw mode toggle
         _ToolbarButton(
           icon: Icons.edit_rounded,
           label: controller.isDrawingMode ? 'Acabar' : 'Desenhar',
@@ -57,7 +57,7 @@ class EditorToolbar extends StatelessWidget {
               : () => context.read<EditorController>().toggleDrawingMode(),
         ),
 
-        // ── Mute toggle (video stories only) ─────────────────────────────────
+        // Mute toggle (video stories only)
         if (controller.isVideoStory) ...[
           const SizedBox(height: 12),
           _ToolbarButton(
@@ -74,7 +74,7 @@ class EditorToolbar extends StatelessWidget {
 
         const SizedBox(height: 20),
 
-        // ── Export ───────────────────────────────────────────────────────────
+        // Export
         _ToolbarButton(
           icon: isBusy ? Icons.hourglass_top : Icons.download_rounded,
           label: isBusy ? '…' : 'Guardar',
@@ -84,7 +84,7 @@ class EditorToolbar extends StatelessWidget {
     );
   }
 
-  // ── Export dispatch ────────────────────────────────────────────────────────
+  // Export dispatch
 
   Future<void> _onExport(
     BuildContext context,
@@ -97,7 +97,7 @@ class EditorToolbar extends StatelessWidget {
     }
   }
 
-  // ── Image export (Phase 1–3 pipeline, unchanged) ───────────────────────────
+  // Image export
 
   Future<void> _exportImage(
     BuildContext context,
@@ -126,7 +126,7 @@ class EditorToolbar extends StatelessWidget {
     }
   }
 
-  // ── Video export (Phase 4 FFmpeg pipeline) ─────────────────────────────────
+  // Video export
 
   Future<void> _exportVideo(
     BuildContext context,
@@ -206,7 +206,7 @@ class EditorToolbar extends StatelessWidget {
   }
 }
 
-// ── Toolbar button ─────────────────────────────────────────────────────────
+//  Toolbar button
 
 class _ToolbarButton extends StatelessWidget {
   final IconData icon;

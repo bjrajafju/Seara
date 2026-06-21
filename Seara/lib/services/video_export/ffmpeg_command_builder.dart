@@ -32,7 +32,7 @@ class FFmpegCommandBuilder {
     final isMuted = draft.isMuted;
     final audioPath = draft.audio?.filePath;
 
-    // ── Determine which audio case applies (Phase 4 rules) ──────────────────
+    // Determine which audio case applies
     // 1. No external + unmuted -> Original audio only (Case A)
     // 2. No external + muted   -> Silent video (Case B)
     // 3. External + muted      -> External audio only (Case C)
@@ -51,7 +51,7 @@ class FFmpegCommandBuilder {
     }
   }
 
-  // ── Case implementations ────────────────────────────────────────────────
+  // Case implementations
 
   /// Case A: overlay PNG over video, keep original audio track.
   static String _caseA(

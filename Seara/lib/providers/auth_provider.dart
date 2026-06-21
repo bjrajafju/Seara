@@ -55,7 +55,7 @@ class AuthProvider extends ChangeNotifier {
         print("Auth: Supabase event detected: $event");
       }
 
-      // Step 2: Debounce tokenRefreshed events
+      // Debounce tokenRefreshed events
       if (event == AuthChangeEvent.tokenRefreshed) {
         if (_lastRefreshEventTime != null && 
             DateTime.now().difference(_lastRefreshEventTime!).inSeconds < 10) {

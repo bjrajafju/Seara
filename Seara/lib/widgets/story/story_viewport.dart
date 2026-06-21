@@ -15,7 +15,7 @@ import 'package:flutter/material.dart';
 /// All other code must reference [maxWidth] and [aspectRatio] from here.
 /// Do **not** hardcode `420` or `9 / 16` anywhere else.
 class StoryViewport extends StatelessWidget {
-  // ── Sizing constants ───────────────────────────────────────────────────────
+  // Sizing constants
 
   /// Maximum width of the story composition area in logical pixels.
   ///
@@ -28,7 +28,7 @@ class StoryViewport extends StatelessWidget {
   /// Value: 0.5625
   static const double aspectRatio = 9.0 / 16.0;
 
-  // ── Widget ─────────────────────────────────────────────────────────────────
+  // Widget
 
   final Widget child;
 

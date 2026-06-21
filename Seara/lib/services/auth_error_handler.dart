@@ -53,18 +53,18 @@ class AuthErrorHandler {
     }
 
     if (message.contains('email not confirmed')) {
-      return 'Por favor, confirma o teu email antes de entrar.';
+      return 'Por favor, confirme o seu email antes de entrar.';
     }
 
     if (message.contains('session expired') || 
         message.contains('jwt expired')) {
-      return 'A tua sessão expirou. Faz login novamente.';
+      return 'A sua sessão expirou. Inicie sessão novamente.';
     }
 
     if (message.contains('network error') || 
         message.contains('connection refused') ||
         message.contains('failed host lookup')) {
-      return 'Problema de ligação ao servidor. Verifica a tua internet.';
+      return 'Problema de ligação ao servidor. Verifique a sua internet.';
     }
 
     if (message.contains('timeout')) {
@@ -77,6 +77,6 @@ class AuthErrorHandler {
       return error.toString();
     }
 
-    return 'Não foi possível completar a operação. Tenta novamente.';
+    return 'Não foi possível completar a operação. Tente novamente.';
   }
 }

@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      appBar: AppBar(title: const Text('Iniciar Sessão')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               );
                             },
-                            child: const Text('Esqueceste-te da password?'),
+                            child: const Text('Esqueceu-se da password?'),
                           ),
                         ],
                       ),

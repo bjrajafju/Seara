@@ -58,7 +58,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     super.dispose();
   }
 
-  // ── Publish flow ─────────────────────────────────────────────────────────────
+  // Publish flow
 
   Future<void> _onPublish() async {
     if (_controller.isBusy) return;
@@ -271,7 +271,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // ── 9:16 composition canvas ───────────────────────────────
+                  // 9:16 composition canvas
                   StoryViewport(
                     child: EditorCanvas(
                       repaintKey: _canvasKey,
@@ -279,7 +279,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                     ),
                   ),
 
-                  // ── Right-side vertical toolbar (OUTSIDE the viewport) ─────
+                  // Right-side vertical toolbar (OUTSIDE the viewport)
                   Positioned(
                     right: 12,
                     top: 0,
@@ -292,10 +292,10 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                     ),
                   ),
 
-                  // ── Back button ───────────────────────────────────────────
+                  // Back button
                   Positioned(top: 8, left: 8, child: _BackButton()),
 
-                  // ── Postar button (top-right) ─────────────────────────────
+                  // Postar button (top-right)
                   Positioned(
                     top: 8,
                     right: 70, // left of the toolbar column
@@ -306,7 +306,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                     ),
                   ),
 
-                  // ── Audio toolbar (video stories, above the bottom edge) ───
+                  // Audio toolbar (video stories, above the bottom edge)
                   if (controller.isVideoStory)
                     Positioned(
                       left: 0,
@@ -315,7 +315,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                       child: const AudioToolbar(),
                     ),
 
-                  // ── Drawing toolbar (shown during draw mode) ──────────────
+                  // Drawing toolbar (shown during draw mode)
                   if (controller.isDrawingMode)
                     Positioned(
                       left: 0,
@@ -324,7 +324,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                       child: const DrawingToolbar(),
                     ),
 
-                  // ── Text edit modal ───────────────────────────────────────
+                  // Text edit modal
                   if (controller.isEditModalOpen &&
                       controller.selectedLayerId != null)
                     Positioned.fill(
@@ -342,7 +342,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
   }
 }
 
-// ── Postar Button ─────────────────────────────────────────────────────────────
+//  Postar Button
 
 class _PostarButton extends StatelessWidget {
   final bool isPublishing;
@@ -388,7 +388,7 @@ class _PostarButton extends StatelessWidget {
   }
 }
 
-// ── Back Button ───────────────────────────────────────────────────────────────
+//  Back Button
 
 class _BackButton extends StatelessWidget {
   @override
@@ -411,7 +411,7 @@ class _BackButton extends StatelessWidget {
   }
 }
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+//  Helper
 
 void unawaited(Future<void> future) {
   // Fire-and-forget: errors are silently ignored.

@@ -44,7 +44,7 @@ class DrawingToolbar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Drag handle ──────────────────────────────────────────────────
+          // Drag handle
           Container(
             width: 36,
             height: 4,
@@ -55,7 +55,7 @@ class DrawingToolbar extends StatelessWidget {
             ),
           ),
 
-          // ── Tool selector + Clear ─────────────────────────────────────────
+          // Tool selector + Clear
           Row(
             children: [
               _ToolChip(
@@ -108,7 +108,7 @@ class DrawingToolbar extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // ── Brush thickness ───────────────────────────────────────────────
+          // Brush thickness
           Row(
             children: [
               const Icon(Icons.circle, color: Colors.white54, size: 8),
@@ -132,7 +132,7 @@ class DrawingToolbar extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          // ── Color palette ─────────────────────────────────────────────────
+          // Color palette
           if (!ctrl.isEraserActive)
             SizedBox(
               height: 36,

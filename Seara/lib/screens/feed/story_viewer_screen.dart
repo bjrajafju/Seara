@@ -137,7 +137,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   }
 }
 
-// ── Single story page ─────────────────────────────────────────────────────
+//  Single story page
 
 class _StoryPage extends StatelessWidget {
   final VoidCallback onClose;
@@ -156,10 +156,10 @@ class _StoryPage extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // ── Media (background) ──────────────────────────────────────────
+            // Media (background)
             const StoryMediaView(),
 
-            // ── Top overlay: progress bars + header ─────────────────────────
+            // Top overlay: progress bars + header
             Positioned(
               top: 16,
               left: 12,
@@ -174,7 +174,7 @@ class _StoryPage extends StatelessWidget {
               ),
             ),
 
-            // ── Bottom overlay: management button for own stories ────────────
+            // Bottom overlay: management button for own stories
             if (isOwnStory)
               Positioned(
                 bottom: 16,

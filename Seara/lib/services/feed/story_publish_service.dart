@@ -81,7 +81,7 @@ class StoryPublishService {
     return mediaUrl;
   }
 
-  // ── Upload ──────────────────────────────────────────────────────────────────
+  // Upload
 
   Future<String> _uploadMedia(StoryMedia media, String userId) async {
     final ext = _extensionFromMime(media.mimeType);
@@ -129,7 +129,7 @@ class StoryPublishService {
     throw StoryPublishException('Impossível ler a media.');
   }
 
-  // ── Insert ──────────────────────────────────────────────────────────────────
+  // Insert
 
   Future<void> _insertStory({
     required String userId,
@@ -161,7 +161,7 @@ class StoryPublishService {
     }
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
+  // Helpers
 
   double _resolveDuration(StoryDraft draft, StoryMedia media) {
     if (draft.type != StoryType.video) return 6.0;

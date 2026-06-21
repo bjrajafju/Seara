@@ -14,7 +14,7 @@ export const listConversationsSimple = async (req, res) => {
     try {
         console.log(`[SIMPLE] listConversations called for userId: ${userId}`);
 
-        // Step 1: Get user conversations
+        // Get user conversations
         let userConvQuery = supabase
             .from("conversation_user")
             .select("conversation_id, is_pinned, last_read_at")
@@ -31,7 +31,7 @@ export const listConversationsSimple = async (req, res) => {
             return res.json([]);
         }
 
-        // Step 2: Get conversation details
+        // Get conversation details
         const conversationIds = userConversations.map((c) => c.conversation_id);
         console.log(`[SIMPLE] Conversation IDs:`, conversationIds);
 
@@ -66,7 +66,7 @@ export const listConversationsSimple = async (req, res) => {
             return res.json([]);
         }
 
-        // Step 3: Format and return
+        // Format and return
         const membershipMap = {};
         for (const uc of userConversations) {
             membershipMap[uc.conversation_id] = uc;

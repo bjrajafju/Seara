@@ -205,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 20),
                 TextButton(
                   onPressed: _isLoading ? null : _goToLogin,
-                  child: const Text("Já tem conta? Faça login"),
+                  child: const Text("Já tem conta? Inicie Sessão"),
                 ),
               ],
             ),

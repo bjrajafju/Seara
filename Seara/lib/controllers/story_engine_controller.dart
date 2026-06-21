@@ -34,7 +34,7 @@ class StoryEngineController extends ChangeNotifier {
   final List<StoryUser> users;
   final StoryFeedController feedController;
 
-  // ── Navigation state ─────────────────────────────────────────────────────
+  // Navigation state
   int _userIndex;
   int _storyIndex = 0;
 
@@ -48,7 +48,7 @@ class StoryEngineController extends ChangeNotifier {
       _userIndex == users.length - 1 &&
       _storyIndex == currentUser.stories.length - 1;
 
-  // ── Progress animation ───────────────────────────────────────────────────
+  // Progress animation
   late AnimationController progressController;
 
   bool _isReady = false;
@@ -57,16 +57,16 @@ class StoryEngineController extends ChangeNotifier {
   bool _mediaReady = false;
   bool get mediaReady => _mediaReady;
 
-  // ── Pause state ──────────────────────────────────────────────────────────
+  // Pause state
 
   bool _isPaused = false;
   bool get isPaused => _isPaused;
 
-  // ── Mute state ───────────────────────────────────────────────────────────
+  // Mute state
   bool _isMuted = true;
   bool get isMuted => _isMuted;
 
-  // ── Video controllers ────────────────────────────────────────────────────
+  // Video controllers
   // RULE: Keep the active story and near neighbours warm only.
   final StoryPreloadService _preloadService = StoryPreloadService();
   StoryPreloadedVideo? _activeVideo;
@@ -76,7 +76,7 @@ class StoryEngineController extends ChangeNotifier {
 
   bool _disposed = false;
 
-  // ── Init ─────────────────────────────────────────────────────────────────
+  // Init
 
   void init(TickerProvider vsync) {
     _initProgressController(vsync);
@@ -100,7 +100,7 @@ class StoryEngineController extends ChangeNotifier {
     });
   }
 
-  // ── Activate / preload ───────────────────────────────────────────────────
+  // Activate / preload
 
   Future<void> _activateStory(TickerProvider? vsync) async {
     if (_disposed) return;
@@ -228,11 +228,11 @@ class StoryEngineController extends ChangeNotifier {
     return result;
   }
 
-  // ── Story finished ───────────────────────────────────────────────────────
+  // Story finished
 
   void _onStoryFinished() => next();
 
-  // ── Public intent API (called by gesture layer / UI) ─────────────────────
+  // Public intent API (called by gesture layer / UI)
 
   /// Advance to the next story or user.
   void next({TickerProvider? vsync}) {
@@ -284,7 +284,7 @@ class StoryEngineController extends ChangeNotifier {
     _activateStory(vsync);
   }
 
-  // ── Pause / resume ───────────────────────────────────────────────────────
+  // Pause / resume
 
   void pause() {
     if (_isPaused) return;
@@ -304,7 +304,7 @@ class StoryEngineController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Mute ─────────────────────────────────────────────────────────────────
+  // Mute
 
   void toggleMute() {
     _isMuted = !_isMuted;
@@ -313,12 +313,12 @@ class StoryEngineController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Close signal ─────────────────────────────────────────────────────────
+  // Close signal
 
   bool _shouldClose = false;
   bool get shouldClose => _shouldClose;
 
-  // ── Dispose ──────────────────────────────────────────────────────────────
+  // Dispose
 
   int _findFirstUnseenIndex(StoryUser user) {
     for (int i = 0; i < user.stories.length; i++) {

@@ -22,7 +22,7 @@ class ExportFailure extends ExportResult {
   ExportFailure(this.error);
 }
 
-/// Export is not supported on this platform (e.g. web in Phase 4).
+/// Export is not supported on this platform.
 class ExportUnsupported extends ExportResult {
   final String reason;
   ExportUnsupported(this.reason);

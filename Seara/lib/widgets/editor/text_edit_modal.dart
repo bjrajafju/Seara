@@ -56,7 +56,7 @@ class _TextEditModalState extends State<TextEditModal> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ── Text input ───────────────────────────────────────────
+                  // Text input
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: TextField(
@@ -85,7 +85,7 @@ class _TextEditModalState extends State<TextEditModal> {
 
                   const SizedBox(height: 24),
 
-                  // ── Font size slider ──────────────────────────────────────
+                  // Font size slider
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -123,7 +123,7 @@ class _TextEditModalState extends State<TextEditModal> {
 
                   const SizedBox(height: 16),
 
-                  // ── Done button ───────────────────────────────────────────
+                  // Done button
                   TextButton(
                     onPressed: () =>
                         context.read<EditorController>().closeEditModal(),

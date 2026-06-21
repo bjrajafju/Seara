@@ -93,7 +93,7 @@ class _DrawingCanvasWidgetState extends State<DrawingCanvasWidget> {
     );
   }
 
-  // ── Stroke lifecycle ──────────────────────────────────────────────────────
+  // Stroke lifecycle
 
   void _beginStroke(BuildContext context, Offset localPos) {
     final ctrl = context.read<EditorController>();

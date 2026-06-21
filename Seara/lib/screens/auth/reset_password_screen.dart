@@ -116,7 +116,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Escolhe uma nova password segura para a tua conta.',
+                'Escolha uma nova password segura para a sua conta.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),

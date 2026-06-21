@@ -65,13 +65,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             children: [
               if (!_emailSent) ...[
                 Text(
-                  'Esqueceste-te da password?',
+                  'Esqueceu-se da password?',
                   style: theme.textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Introduz o teu email para receberes instruções de recuperação.',
+                  'Introduza o seu email para receber instruções de recuperação.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium,
                 ),
@@ -117,13 +117,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Enviámos um email com instruções para redefinir a tua password. Se não o encontrares, verifica a pasta de spam.',
+                  'Enviámos um email com instruções para redefinir a sua password. Se não o encontrar, verifique a pasta de spam.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Voltar ao Login'),
+                  child: const Text('Iniciar Sessão'),
                 ),
               ],
             ],

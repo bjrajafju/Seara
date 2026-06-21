@@ -34,17 +34,13 @@ Future<String?> resolveFFmpegPath() async {
   return _windowsFFmpegPath();
 }
 
-// ── Windows: dart:io Process.run with bundled ffmpeg.exe ─────────────────────
+//  Windows: dart:io Process.run with bundled ffmpeg.exe
 
 Future<bool> _executeWindows(String command) async {
   final ffmpegPath = await _windowsFFmpegPath();
   final args = _parseArgs(command);
 
-  final result = await Process.run(
-    ffmpegPath,
-    args,
-    runInShell: false,
-  );
+  final result = await Process.run(ffmpegPath, args, runInShell: false);
 
   if (result.exitCode != 0) {
     // ignore: avoid_print
@@ -69,7 +65,7 @@ Future<String> _windowsFFmpegPath() async {
   return file.path;
 }
 
-// ── Mobile / macOS: ffmpeg_kit_flutter_new ───────────────────────────────────
+//  Mobile / macOS: ffmpeg_kit_flutter_new
 
 Future<bool> _executeMobile(String command) async {
   final session = await fk.FFmpegKit.execute(command);
@@ -84,7 +80,7 @@ Future<bool> _executeMobile(String command) async {
   return success;
 }
 
-// ── Argument parser ───────────────────────────────────────────────────────────
+//  Argument parser
 
 /// Splits a command string into individual arguments, respecting quoted tokens.
 ///
