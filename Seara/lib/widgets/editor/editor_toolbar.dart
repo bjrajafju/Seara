@@ -39,7 +39,7 @@ class EditorToolbar extends StatelessWidget {
         // ── Add Text (disabled in drawing mode) ──────────────────────────────
         _ToolbarButton(
           icon: Icons.text_fields,
-          label: 'Text',
+          label: 'Texto',
           onPressed: (isBusy || controller.isDrawingMode)
               ? null
               : () => context.read<EditorController>().addTextLayer(),
@@ -50,7 +50,7 @@ class EditorToolbar extends StatelessWidget {
         // ── Draw mode toggle ─────────────────────────────────────────────────
         _ToolbarButton(
           icon: Icons.edit_rounded,
-          label: controller.isDrawingMode ? 'Done' : 'Draw',
+          label: controller.isDrawingMode ? 'Acabar' : 'Desenhar',
           active: controller.isDrawingMode,
           onPressed: isBusy
               ? null
@@ -77,7 +77,7 @@ class EditorToolbar extends StatelessWidget {
         // ── Export ───────────────────────────────────────────────────────────
         _ToolbarButton(
           icon: isBusy ? Icons.hourglass_top : Icons.download_rounded,
-          label: isBusy ? '…' : 'Save',
+          label: isBusy ? '…' : 'Guardar',
           onPressed: isBusy ? null : () => _onExport(context, controller),
         ),
       ],

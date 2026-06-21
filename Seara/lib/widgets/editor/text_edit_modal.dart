@@ -139,7 +139,7 @@ class _TextEditModalState extends State<TextEditModal> {
                       ),
                     ),
                     child: const Text(
-                      'Done',
+                      'Acabar',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

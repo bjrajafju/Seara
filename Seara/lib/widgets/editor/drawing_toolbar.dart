@@ -60,7 +60,7 @@ class DrawingToolbar extends StatelessWidget {
             children: [
               _ToolChip(
                 icon: Icons.edit_rounded,
-                label: 'Pencil',
+                label: 'Pincel',
                 selected: !ctrl.isEraserActive,
                 onTap: () =>
                     context.read<EditorController>().setEraserActive(false),
@@ -68,7 +68,7 @@ class DrawingToolbar extends StatelessWidget {
               const SizedBox(width: 8),
               _ToolChip(
                 icon: Icons.auto_fix_normal_rounded,
-                label: 'Eraser',
+                label: 'Borracha',
                 selected: ctrl.isEraserActive,
                 onTap: () =>
                     context.read<EditorController>().setEraserActive(true),
@@ -92,7 +92,7 @@ class DrawingToolbar extends StatelessWidget {
                       Icon(Icons.delete_outline, color: Colors.white, size: 16),
                       SizedBox(width: 4),
                       Text(
-                        'Clear',
+                        'Limpar',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
