@@ -7,7 +7,7 @@ echo ==========================
 
 set ROOT=C:\Users\Asus\Documents\GitHub\Seara
 set PROJECT_DIR=%ROOT%\Seara
-set VERSION=2.0.0
+set VERSION=3.0.0
 
 echo PROJECT DIR:
 echo %PROJECT_DIR%
