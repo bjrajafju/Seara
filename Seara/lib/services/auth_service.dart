@@ -73,18 +73,20 @@ class AuthService {
     // Strict lock - no waiting, just return if already in progress
     if (_isRefreshing) {
       if (kDebugMode) print("Auth: Refresh already in progress, skipping.");
-      return true; 
+      return true;
     }
 
     // Debounce - ignore if last refresh was < 10 seconds ago
-    if (_lastRefreshTime != null && 
+    if (_lastRefreshTime != null &&
         DateTime.now().difference(_lastRefreshTime!).inSeconds < 10) {
       if (kDebugMode) print("Auth: Refresh called too recently, skipping.");
       return true;
     }
 
-    if (_authBlockedUntil != null && TimeService.now.isBefore(_authBlockedUntil!)) {
-      if (kDebugMode) print("Auth: Circuit breaker active until $_authBlockedUntil");
+    if (_authBlockedUntil != null &&
+        TimeService.now.isBefore(_authBlockedUntil!)) {
+      if (kDebugMode)
+        print("Auth: Circuit breaker active until $_authBlockedUntil");
       return false;
     }
 
@@ -93,14 +95,21 @@ class AuthService {
     if (session != null && session.expiresAt != null) {
       final now = DateTime.now();
       final expiresAtSeconds = session.expiresAt!;
-      
+
       // Inconsistent if expiresAt is suspiciously old (e.g., < year 2010) or far in the future
-      bool isSuspicious = expiresAtSeconds < 1262304000 || 
-                          expiresAtSeconds > (now.add(const Duration(days: 30)).millisecondsSinceEpoch / 1000);
-      
+      bool isSuspicious =
+          expiresAtSeconds < 1262304000 ||
+          expiresAtSeconds >
+              (now.add(const Duration(days: 30)).millisecondsSinceEpoch / 1000);
+
       if (isSuspicious) {
-        if (kDebugMode) print("Auth: Suspicious session expiry detected: $expiresAtSeconds. Likely invalid device time.");
-        onAuthError?.call("Data/hora do dispositivo incorreta. Ajusta o relógio para continuar.");
+        if (kDebugMode)
+          print(
+            "Auth: Suspicious session expiry detected: $expiresAtSeconds. Likely invalid device time.",
+          );
+        onAuthError?.call(
+          "Data/hora do dispositivo incorreta. Ajusta o relógio para continuar.",
+        );
         await logout();
         return false;
       }
@@ -117,10 +126,12 @@ class AuthService {
       }
 
       if (kDebugMode) print("Auth: Attempting manual session refresh...");
-      
+
       // Use setSession with refreshToken to trigger a manual refresh
-      final response = await Supabase.instance.client.auth.setSession(refreshToken);
-      
+      final response = await Supabase.instance.client.auth.setSession(
+        refreshToken,
+      );
+
       if (response.session != null) {
         await saveSession(
           response.session!.accessToken,
@@ -130,24 +141,30 @@ class AuthService {
         if (kDebugMode) print("Auth: Manual refresh successful.");
         return true;
       }
-      
+
       _refreshFailures++;
       return false;
     } on AuthException catch (e) {
       _refreshFailures++;
-      if (kDebugMode) print("Auth: Refresh failed with AuthException: ${e.message} (Status: ${e.statusCode})");
-      
+      if (kDebugMode)
+        print(
+          "Auth: Refresh failed with AuthException: ${e.message} (Status: ${e.statusCode})",
+        );
+
       // Hard stop on 429 or 2 consecutive failures
       if (e.statusCode == '429' || _refreshFailures >= 2) {
         _authBlockedUntil = TimeService.now.add(const Duration(minutes: 5));
-        
-        final errorMsg = e.statusCode == '429' 
-          ? "Erro de autenticação. Verifique a data/hora do dispositivo e volte a iniciar sessão."
-          : "Sessão expirada. Por favor, inicie sessão novamente.";
-        
+
+        final errorMsg = e.statusCode == '429'
+            ? "Erro de autenticação. Verifique a data/hora do dispositivo e volte a iniciar sessão."
+            : "Sessão expirada. Por favor, inicie sessão novamente.";
+
         onAuthError?.call(errorMsg);
-        
-        if (kDebugMode) print("Auth: Critical failure detected (429 or 2+ failures). Forcing logout.");
+
+        if (kDebugMode)
+          print(
+            "Auth: Critical failure detected (429 or 2+ failures). Forcing logout.",
+          );
         await logout();
       }
       return false;
@@ -252,28 +269,24 @@ class AuthService {
     required String newPassword,
   }) async {
     try {
-      // First, try to re-authenticate with Supabase to verify current password
       final currentUser = Supabase.instance.client.auth.currentUser;
       if (currentUser != null && currentUser.email != null) {
         try {
-          final authResponse = await Supabase.instance.client.auth.signInWithPassword(
-            email: currentUser.email!,
-            password: currentPassword,
-          );
-          
+          final authResponse = await Supabase.instance.client.auth
+              .signInWithPassword(
+                email: currentUser.email!,
+                password: currentPassword,
+              );
+
           final session = authResponse.session;
           if (session != null) {
-            await saveSession(
-              session.accessToken,
-              session.refreshToken,
-            );
+            await saveSession(session.accessToken, session.refreshToken);
           }
         } catch (e) {
           return AuthErrorHandler.mapError(e);
         }
       }
 
-      // Then update the password in Supabase
       final response = await Supabase.instance.client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
@@ -282,7 +295,6 @@ class AuthService {
         return 'Não foi possível alterar a password. Tenta novamente.';
       }
 
-      // Optional: Notify backend if endpoint exists
       try {
         await ApiClient.post(
           Uri.parse('$baseUrl/change-password'),
@@ -292,9 +304,7 @@ class AuthService {
             'new_password': newPassword,
           }),
         ).timeout(const Duration(seconds: 5));
-      } catch (_) {
-        // Ignore backend errors if Supabase update succeeded
-      }
+      } catch (_) {}
 
       return null;
     } catch (e) {
@@ -315,7 +325,9 @@ class AuthService {
       }
 
       if (kDebugMode) {
-        print("Requesting password reset for $email with redirectTo: $redirectTo");
+        print(
+          "Requesting password reset for $email with redirectTo: $redirectTo",
+        );
       }
 
       await Supabase.instance.client.auth.resetPasswordForEmail(
